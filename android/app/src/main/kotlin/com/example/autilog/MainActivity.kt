@@ -1,0 +1,5 @@
+package com.example.autilog
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
