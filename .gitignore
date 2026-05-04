@@ -51,3 +51,6 @@ firebase_options.dart
 
 # Environment
 .env
+
+google-services.json
+GoogleService-Info.plist
