@@ -9,6 +9,17 @@ class AuthRepository {
   // Get current user
   User? get currentUser => _auth.currentUser;
 
+  /// Emits the current [UserModel] when logged in, or null when logged out.
+  /// AuthBloc listens to this stream to keep the session state up to date.
+  Stream<UserModel?> get authStateChanges {
+    return _auth.authStateChanges().asyncMap((user) async {
+      if (user == null) return null;
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (!doc.exists) return null;
+      return UserModel.fromMap(doc.data()!, user.uid);
+    });
+  }
+
   // Register parent
   Future<UserModel> registerParent({
     required String email,
