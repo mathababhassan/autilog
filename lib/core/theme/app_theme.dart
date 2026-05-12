@@ -45,7 +45,7 @@ final class AppTheme {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: AppColors.inputFill,
+          fillColor: AppColors.surfaceDefault,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.lg,
             vertical: AppSpacing.md,
@@ -61,7 +61,7 @@ final class AppTheme {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
             borderSide: const BorderSide(
-              color: AppColors.borderActive,
+              color: AppColors.primary,
               width: 2,
             ),
           ),

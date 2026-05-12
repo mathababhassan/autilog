@@ -5,11 +5,13 @@ class AppPrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final bool isLoading;
+  final double borderRadius;
 
   const AppPrimaryButton({
     required this.label,
     this.onPressed,
     this.isLoading = false,
+    this.borderRadius = AppSpacing.borderRadius,
     super.key,
   });
 
@@ -19,6 +21,13 @@ class AppPrimaryButton extends StatelessWidget {
       width: double.infinity,
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
+        style: ButtonStyle(
+          shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(borderRadius),
+            ),
+          ),
+        ),
         child: isLoading
             ? const SizedBox(
                 height: 20,

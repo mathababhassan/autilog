@@ -15,5 +15,5 @@ class RequiredTextInput extends FormzInput<String, RequiredTextValidationError> 
 }
 
 extension RequiredTextValidationErrorX on RequiredTextValidationError {
-  String fieldMessage(String fieldName) => '$fieldName is required.';
+  String fieldMessage(String fieldName) => '$fieldName is required';
 }

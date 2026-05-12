@@ -8,6 +8,7 @@ import 'core/constants/routes.dart';
 import 'core/theme/theme.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/data/auth_repository.dart';
+import 'features/auth/presentation/therapist/screens/therapist_registration_screen.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -69,14 +70,12 @@ class _AppViewState extends State<_AppView> {
         GoRoute(
           path: Routes.login,
           builder: (_, _) => const Scaffold(
-            body: Center(child: Text('Login — coming in Phase B')),
+            body: Center(child: Text('Login Screen')),
           ),
         ),
         GoRoute(
           path: Routes.registerTherapist,
-          builder: (_, _) => const Scaffold(
-            body: Center(child: Text('Therapist Registration — coming in Phase B')),
-          ),
+          builder: (_, _) => const TherapistRegistrationScreen(),
         ),
         GoRoute(
           path: Routes.therapistHome,
