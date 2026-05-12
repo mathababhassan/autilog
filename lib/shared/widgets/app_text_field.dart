@@ -54,11 +54,14 @@ class _AppTextFieldState extends State<AppTextField> {
         hintText: widget.hint,
         suffixIcon: widget.obscureText
             ? IconButton(
+                tooltip: _obscure ? 'Show password' : 'Hide password',
                 icon: Icon(
                   _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                   color: AppColors.textDisabled,
                 ),
-                onPressed: () => setState(() => _obscure = !_obscure),
+                onPressed: widget.enabled
+                    ? () => setState(() => _obscure = !_obscure)
+                    : null,
               )
             : null,
       ),
