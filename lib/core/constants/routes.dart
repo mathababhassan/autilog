@@ -1,4 +1,6 @@
 abstract final class Routes {
+  static const String roleSelection = '/auth/register';
+  
   static const String login = '/auth/login';
   static const String registerTherapist = '/auth/register/therapist';
 

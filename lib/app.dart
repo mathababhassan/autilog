@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import 'features/auth/presentation/shared/role_selection_screen.dart';
 import 'core/constants/routes.dart';
 import 'core/theme/theme.dart';
 import 'features/auth/bloc/auth_bloc.dart';
@@ -47,14 +48,14 @@ class _AppViewState extends State<_AppView> {
 
     _router = GoRouter(
       refreshListenable: _notifier,
-      initialLocation: Routes.login,
+      initialLocation: Routes.roleSelection,
       redirect: (context, state) {
         final authState = _authBloc.state;
         final isOnAuthRoute = state.matchedLocation.startsWith('/auth');
 
-        // Unauthenticated users are always sent to login.
+        // Unauthenticated users are always sent to role selection.
         if (authState is AuthUnauthenticated || authState is AuthInitial) {
-          return isOnAuthRoute ? null : Routes.login;
+          return isOnAuthRoute ? null : Routes.roleSelection;
         }
 
         // Authenticated users are redirected away from auth screens to their home.
@@ -64,28 +65,32 @@ class _AppViewState extends State<_AppView> {
               : Routes.parentHome;
         }
 
-        return null; // No redirect needed.
+        return null;
       },
       routes: [
         GoRoute(
+          path: Routes.roleSelection,
+          builder: (_, __) => const RoleSelectionScreen(),
+        ),
+        GoRoute(
           path: Routes.login,
-          builder: (_, _) => const Scaffold(
+          builder: (_, __) => const Scaffold(
             body: Center(child: Text('Login Screen')),
           ),
         ),
         GoRoute(
           path: Routes.registerTherapist,
-          builder: (_, _) => const TherapistRegistrationScreen(),
+          builder: (_, __) => const TherapistRegistrationScreen(),
         ),
         GoRoute(
           path: Routes.therapistHome,
-          builder: (_, _) => const Scaffold(
+          builder: (_, __) => const Scaffold(
             body: Center(child: Text('Therapist Home')),
           ),
         ),
         GoRoute(
           path: Routes.parentHome,
-          builder: (_, _) => const Scaffold(
+          builder: (_, __) => const Scaffold(
             body: Center(child: Text('Parent Home')),
           ),
         ),
