@@ -10,6 +10,10 @@ import 'core/theme/theme.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/presentation/therapist/screens/therapist_registration_screen.dart';
+import 'features/auth/presentation/parent/screens/parent_registration_screen.dart';
+import 'features/auth/presentation/parent/screens/child_onboarding_screen.dart';
+
+import 'features/auth/presentation/parent/screens/child_registration_screen.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -60,12 +64,13 @@ class _AppViewState extends State<_AppView> {
 
         // Authenticated users are redirected away from auth screens to their home.
         if (authState is AuthAuthenticated && isOnAuthRoute) {
-          return authState.user.role == 'therapist'
-              ? Routes.therapistHome
-              : Routes.parentHome;
-        }
-
-        return null;
+         if (authState.user.role == 'therapist') {
+      return Routes.therapistHome;
+    } else if (authState.user.role == 'parent') {
+      // ✅ Parent goes to onboarding first
+      return '/child-onboarding';
+    }
+  }
       },
       routes: [
         GoRoute(
@@ -88,6 +93,21 @@ class _AppViewState extends State<_AppView> {
             body: Center(child: Text('Therapist Home')),
           ),
         ),
+        GoRoute(
+  path: Routes.registerParent,
+  builder: (_, __) => const ParentRegistrationScreen(),
+),
+GoRoute(
+  path: '/child-onboarding',
+  builder: (_, __) => const ChildOnboardingScreen(),
+),
+GoRoute(
+  path: '/child-step2',
+  builder: (_, __) => const ChildRegistrationScreen(),
+),
+
+
+
         GoRoute(
           path: Routes.parentHome,
           builder: (_, __) => const Scaffold(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme.dart';
-
+import '../../../../core/constants/routes.dart';
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
 
@@ -86,7 +86,7 @@ class RoleSelectionScreen extends StatelessWidget {
                 hoverColor: AppColors.textWhite.withOpacity(0.15),
                 textColor: AppColors.textWhite,
                 filled: false,
-                onTap: () => context.go('/auth/register/parent'),
+                onTap: () => context.go(Routes.registerParent),
               ),
               const SizedBox(height: AppSpacing.xl2),
               Center(

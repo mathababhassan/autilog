@@ -21,33 +21,97 @@ class AuthRepository {
   }
 
   // Register parent
-  Future<UserModel> registerParent({
+ Future<UserModel> registerParent({
     required String email,
     required String password,
     required String name,
-    required String phone,
+    String? gender,
+    String? profilePhotoPath,
+    required String childName,
+    required int childAge,
+    required String asdSeverity,
   }) async {
+    // 1. Create Firebase Auth account
     final credential = await _auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
     final userId = credential.user!.uid;
-
+ 
+    // 2. Build the shared UserModel (role = 'parent')
     final userModel = UserModel(
       userId: userId,
       email: email,
       role: 'parent',
       createdAt: DateTime.now(),
     );
-
-    await _firestore.collection('users').doc(userId).set(userModel.toMap());
-    await _firestore.collection('parents').doc(userId).set({
-      'name': name,
-      'phone': phone,
-    });
-
+ 
+    // 3. Batched Firestore write — all three documents atomically
+    final batch = _firestore.batch();
+ 
+    // /users/{uid}  — shared auth document (same as before)
+    batch.set(
+      _firestore.collection('users').doc(userId),
+      userModel.toMap(),
+    );
+ 
+    // /parents/{uid}  — parent profile (replaces the old name+phone document)
+    batch.set(
+      _firestore.collection('parents').doc(userId),
+      {
+        'name': name,
+        'gender': gender,
+        'profilePhotoPath': profilePhotoPath,
+      },
+    );
+ 
+    // /parents/{uid}/children/{childId}  — child sub-document
+    batch.set(
+      _firestore
+          .collection('parents')
+          .doc(userId)
+          .collection('children')
+          .doc(), // auto-generated child ID
+      {
+        'name': childName,
+        'age': childAge,
+        'asdSeverity': asdSeverity, // 'Level 1' | 'Level 2' | 'Level 3'
+        'parentId': userId,
+        'therapists': [],           // populated later via link-therapist feature
+        'createdAt': FieldValue.serverTimestamp(),
+      },
+    );
+ 
+    await batch.commit();
+ 
     return userModel;
   }
+ 
+
+ // Inside auth_repository.dart
+
+Future<void> addChild({
+  required String parentId,
+  required String name,
+  required int age,
+  required String asdSeverity,
+}) async {
+  final childRef = _firestore
+      .collection('parents')
+      .doc(parentId)
+      .collection('children')
+      .doc(); // auto-generated child ID
+
+  await childRef.set({
+    'childId': childRef.id,
+    'parentId': parentId,
+    'name': name,
+    'age': age,
+    'asdSeverity': asdSeverity, // 'Level 1' | 'Level 2' | 'Level 3'
+    'therapists': [],           // populated later via link-therapist feature
+    'createdAt': FieldValue.serverTimestamp(),
+  });
+}
 
   // Register therapist
   Future<UserModel> registerTherapist({
