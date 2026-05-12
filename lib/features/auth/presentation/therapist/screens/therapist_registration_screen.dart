@@ -412,29 +412,27 @@ class _GenderField extends StatelessWidget {
       children: [
         Text('Gender', style: AppTextStyles.body),
         const SizedBox(height: AppSpacing.xs),
-        RadioGroup<String>(
-          groupValue: selected,
-          onChanged: (v) {
-            if (v != null) onChanged(v);
-          },
-          child: Wrap(
-            spacing: AppSpacing.lg,
-            children: _options.map((option) {
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Radio<String>(
-                    value: option,
-                    activeColor: AppColors.primary,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Text(option, style: AppTextStyles.body),
-                ],
-              );
-            }).toList(),
-          ),
+        Wrap(
+          spacing: AppSpacing.lg,
+          children: _options.map((option) {
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Radio<String>(
+                  value: option,
+                  groupValue: selected,
+                  activeColor: AppColors.primary,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                  onChanged: (v) {
+                    if (v != null) onChanged(v);
+                  },
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Text(option, style: AppTextStyles.body),
+              ],
+            );
+          }).toList(),
         ),
       ],
     );
