@@ -20,9 +20,9 @@ extension PasswordValidationErrorX on PasswordValidationError {
   String get message {
     switch (this) {
       case PasswordValidationError.empty:
-        return 'Password is required.';
+        return 'Password is required';
       case PasswordValidationError.tooShort:
-        return 'Password must be at least 8 characters.';
+        return 'Must be at least 8 characters';
     }
   }
 }
