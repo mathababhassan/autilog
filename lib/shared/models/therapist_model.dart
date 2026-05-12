@@ -4,6 +4,7 @@ class TherapistModel {
   final String licenceNumber;
   final String clinicName;
   final String specialisation;
+  final String gender; 
 
   TherapistModel({
     required this.userId,
@@ -11,6 +12,7 @@ class TherapistModel {
     required this.licenceNumber,
     required this.clinicName,
     required this.specialisation,
+    required this.gender, 
   });
 
   factory TherapistModel.fromMap(Map<String, dynamic> map, String userId) {
@@ -20,6 +22,7 @@ class TherapistModel {
       licenceNumber: map['licenceNumber'] ?? '',
       clinicName: map['clinicName'] ?? '',
       specialisation: map['specialisation'] ?? '',
+      gender: map['gender'] ?? '', 
     );
   }
 
@@ -29,6 +32,7 @@ class TherapistModel {
       'licenceNumber': licenceNumber,
       'clinicName': clinicName,
       'specialisation': specialisation,
+      'gender': gender, 
     };
   }
 }
