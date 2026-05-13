@@ -75,9 +75,22 @@ class _TherapistEditProfileScreenState
 
   void _save() {
     if (!_isDirty) return;
+
+    final clinicName = _clinicCtrl.text.trim();
+    final specialisation = _specialisationCtrl.text.trim();
+
+    if (clinicName.isEmpty || specialisation.isEmpty) {
+      showAppSnackBar(
+        context,
+        message: 'Clinic name and specialisation cannot be empty.',
+        isError: true,
+      );
+      return;
+    }
+
     final fields = <String, dynamic>{
-      'clinicName': _clinicCtrl.text.trim(),
-      'specialisation': _specialisationCtrl.text.trim(),
+      'clinicName': clinicName,
+      'specialisation': specialisation,
     };
     final phone = _phoneCtrl.text.trim();
     if (phone.isNotEmpty) fields['phone'] = phone;
