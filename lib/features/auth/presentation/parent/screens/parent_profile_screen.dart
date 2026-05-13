@@ -445,12 +445,12 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
               controller: _nameController,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  color: Colors.white,
+                  color: Color.fromARGB(255, 49, 175, 24),
                   fontSize: 20,
                   fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 hintText: 'Your name',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+                hintStyle: TextStyle(color: const Color.fromARGB(255, 17, 136, 13).withOpacity(0.6)),
                 enabledBorder: const UnderlineInputBorder(
                   borderSide: BorderSide(color: Colors.white54),
                 ),
@@ -463,7 +463,7 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
             Text(
               widget.name,
               style: const TextStyle(
-                  color: Colors.white,
+                  color: Color.fromARGB(255, 49, 173, 55),
                   fontSize: 20,
                   fontWeight: FontWeight.bold),
             ),
