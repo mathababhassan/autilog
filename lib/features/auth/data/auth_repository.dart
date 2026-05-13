@@ -21,19 +21,24 @@ class AuthRepository {
     });
   }
 
-  // Register parent
+  // ── Register parent ───────────────────────────────────────────────────────
+  // Child info is NOT collected here — it is added separately via addChild()
+  // after the parent completes the ChildRegistrationScreen.
   Future<UserModel> registerParent({
     required String email,
     required String password,
     required String name,
-    required String phone,
+    String? gender,
+    String? profilePhotoPath,
   }) async {
+    // 1. Create Firebase Auth account
     final credential = await _auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
     final userId = credential.user!.uid;
 
+    // 2. Build the shared UserModel (role = 'parent')
     final userModel = UserModel(
       userId: userId,
       email: email,
@@ -41,16 +46,56 @@ class AuthRepository {
       createdAt: DateTime.now(),
     );
 
-    await _firestore.collection('users').doc(userId).set(userModel.toMap());
-    await _firestore.collection('parents').doc(userId).set({
-      'name': name,
-      'phone': phone,
-    });
+    // 3. Batched Firestore write
+    final batch = _firestore.batch();
+
+    // /users/{uid} — shared auth document
+    batch.set(
+      _firestore.collection('users').doc(userId),
+      userModel.toMap(),
+    );
+
+    // /parents/{uid} — parent profile
+    batch.set(
+      _firestore.collection('parents').doc(userId),
+      {
+        'name': name,
+        'gender': gender,
+        'profilePhotoPath': profilePhotoPath,
+      },
+    );
+
+    await batch.commit();
 
     return userModel;
   }
 
-  // Register therapist
+  // ── Add child ─────────────────────────────────────────────────────────────
+  // Called by ChildRegistrationBloc after parent registration is complete.
+  Future<void> addChild({
+    required String parentId,
+    required String name,
+    required int age,
+    required String asdSeverity,
+  }) async {
+    final childRef = _firestore
+        .collection('parents')
+        .doc(parentId)
+        .collection('children')
+        .doc(); // auto-generated child ID
+
+    await childRef.set({
+      'childId': childRef.id,
+      'parentId': parentId,
+      'name': name,
+      'age': age,
+      'asdSeverity': asdSeverity, // 'Level 1' | 'Level 2' | 'Level 3'
+      'therapists': [],            // populated later via link-therapist feature
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // ── Register therapist ────────────────────────────────────────────────────
   Future<UserModel> registerTherapist({
     required String email,
     required String password,
@@ -88,7 +133,7 @@ class AuthRepository {
     return userModel;
   }
 
-  // Login
+  // ── Login ─────────────────────────────────────────────────────────────────
   Future<UserModel> login({
     required String email,
     required String password,
@@ -103,17 +148,17 @@ class AuthRepository {
     return UserModel.fromMap(doc.data()!, userId);
   }
 
-  // Logout
+  // ── Logout ────────────────────────────────────────────────────────────────
   Future<void> logout() async {
     await _auth.signOut();
   }
 
-  // Forgot password
+  // ── Forgot password ───────────────────────────────────────────────────────
   Future<void> sendPasswordResetEmail(String email) async {
     await _auth.sendPasswordResetEmail(email: email);
   }
 
-  // Get user role
+  // ── Get user role ─────────────────────────────────────────────────────────
   Future<String> getUserRole(String userId) async {
     final doc = await _firestore.collection('users').doc(userId).get();
     return doc.data()?['role'] ?? '';

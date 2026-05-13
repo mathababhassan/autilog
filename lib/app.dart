@@ -10,6 +10,11 @@ import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/presentation/shared/role_selection_screen.dart';
 import 'features/auth/presentation/therapist/screens/therapist_registration_screen.dart';
+import 'features/auth/presentation/parent/screens/parent_registration_screen.dart';
+import 'features/auth/presentation/parent/screens/child_onboarding_screen.dart';
+import 'features/auth/presentation/parent/screens/child_registration_screen.dart';
+import 'features/auth/presentation/parent/screens/parent_home_screen.dart';
+import 'features/auth/presentation/parent/screens/parent_profile_screen.dart';
 import 'features/profile/therapist/bloc/therapist_profile_bloc.dart';
 import 'features/profile/therapist/data/therapist_repository.dart';
 import 'features/profile/therapist/presentation/screens/therapist_edit_profile_screen.dart';
@@ -76,14 +81,17 @@ class _AppViewState extends State<_AppView> {
         }
 
         if (authState is AuthAuthenticated && isOnAuthRoute) {
-          return authState.user.role == 'therapist'
-              ? Routes.therapistHome
-              : Routes.parentHome;
+          if (authState.user.role == 'therapist') {
+            return Routes.therapistHome;
+          } else if (authState.user.role == 'parent') {
+            return Routes.childOnboarding;
+          }
         }
 
         return null;
       },
       routes: [
+        // ── Shared ──────────────────────────────────────────────────────
         GoRoute(
           path: Routes.roleSelection,
           builder: (_, _) => const RoleSelectionScreen(),
@@ -94,6 +102,8 @@ class _AppViewState extends State<_AppView> {
             body: Center(child: Text('Login Screen')),
           ),
         ),
+
+        // ── Therapist ────────────────────────────────────────────────────
         GoRoute(
           path: Routes.registerTherapist,
           builder: (_, _) => const TherapistRegistrationScreen(),
@@ -110,8 +120,27 @@ class _AppViewState extends State<_AppView> {
           path: Routes.therapistProfileEdit,
           builder: (_, _) => const TherapistEditProfileScreen(),
         ),
+
+        // ── Parent ───────────────────────────────────────────────────────
+        GoRoute(
+          path: Routes.registerParent,
+          builder: (_, __) => const ParentRegistrationScreen(),
+        ),
+        GoRoute(
+          path: Routes.childOnboarding,
+          builder: (_, __) => const ChildOnboardingScreen(),
+        ),
+        GoRoute(
+          path: Routes.childRegistration,
+          builder: (_, __) => const ChildRegistrationScreen(),
+        ),
         GoRoute(
           path: Routes.parentHome,
+          builder: (_, __) => const ParentHomeScreen(),
+        ),
+        GoRoute(
+          path: Routes.parentProfile,
+          builder: (_, __) => const ParentProfileScreen(),
           builder: (_, _) => const Scaffold(
             body: Center(child: Text('Parent Home')),
           ),
