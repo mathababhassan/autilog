@@ -109,7 +109,7 @@ class ParentRegistrationBloc
         password: state.password,
         name: state.name.trim(),
         gender: state.gender,
-        profilePhotoPath: state.profilePhotoPath,
+        profilePhotoBase64: state.profilePhotoPath,
       );
       emit(state.copyWith(status: FormzSubmissionStatus.success));
     } catch (e) {
