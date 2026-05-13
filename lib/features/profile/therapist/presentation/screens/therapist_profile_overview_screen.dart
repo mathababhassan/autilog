@@ -69,8 +69,9 @@ class TherapistProfileOverviewScreen extends StatelessWidget {
                           const _InfoDivider(),
                           _InfoRow(
                               label: 'Experience',
-                              value: therapist.experience != null
-                                  ? '${therapist.experience} years'
+                              value: therapist.experience?.trim().isNotEmpty ==
+                                      true
+                                  ? '${therapist.experience!.trim()} years'
                                   : '—'),
                           const _InfoDivider(),
                           _InfoRow(
