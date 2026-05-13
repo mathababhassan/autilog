@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../../core/constants/routes.dart';
 import '../../../../../core/theme/theme.dart';
 import '../../../../../shared/widgets/app_primary_button.dart';
 import '../../bloc/therapist_profile_bloc.dart';
@@ -134,7 +136,7 @@ class _HomeHeader extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Let’s setup your profile, start by adding your patients',
+                    "Share your email with parents so they can send you patient requests.",
                     style: AppTextStyles.body.copyWith(
                       color: AppColors.textWhite.withValues(alpha: 0.92),
                     ),
@@ -275,25 +277,30 @@ class _HeroCard extends StatelessWidget {
                 ),
                 SizedBox(height: 16),
                 Text(
-                  'Add your first patient',
+                  'No patients yet',
                   style:
                       AppTextStyles.heading1.copyWith(color: AppColors.textMain),
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: 6),
                 Text(
-                  'Once you\'ve added a patient, you can schedule sessions, track incidents, and share insights with their parent.',
+                  "Parents add you by sending a request to your AutiLog email. Share your email with a parent to get started.",
                   style: AppTextStyles.caption.copyWith(
                       color: AppColors.textPlaceholder, height: 1.5),
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: 18),
                 AppPrimaryButton(
-                  label: 'Add Patient',
-                  onPressed: () {},
+                  label: 'View Patients',
+                  onPressed: () => context.go(Routes.therapistPatients),
                   borderRadius: 999,
-                  leading:
-                      Icon(Icons.add, color: AppColors.textWhite, size: 18),
+                  leading: SvgPicture.asset(
+                    'assets/icons/patient_outline.svg',
+                    width: 18,
+                    height: 18,
+                    colorFilter: const ColorFilter.mode(
+                        AppColors.textWhite, BlendMode.srcIn),
+                  ),
                 ),
                 SizedBox(height: 12),
               ],
