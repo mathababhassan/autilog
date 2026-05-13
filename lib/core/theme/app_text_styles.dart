@@ -3,6 +3,13 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
 abstract final class AppTextStyles {
+  static TextStyle get hero => GoogleFonts.plusJakartaSans(
+        fontSize: 40,
+        fontWeight: FontWeight.w700,
+        height: 1.1,
+        color: AppColors.textMain,
+      );
+
   static TextStyle get display => GoogleFonts.plusJakartaSans(
         fontSize: 28,
         fontWeight: FontWeight.w700,

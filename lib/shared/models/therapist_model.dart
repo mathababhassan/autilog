@@ -4,7 +4,9 @@ class TherapistModel {
   final String licenceNumber;
   final String clinicName;
   final String specialisation;
-  final String gender; 
+  final String gender;
+  final String? phone;
+  final String? experience;
 
   TherapistModel({
     required this.userId,
@@ -12,7 +14,9 @@ class TherapistModel {
     required this.licenceNumber,
     required this.clinicName,
     required this.specialisation,
-    required this.gender, 
+    required this.gender,
+    this.phone,
+    this.experience,
   });
 
   factory TherapistModel.fromMap(Map<String, dynamic> map, String userId) {
@@ -22,7 +26,9 @@ class TherapistModel {
       licenceNumber: map['licenceNumber'] ?? '',
       clinicName: map['clinicName'] ?? '',
       specialisation: map['specialisation'] ?? '',
-      gender: map['gender'] ?? '', 
+      gender: map['gender'] ?? '',
+      phone: map['phone'] as String?,
+      experience: map['experience'] as String?,
     );
   }
 
@@ -32,7 +38,28 @@ class TherapistModel {
       'licenceNumber': licenceNumber,
       'clinicName': clinicName,
       'specialisation': specialisation,
-      'gender': gender, 
+      'gender': gender,
+      if (phone != null) 'phone': phone,
+      if (experience != null) 'experience': experience,
     };
+  }
+
+  TherapistModel copyWith({
+    String? name,
+    String? clinicName,
+    String? specialisation,
+    String? phone,
+    String? experience,
+  }) {
+    return TherapistModel(
+      userId: userId,
+      name: name ?? this.name,
+      licenceNumber: licenceNumber,
+      clinicName: clinicName ?? this.clinicName,
+      specialisation: specialisation ?? this.specialisation,
+      gender: gender,
+      phone: phone ?? this.phone,
+      experience: experience ?? this.experience,
+    );
   }
 }
