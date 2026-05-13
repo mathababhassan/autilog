@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../../core/constants/routes.dart';
 import '../../../../../core/theme/theme.dart';
 import '../../../../../shared/widgets/app_primary_button.dart';
 import '../../bloc/therapist_profile_bloc.dart';
@@ -462,7 +464,7 @@ class _TabBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: const [
+            children: [
               _TabItem(
                 iconOutline: 'assets/icons/home_outline.svg',
                 iconFilled: 'assets/icons/home_filled.svg',
@@ -473,6 +475,7 @@ class _TabBar extends StatelessWidget {
                 iconOutline: 'assets/icons/patient_outline.svg',
                 iconFilled: 'assets/icons/patient_filled.svg',
                 label: 'Patients',
+                onTap: () => context.go(Routes.therapistPatients),
               ),
               _TabItem(
                 iconOutline: 'assets/icons/session_outline.svg',
@@ -498,33 +501,39 @@ class _TabItem extends StatelessWidget {
     this.iconFilled,
     required this.label,
     this.active = false,
+    this.onTap,
   });
 
   final String iconOutline;
   final String? iconFilled;
   final String label;
   final bool active;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final color = active ? AppColors.primary : AppColors.textMain;
     final asset = active ? (iconFilled ?? iconOutline) : iconOutline;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SvgPicture.asset(
-          asset,
-          width: 22,
-          height: 22,
-          colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-        ),
-        const SizedBox(height: 4),
-        Text(label,
-            style: AppTextStyles.tag.copyWith(
-              fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-              color: color,
-            )),
-      ],
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SvgPicture.asset(
+            asset,
+            width: 22,
+            height: 22,
+            colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+          ),
+          const SizedBox(height: 4),
+          Text(label,
+              style: AppTextStyles.tag.copyWith(
+                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                color: color,
+              )),
+        ],
+      ),
     );
   }
 }

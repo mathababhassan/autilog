@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/theme.dart';
@@ -331,22 +332,19 @@ class _NavBar extends StatelessWidget {
         children: [
           GestureDetector(
             onTap: onBack,
-            child: Row(
-              children: [
-                const Icon(Icons.chevron_left,
-                    size: 22, color: AppColors.secondary),
-                Text('Back',
-                    style: AppTextStyles.body.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.secondary,
-                    )),
-              ],
+            behavior: HitTestBehavior.opaque,
+            child: SvgPicture.asset(
+              'assets/icons/icon_back.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(
+                  AppColors.textMain, BlendMode.srcIn),
             ),
           ),
           Expanded(
             child: Center(
               child: Text('Edit Profile',
-                  style: AppTextStyles.heading2
+                  style: AppTextStyles.heading1
                       .copyWith(color: AppColors.textMain)),
             ),
           ),

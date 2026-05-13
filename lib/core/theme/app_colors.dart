@@ -16,9 +16,18 @@ abstract final class AppColors {
 
   static const Color accent = Color(0xFF0093FF);
 
+  static const Color secondaryOrange = Color(0xFFFF7644);
+  static const Color secondaryOrange20 = Color(0xFFFFE4DA);
+
+  static const Color accentRed = Color(0xFFFF4179);
+  static const Color accentRed20 = Color(0xFFFFD9E4);
+
+  static const Color error20 = Color(0xFFFBD0CE);
+
   // Text
   static const Color textMain = Color(0xFF393938);
   static const Color textHighContrast = Color(0xFF000000);
+  static const Color textSubtle = Color(0xFF9A9A9A);
   static const Color textDisabled = Color(0xFF777675);
   static const Color textPlaceholder = Color(0xFF666666);
   static const Color textWhite = Color(0xFFFFFFFF);
