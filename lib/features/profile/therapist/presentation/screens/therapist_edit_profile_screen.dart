@@ -80,10 +80,10 @@ class _TherapistEditProfileScreenState
     final specialisation = _specialisationCtrl.text.trim();
 
     if (clinicName.isEmpty || specialisation.isEmpty) {
-      showAppSnackBar(
-        context,
-        message: 'Clinic name and specialisation cannot be empty.',
-        isError: true,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Clinic name and specialisation cannot be empty.'),
+        ),
       );
       return;
     }
@@ -97,9 +97,9 @@ class _TherapistEditProfileScreenState
     final experience = _experienceCtrl.text.trim();
     if (experience.isNotEmpty) fields['experience'] = experience;
 
-    context
-        .read<TherapistProfileBloc>()
-        .add(TherapistProfileUpdateRequested(fields: fields));
+    context.read<TherapistProfileBloc>().add(
+      TherapistProfileUpdateRequested(fields: fields),
+    );
   }
 
   Future<void> _confirmSignOut() async {
@@ -112,9 +112,9 @@ class _TherapistEditProfileScreenState
       builder: (sheetCtx) => _SignOutSheet(
         onConfirm: () {
           Navigator.of(sheetCtx).pop();
-          context
-              .read<TherapistProfileBloc>()
-              .add(const TherapistProfileSignOutRequested());
+          context.read<TherapistProfileBloc>().add(
+            const TherapistProfileSignOutRequested(),
+          );
         },
         onCancel: () => Navigator.of(sheetCtx).pop(),
       ),
@@ -133,9 +133,9 @@ class _TherapistEditProfileScreenState
       confirmButtonLabel: 'Delete Account',
     );
     if (confirmed == true && mounted) {
-      context
-          .read<TherapistProfileBloc>()
-          .add(const TherapistProfileDeleteRequested());
+      context.read<TherapistProfileBloc>().add(
+        const TherapistProfileDeleteRequested(),
+      );
     }
   }
 
@@ -159,7 +159,8 @@ class _TherapistEditProfileScreenState
           _initFromState(state.therapist, state.user);
         }
 
-        final isSaving = state is TherapistProfileUpdating ||
+        final isSaving =
+            state is TherapistProfileUpdating ||
             state is TherapistProfileDeleting;
 
         if (!_initialised) {
@@ -189,10 +190,11 @@ class _TherapistEditProfileScreenState
                         children: [
                           Padding(
                             padding: const EdgeInsets.fromLTRB(
-                                AppSpacing.screenMargin,
-                                10,
-                                AppSpacing.screenMargin,
-                                10),
+                              AppSpacing.screenMargin,
+                              10,
+                              AppSpacing.screenMargin,
+                              10,
+                            ),
                             child: AppTextField(
                               label: 'Phone Number',
                               controller: _phoneCtrl,
@@ -200,10 +202,11 @@ class _TherapistEditProfileScreenState
                             ),
                           ),
                           const Divider(
-                              height: 1,
-                              indent: AppSpacing.screenMargin,
-                              endIndent: AppSpacing.screenMargin,
-                              color: AppColors.dividerLight),
+                            height: 1,
+                            indent: AppSpacing.screenMargin,
+                            endIndent: AppSpacing.screenMargin,
+                            color: AppColors.dividerLight,
+                          ),
                           _ReadOnlyRow(
                             label: 'Email Address',
                             value: _originalUser.email,
@@ -216,10 +219,11 @@ class _TherapistEditProfileScreenState
                         children: [
                           Padding(
                             padding: const EdgeInsets.fromLTRB(
-                                AppSpacing.screenMargin,
-                                10,
-                                AppSpacing.screenMargin,
-                                0),
+                              AppSpacing.screenMargin,
+                              10,
+                              AppSpacing.screenMargin,
+                              0,
+                            ),
                             child: Column(
                               children: [
                                 AppTextField(
@@ -237,7 +241,7 @@ class _TherapistEditProfileScreenState
                                   controller: _experienceCtrl,
                                   keyboardType: TextInputType.number,
                                   inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly
+                                    FilteringTextInputFormatter.digitsOnly,
                                   ],
                                 ),
                                 const SizedBox(height: 10),
@@ -245,10 +249,11 @@ class _TherapistEditProfileScreenState
                             ),
                           ),
                           const Divider(
-                              height: 1,
-                              indent: AppSpacing.screenMargin,
-                              endIndent: AppSpacing.screenMargin,
-                              color: AppColors.dividerLight),
+                            height: 1,
+                            indent: AppSpacing.screenMargin,
+                            endIndent: AppSpacing.screenMargin,
+                            color: AppColors.dividerLight,
+                          ),
                           _ReadOnlyRow(
                             label: 'Licence Number',
                             value: _original.licenceNumber,
@@ -266,20 +271,22 @@ class _TherapistEditProfileScreenState
                             onTap: () {},
                           ),
                           const Divider(
-                              height: 1,
-                              indent: AppSpacing.screenMargin,
-                              endIndent: AppSpacing.screenMargin,
-                              color: AppColors.dividerLight),
+                            height: 1,
+                            indent: AppSpacing.screenMargin,
+                            endIndent: AppSpacing.screenMargin,
+                            color: AppColors.dividerLight,
+                          ),
                           _ActionRow(
                             label: 'Sign Out',
                             color: AppColors.error,
                             onTap: isSaving ? null : _confirmSignOut,
                           ),
                           const Divider(
-                              height: 1,
-                              indent: AppSpacing.screenMargin,
-                              endIndent: AppSpacing.screenMargin,
-                              color: AppColors.dividerLight),
+                            height: 1,
+                            indent: AppSpacing.screenMargin,
+                            endIndent: AppSpacing.screenMargin,
+                            color: AppColors.dividerLight,
+                          ),
                           _ActionRow(
                             label: 'Delete Account',
                             color: AppColors.error,
@@ -320,8 +327,11 @@ class _NavBar extends StatelessWidget {
     final topPadding = MediaQuery.of(context).padding.top;
     return Container(
       padding: EdgeInsets.fromLTRB(
-          AppSpacing.screenMargin, topPadding + 12,
-          AppSpacing.screenMargin, 12),
+        AppSpacing.screenMargin,
+        topPadding + 12,
+        AppSpacing.screenMargin,
+        12,
+      ),
       decoration: const BoxDecoration(
         color: AppColors.surfaceDefault,
         border: Border(bottom: BorderSide(color: AppColors.dividerLight)),
@@ -332,21 +342,29 @@ class _NavBar extends StatelessWidget {
             onTap: onBack,
             child: Row(
               children: [
-                const Icon(Icons.chevron_left,
-                    size: 22, color: AppColors.secondary),
-                Text('Back',
-                    style: AppTextStyles.body.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.secondary,
-                    )),
+                const Icon(
+                  Icons.chevron_left,
+                  size: 22,
+                  color: AppColors.secondary,
+                ),
+                Text(
+                  'Back',
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.secondary,
+                  ),
+                ),
               ],
             ),
           ),
           Expanded(
             child: Center(
-              child: Text('Edit Profile',
-                  style: AppTextStyles.heading2
-                      .copyWith(color: AppColors.textMain)),
+              child: Text(
+                'Edit Profile',
+                style: AppTextStyles.heading2.copyWith(
+                  color: AppColors.textMain,
+                ),
+              ),
             ),
           ),
           GestureDetector(
@@ -356,7 +374,9 @@ class _NavBar extends StatelessWidget {
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppColors.secondary),
+                      strokeWidth: 2,
+                      color: AppColors.secondary,
+                    ),
                   )
                 : Text(
                     'Save',
@@ -387,8 +407,8 @@ class _AvatarBlock extends StatelessWidget {
     final initials = parts.isEmpty
         ? ''
         : parts.length == 1
-            ? parts[0][0].toUpperCase()
-            : '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+        ? parts[0][0].toUpperCase()
+        : '${parts[0][0]}${parts[1][0]}'.toUpperCase();
 
     return Container(
       padding: const EdgeInsets.fromLTRB(0, 28, 0, 20),
@@ -447,13 +467,19 @@ class _EditSection extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.screenMargin, 14, AppSpacing.screenMargin, 6),
-          child: Text(label.toUpperCase(),
-              style: AppTextStyles.tag.copyWith(
-                color: AppColors.textDisabled,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.08,
-              )),
+            AppSpacing.screenMargin,
+            14,
+            AppSpacing.screenMargin,
+            6,
+          ),
+          child: Text(
+            label.toUpperCase(),
+            style: AppTextStyles.tag.copyWith(
+              color: AppColors.textDisabled,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.08,
+            ),
+          ),
         ),
         Container(
           color: AppColors.surfaceDefault,
@@ -463,10 +489,11 @@ class _EditSection extends StatelessWidget {
           ),
         ),
         const Divider(
-            height: 1,
-            indent: AppSpacing.screenMargin,
-            endIndent: AppSpacing.screenMargin,
-            color: AppColors.dividerLight),
+          height: 1,
+          indent: AppSpacing.screenMargin,
+          endIndent: AppSpacing.screenMargin,
+          color: AppColors.dividerLight,
+        ),
       ],
     );
   }
@@ -491,31 +518,42 @@ class _ReadOnlyRow extends StatelessWidget {
       opacity: 0.7,
       child: Padding(
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.screenMargin, vertical: 12),
+          horizontal: AppSpacing.screenMargin,
+          vertical: 12,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text(label.toUpperCase(),
-                    style: AppTextStyles.tag.copyWith(
-                      color: AppColors.textDisabled,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.04,
-                    )),
+                Text(
+                  label.toUpperCase(),
+                  style: AppTextStyles.tag.copyWith(
+                    color: AppColors.textDisabled,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.04,
+                  ),
+                ),
                 const SizedBox(width: 6),
-                const Icon(Icons.lock_outline,
-                    size: 12, color: AppColors.textDisabled),
+                const Icon(
+                  Icons.lock_outline,
+                  size: 12,
+                  color: AppColors.textDisabled,
+                ),
               ],
             ),
             const SizedBox(height: 4),
-            Text(value,
-                style: AppTextStyles.subtitle
-                    .copyWith(color: AppColors.textMain)),
+            Text(
+              value,
+              style: AppTextStyles.subtitle.copyWith(color: AppColors.textMain),
+            ),
             const SizedBox(height: 2),
-            Text(note,
-                style: AppTextStyles.caption
-                    .copyWith(color: AppColors.textDisabled)),
+            Text(
+              note,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textDisabled,
+              ),
+            ),
           ],
         ),
       ),
@@ -544,17 +582,25 @@ class _ActionRow extends StatelessWidget {
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.screenMargin, vertical: 14),
+          horizontal: AppSpacing.screenMargin,
+          vertical: 14,
+        ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label,
-                style: AppTextStyles.body.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                )),
+            Text(
+              label,
+              style: AppTextStyles.body.copyWith(
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
             if (showChevron)
-              Icon(Icons.chevron_right, size: 18, color: AppColors.textDisabled),
+              Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: AppColors.textDisabled,
+              ),
           ],
         ),
       ),
@@ -590,13 +636,16 @@ class _SignOutSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Text('Sign out?',
-                style: AppTextStyles.heading2
-                    .copyWith(color: AppColors.textMain)),
+            Text(
+              'Sign out?',
+              style: AppTextStyles.heading2.copyWith(color: AppColors.textMain),
+            ),
             const SizedBox(height: 8),
             Text(
               "You'll need to sign back in to access your patients and sessions.",
-              style: AppTextStyles.body.copyWith(color: AppColors.textPlaceholder),
+              style: AppTextStyles.body.copyWith(
+                color: AppColors.textPlaceholder,
+              ),
             ),
             const SizedBox(height: 20),
             SizedBox(
@@ -607,15 +656,16 @@ class _SignOutSheet extends StatelessWidget {
                   backgroundColor: AppColors.error,
                   minimumSize: const Size.fromHeight(48),
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppSpacing.pillRadius),
+                    borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
                   ),
                 ),
-                child: Text('Sign Out',
-                    style: AppTextStyles.body.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textWhite,
-                    )),
+                child: Text(
+                  'Sign Out',
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textWhite,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -625,11 +675,13 @@ class _SignOutSheet extends StatelessWidget {
                 width: double.infinity,
                 height: 48,
                 child: Center(
-                  child: Text('Cancel',
-                      style: AppTextStyles.body.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.secondary,
-                      )),
+                  child: Text(
+                    'Cancel',
+                    style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.secondary,
+                    ),
+                  ),
                 ),
               ),
             ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../core/constants/routes.dart';
+
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
 
@@ -17,79 +18,49 @@ class RoleSelectionScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: AppSpacing.xl2),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.stars_rounded,
-                        color: AppColors.textWhite,
-                        size: 24,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text(
-                        'AutiLog',
-                        style: AppTextStyles.subtitle.copyWith(
-                          color: AppColors.textWhite,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Icon(
-                    Icons.account_circle_outlined,
-                    color: AppColors.textWhite,
-                    size: 28,
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xl5),
-              Text(
-                'Welcome to\nAutiLog',
-                style: AppTextStyles.hero.copyWith(
-                  color: AppColors.textWhite,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                "Let's setup your account and get you ready!",
-                style: AppTextStyles.body.copyWith(
-                  color: AppColors.textWhite,
-                  fontSize: 17,
-                ),
-              ),
               const SizedBox(height: AppSpacing.xl4),
+
               Text(
                 'Register As',
                 style: AppTextStyles.heading2.copyWith(
                   color: AppColors.textWhite,
-                  fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: AppSpacing.lg),
+
+              const SizedBox(height: 20),
+
+              /// ✅ THERAPIST → LOGIN WITH ROLE
               _HoverButton(
                 label: 'Therapist',
                 defaultColor: AppColors.secondary,
                 hoverColor: AppColors.secondary.withOpacity(0.75),
                 textColor: AppColors.textWhite,
                 filled: true,
-                onTap: () => context.go('/auth/register/therapist'),
+                onTap: () => context.go('${Routes.login}?role=therapist'),
               ),
-              const SizedBox(height: AppSpacing.md),
+
+              const SizedBox(height: 12),
+
+              /// ✅ PARENT → LOGIN WITH ROLE
               _HoverButton(
                 label: 'Parent',
                 defaultColor: Colors.transparent,
                 hoverColor: AppColors.textWhite.withOpacity(0.15),
                 textColor: AppColors.textWhite,
                 filled: false,
-                onTap: () => context.go(Routes.registerParent),
+                onTap: () => context.go('${Routes.login}?role=parent'),
               ),
-              const SizedBox(height: AppSpacing.xl2),
+
+              const SizedBox(height: 30),
+
+              /// LOGIN LINK (DEFAULT → no role)
               Center(
-                child: _HoverLoginLink(
+                child: GestureDetector(
                   onTap: () => context.go('/auth/login'),
+                  child: const Text(
+                    'Already have account? Login',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
             ],
@@ -179,9 +150,7 @@ class _HoverLoginLinkState extends State<_HoverLoginLink> {
         child: RichText(
           text: TextSpan(
             text: 'Already have an account? ',
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.textWhite,
-            ),
+            style: AppTextStyles.caption.copyWith(color: AppColors.textWhite),
             children: [
               TextSpan(
                 text: 'Login instead',
@@ -189,8 +158,9 @@ class _HoverLoginLinkState extends State<_HoverLoginLink> {
                   color: _hovered ? AppColors.textWhite : AppColors.secondary,
                   fontWeight: FontWeight.w700,
                   decoration: TextDecoration.underline,
-                  decorationColor:
-                      _hovered ? AppColors.textWhite : AppColors.secondary,
+                  decorationColor: _hovered
+                      ? AppColors.textWhite
+                      : AppColors.secondary,
                 ),
               ),
             ],
