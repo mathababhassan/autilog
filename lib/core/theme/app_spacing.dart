@@ -20,4 +20,5 @@ abstract final class AppSpacing {
   static const double gutter = xl2;        // 24px column gutter
   static const double cardPadding = lg;    // 16px card inner padding
   static const double borderRadius = 4;    // global corner radius
+  static const double pillRadius = xl3;    // 32px — pill-shaped buttons
 }

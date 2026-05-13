@@ -208,7 +208,7 @@ class _RegistrationViewState extends State<_RegistrationView> {
                       const SizedBox(height: AppSpacing.xl3),
                       AppPrimaryButton(
                         label: 'Create Account',
-                        borderRadius: 30,
+                        borderRadius: AppSpacing.pillRadius,
                         isLoading: isSubmitting,
                         onPressed: isSubmitting
                             ? null
