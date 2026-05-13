@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -222,8 +223,8 @@ class _HeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha:0.08),
-        border: Border.all(color: AppColors.primary.withValues(alpha:0.3)),
+        color: AppColors.primary.withValues(alpha: 0.08),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
         borderRadius: BorderRadius.circular(22),
       ),
       child: Stack(
@@ -247,63 +248,113 @@ class _HeroCard extends StatelessWidget {
           ),
           // Content
           Padding(
-            padding: EdgeInsets.fromLTRB(20, 28, 20, 22),
-            child: Column(
-              children: [
-                // Icon box
-                Container(
-                  width: 84,
-                  height: 84,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceDefault,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha:0.18),
-                        blurRadius: 14,
-                        offset: Offset(0, 4),
+            padding: const EdgeInsets.fromLTRB(20, 28, 20, 22),
+            child: BlocBuilder<TherapistProfileBloc, TherapistProfileState>(
+              builder: (context, state) {
+                final email = switch (state) {
+                  TherapistProfileLoaded s => s.user.email,
+                  TherapistProfileUpdateSuccess s => s.user.email,
+                  _ => null,
+                };
+
+                return Column(
+                  children: [
+                    // Icon box
+                    Container(
+                      width: 84,
+                      height: 84,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceDefault,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.18),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: SvgPicture.asset(
+                          'assets/icons/patient_outline.svg',
+                          width: 32,
+                          height: 32,
+                          colorFilter: const ColorFilter.mode(
+                              AppColors.primary, BlendMode.srcIn),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No patients yet',
+                      style: AppTextStyles.heading1
+                          .copyWith(color: AppColors.textMain),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Parents add you by sending a request to your AutiLog email. Share your email with a parent to get started.",
+                      style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textPlaceholder, height: 1.5),
+                      textAlign: TextAlign.center,
+                    ),
+                    if (email != null) ...[
+                      const SizedBox(height: 14),
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: email));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Email copied to clipboard'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondary20,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.mail_outline,
+                                  size: 14, color: AppColors.secondary),
+                              const SizedBox(width: 6),
+                              Text(
+                                email,
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.secondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.copy_rounded,
+                                  size: 13, color: AppColors.secondary),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
-                  ),
-                  child: Center(
-                    child: SvgPicture.asset(
-                      'assets/icons/patient_outline.svg',
-                      width: 32,
-                      height: 32,
-                      colorFilter: const ColorFilter.mode(
-                          AppColors.primary, BlendMode.srcIn),
+                    const SizedBox(height: 18),
+                    AppPrimaryButton(
+                      label: 'View Patients',
+                      onPressed: () => context.go(Routes.therapistPatients),
+                      borderRadius: 999,
+                      leading: SvgPicture.asset(
+                        'assets/icons/patient_outline.svg',
+                        width: 18,
+                        height: 18,
+                        colorFilter: const ColorFilter.mode(
+                            AppColors.textWhite, BlendMode.srcIn),
+                      ),
                     ),
-                  ),
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'No patients yet',
-                  style:
-                      AppTextStyles.heading1.copyWith(color: AppColors.textMain),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 6),
-                Text(
-                  "Parents add you by sending a request to your AutiLog email. Share your email with a parent to get started.",
-                  style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textPlaceholder, height: 1.5),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 18),
-                AppPrimaryButton(
-                  label: 'View Patients',
-                  onPressed: () => context.go(Routes.therapistPatients),
-                  borderRadius: 999,
-                  leading: SvgPicture.asset(
-                    'assets/icons/patient_outline.svg',
-                    width: 18,
-                    height: 18,
-                    colorFilter: const ColorFilter.mode(
-                        AppColors.textWhite, BlendMode.srcIn),
-                  ),
-                ),
-                SizedBox(height: 12),
-              ],
+                    const SizedBox(height: 12),
+                  ],
+                );
+              },
             ),
           ),
         ],
