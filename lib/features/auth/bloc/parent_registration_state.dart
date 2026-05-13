@@ -7,19 +7,12 @@ class ParentRegistrationState extends Equatable {
     this.password = '',
     this.gender,
     this.profilePhotoPath,
-    this.childName = '',
-    this.childAge = '',
-    this.asdSeverity = '',
     this.termsAccepted = false,
     this.status = FormzSubmissionStatus.initial,
     this.serverError,
-    // Field-level validation errors (null = no error)
     this.nameError,
     this.emailError,
     this.passwordError,
-    this.childNameError,
-    this.childAgeError,
-    this.asdSeverityError,
     this.termsError,
   });
 
@@ -28,9 +21,6 @@ class ParentRegistrationState extends Equatable {
   final String password;
   final String? gender;
   final String? profilePhotoPath;
-  final String childName;
-  final String childAge;
-  final String asdSeverity;
   final bool termsAccepted;
 
   final FormzSubmissionStatus status;
@@ -40,12 +30,9 @@ class ParentRegistrationState extends Equatable {
   final String? nameError;
   final String? emailError;
   final String? passwordError;
-  final String? childNameError;
-  final String? childAgeError;
-  final String? asdSeverityError;
   final String? termsError;
 
-  // ── Password strength helpers ────────────────────────────────────────────
+  // ── Password strength helpers ─────────────────────────────────────────────
 
   bool get hasMinLength => password.length >= 8;
   bool get hasNumber => password.contains(RegExp(r'\d'));
@@ -81,27 +68,18 @@ class ParentRegistrationState extends Equatable {
     String? password,
     String? gender,
     String? profilePhotoPath,
-    String? childName,
-    String? childAge,
-    String? asdSeverity,
     bool? termsAccepted,
     FormzSubmissionStatus? status,
     String? serverError,
     String? nameError,
     String? emailError,
     String? passwordError,
-    String? childNameError,
-    String? childAgeError,
-    String? asdSeverityError,
     String? termsError,
-    // Allow explicitly clearing optional fields
+    // Explicit clear flags so nullable fields can be set back to null
     bool clearServerError = false,
     bool clearNameError = false,
     bool clearEmailError = false,
     bool clearPasswordError = false,
-    bool clearChildNameError = false,
-    bool clearChildAgeError = false,
-    bool clearAsdSeverityError = false,
     bool clearTermsError = false,
     bool clearProfilePhoto = false,
     bool clearGender = false,
@@ -111,12 +89,8 @@ class ParentRegistrationState extends Equatable {
       email: email ?? this.email,
       password: password ?? this.password,
       gender: clearGender ? null : (gender ?? this.gender),
-      profilePhotoPath: clearProfilePhoto
-          ? null
-          : (profilePhotoPath ?? this.profilePhotoPath),
-      childName: childName ?? this.childName,
-      childAge: childAge ?? this.childAge,
-      asdSeverity: asdSeverity ?? this.asdSeverity,
+      profilePhotoPath:
+          clearProfilePhoto ? null : (profilePhotoPath ?? this.profilePhotoPath),
       termsAccepted: termsAccepted ?? this.termsAccepted,
       status: status ?? this.status,
       serverError: clearServerError ? null : (serverError ?? this.serverError),
@@ -124,13 +98,6 @@ class ParentRegistrationState extends Equatable {
       emailError: clearEmailError ? null : (emailError ?? this.emailError),
       passwordError:
           clearPasswordError ? null : (passwordError ?? this.passwordError),
-      childNameError:
-          clearChildNameError ? null : (childNameError ?? this.childNameError),
-      childAgeError:
-          clearChildAgeError ? null : (childAgeError ?? this.childAgeError),
-      asdSeverityError: clearAsdSeverityError
-          ? null
-          : (asdSeverityError ?? this.asdSeverityError),
       termsError: clearTermsError ? null : (termsError ?? this.termsError),
     );
   }
@@ -142,18 +109,12 @@ class ParentRegistrationState extends Equatable {
         password,
         gender,
         profilePhotoPath,
-        childName,
-        childAge,
-        asdSeverity,
         termsAccepted,
         status,
         serverError,
         nameError,
         emailError,
         passwordError,
-        childNameError,
-        childAgeError,
-        asdSeverityError,
         termsError,
       ];
 }

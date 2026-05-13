@@ -43,37 +43,46 @@ class ChildRegistrationBloc extends Bloc<ChildRegistrationEvent, ChildRegistrati
   }
 
   Future<void> _onSubmitted(
-    ChildRegistrationSubmitted event,
-    Emitter<ChildRegistrationState> emit,
-  ) async {
-    if (state.nameError != null || state.ageError != null) {
-      emit(state.copyWith(status: FormzSubmissionStatus.failure));
-      return;
-    }
+  ChildRegistrationSubmitted event,
+  Emitter<ChildRegistrationState> emit,
+) async {
+  // Validate before trying to parse
+  final nameError = state.name.trim().isEmpty ? 'Name cannot be empty' : null;
+  final ageInt = int.tryParse(state.age.trim()); // tryParse instead of parse — never throws
+  final ageError = (ageInt == null || ageInt <= 0 || ageInt > 18)
+      ? 'Enter a valid age (1–18)'
+      : null;
 
-    emit(state.copyWith(status: FormzSubmissionStatus.inProgress));
-
-    try {
-      final ageInt = int.parse(state.age);
-      final parentId = authRepository.currentUser?.uid;
-
-      if (parentId == null) {
-        throw Exception("No parent logged in");
-      }
-
-      await authRepository.addChild(
-        parentId: parentId,
-        name: state.name,
-        age: ageInt,
-        asdSeverity: state.asdSeverity,
-      );
-
-      emit(state.copyWith(status: FormzSubmissionStatus.success));
-    } catch (e) {
-      emit(state.copyWith(
-        status: FormzSubmissionStatus.failure,
-        serverError: e.toString(),
-      ));
-    }
+  if (nameError != null || ageError != null) {
+    emit(state.copyWith(
+      nameError: nameError,
+      ageError: ageError,
+      status: FormzSubmissionStatus.failure,
+    ));
+    return;
   }
-}
+
+  emit(state.copyWith(status: FormzSubmissionStatus.inProgress));
+
+  try {
+    final parentId = authRepository.currentUser?.uid;
+
+    if (parentId == null) {
+      throw Exception('No parent logged in');
+    }
+
+    await authRepository.addChild(
+      parentId: parentId,
+      name: state.name.trim(),
+      age: ageInt!, // safe — already validated above
+      asdSeverity: state.asdSeverity,
+    );
+
+    emit(state.copyWith(status: FormzSubmissionStatus.success));
+  } catch (e) {
+    emit(state.copyWith(
+      status: FormzSubmissionStatus.failure,
+      serverError: e.toString(),
+    ));
+  }
+}}

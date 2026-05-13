@@ -17,16 +17,13 @@ class ParentRegistrationBloc
     on<ParentRegistrationPasswordChanged>(_onPasswordChanged);
     on<ParentRegistrationGenderChanged>(_onGenderChanged);
     on<ParentRegistrationProfilePhotoChanged>(_onProfilePhotoChanged);
-    on<ParentRegistrationChildNameChanged>(_onChildNameChanged);
-    on<ParentRegistrationChildAgeChanged>(_onChildAgeChanged);
-    on<ParentRegistrationAsdSeverityChanged>(_onAsdSeverityChanged);
     on<ParentRegistrationTermsToggled>(_onTermsToggled);
     on<ParentRegistrationSubmitted>(_onSubmitted);
   }
 
   final AuthRepository _authRepository;
 
-  // ── Field change handlers ────────────────────────────────────────────────
+  // ── Field change handlers ─────────────────────────────────────────────────
 
   void _onNameChanged(
     ParentRegistrationNameChanged event,
@@ -67,28 +64,6 @@ class ParentRegistrationBloc
     }
   }
 
-  void _onChildNameChanged(
-    ParentRegistrationChildNameChanged event,
-    Emitter<ParentRegistrationState> emit,
-  ) {
-    emit(state.copyWith(childName: event.childName, clearChildNameError: true));
-  }
-
-  void _onChildAgeChanged(
-    ParentRegistrationChildAgeChanged event,
-    Emitter<ParentRegistrationState> emit,
-  ) {
-    emit(state.copyWith(childAge: event.childAge, clearChildAgeError: true));
-  }
-
-  void _onAsdSeverityChanged(
-    ParentRegistrationAsdSeverityChanged event,
-    Emitter<ParentRegistrationState> emit,
-  ) {
-    emit(state.copyWith(
-        asdSeverity: event.severity, clearAsdSeverityError: true));
-  }
-
   void _onTermsToggled(
     ParentRegistrationTermsToggled event,
     Emitter<ParentRegistrationState> emit,
@@ -99,32 +74,21 @@ class ParentRegistrationBloc
     ));
   }
 
-  // ── Submission ───────────────────────────────────────────────────────────
+  // ── Submission ────────────────────────────────────────────────────────────
 
   Future<void> _onSubmitted(
     ParentRegistrationSubmitted event,
     Emitter<ParentRegistrationState> emit,
   ) async {
-    // Validate all fields
     final nameError = _validateName(state.name);
     final emailError = _validateEmail(state.email);
     final passwordError = _validatePassword(state.password);
-    final childNameError =
-    state.childName.isNotEmpty ? _validateName(state.childName) : null;
-
-final childAgeError =
-    state.childAge.isNotEmpty ? _validateChildAge(state.childAge) : null;
-
-final asdSeverityError = null;
     final termsError =
         state.termsAccepted ? null : 'You must accept the Terms of Service';
 
     final hasErrors = nameError != null ||
         emailError != null ||
         passwordError != null ||
-        childNameError != null ||
-        childAgeError != null ||
-        asdSeverityError != null ||
         termsError != null;
 
     if (hasErrors) {
@@ -132,9 +96,6 @@ final asdSeverityError = null;
         nameError: nameError,
         emailError: emailError,
         passwordError: passwordError,
-        childNameError: childNameError,
-        childAgeError: childAgeError,
-        asdSeverityError: asdSeverityError,
         termsError: termsError,
       ));
       return;
@@ -149,11 +110,6 @@ final asdSeverityError = null;
         name: state.name.trim(),
         gender: state.gender,
         profilePhotoPath: state.profilePhotoPath,
-        childName: state.childName.trim(),
-       childAge: state.childAge.isEmpty
-    ? 0
-    : int.tryParse(state.childAge.trim()) ?? 0,
-        asdSeverity: state.asdSeverity,
       );
       emit(state.copyWith(status: FormzSubmissionStatus.success));
     } catch (e) {
@@ -164,7 +120,7 @@ final asdSeverityError = null;
     }
   }
 
-  // ── Validators ───────────────────────────────────────────────────────────
+  // ── Validators ────────────────────────────────────────────────────────────
 
   String? _validateName(String value) {
     if (value.trim().isEmpty) return 'This field is required';
@@ -175,21 +131,15 @@ final asdSeverityError = null;
   String? _validateEmail(String value) {
     if (value.trim().isEmpty) return 'Email is required';
     final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
-    if (!emailRegex.hasMatch(value.trim())) return 'Enter a valid email address';
+    if (!emailRegex.hasMatch(value.trim())) {
+      return 'Enter a valid email address';
+    }
     return null;
   }
 
   String? _validatePassword(String value) {
     if (value.isEmpty) return 'Password is required';
     if (value.length < 8) return 'Password must be at least 8 characters';
-    return null;
-  }
-
-  String? _validateChildAge(String value) {
-    if (value.trim().isEmpty) return 'Child age is required';
-    final age = int.tryParse(value.trim());
-    if (age == null) return 'Enter a valid age';
-    if (age < 1 || age > 18) return 'Age must be between 1 and 18';
     return null;
   }
 
@@ -206,5 +156,4 @@ final asdSeverityError = null;
     }
     return 'Something went wrong. Please try again.';
   }
-  
 }

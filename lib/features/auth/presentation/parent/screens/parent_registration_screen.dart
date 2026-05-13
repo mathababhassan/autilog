@@ -233,7 +233,7 @@ class _RegistrationViewState extends State<_RegistrationView> {
   child: Checkbox(
     value: state.termsAccepted,
     // Removed 'termsAccepted:' label here
-    onChanged: (v) => bloc.add(ParentRegistrationTermsToggled(v!)), 
+onChanged: (_) => bloc.add(const ParentRegistrationTermsToggled()),
     activeColor: const Color(0xFFFF8A00),
     side: const BorderSide(color: Colors.grey),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),

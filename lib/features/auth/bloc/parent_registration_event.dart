@@ -47,36 +47,8 @@ class ParentRegistrationProfilePhotoChanged extends ParentRegistrationEvent {
   List<Object?> get props => [path];
 }
 
-class ParentRegistrationChildNameChanged extends ParentRegistrationEvent {
-  final String childName;
-  const ParentRegistrationChildNameChanged(this.childName);
-
-  @override
-  List<Object?> get props => [childName];
-}
-
-class ParentRegistrationChildAgeChanged extends ParentRegistrationEvent {
-  final String childAge;
-  const ParentRegistrationChildAgeChanged(this.childAge);
-
-  @override
-  List<Object?> get props => [childAge];
-}
-
-class ParentRegistrationAsdSeverityChanged extends ParentRegistrationEvent {
-  final String severity;
-  const ParentRegistrationAsdSeverityChanged(this.severity);
-
-  @override
-  List<Object?> get props => [severity];
-}
-
 class ParentRegistrationTermsToggled extends ParentRegistrationEvent {
-  final bool termsAccepted; // Add this field
-  const ParentRegistrationTermsToggled(this.termsAccepted); // Add this constructor
-
-  @override
-  List<Object?> get props => [termsAccepted]; // Add it to props for equality checks
+  const ParentRegistrationTermsToggled();
 }
 
 class ParentRegistrationSubmitted extends ParentRegistrationEvent {
