@@ -113,6 +113,7 @@ class TherapistRegistrationBloc
         licenceNumber: state.licence,
         clinicName: state.clinic,
         specialisation: state.specialisation,
+        gender: state.gender ?? '',
       );
       emit(state.copyWith(status: FormzSubmissionStatus.success));
     } on FirebaseAuthException catch (e) {

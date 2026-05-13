@@ -4,29 +4,47 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import 'features/auth/presentation/shared/role_selection_screen.dart';
 import 'core/constants/routes.dart';
 import 'core/theme/theme.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/data/auth_repository.dart';
+import 'features/auth/presentation/shared/role_selection_screen.dart';
 import 'features/auth/presentation/therapist/screens/therapist_registration_screen.dart';
 import 'features/auth/presentation/parent/screens/parent_registration_screen.dart';
 import 'features/auth/presentation/parent/screens/child_onboarding_screen.dart';
 import 'features/auth/presentation/parent/screens/child_registration_screen.dart';
 import 'features/auth/presentation/parent/screens/parent_home_screen.dart';
 import 'features/auth/presentation/parent/screens/parent_profile_screen.dart';
+import 'features/profile/therapist/bloc/therapist_profile_bloc.dart';
+import 'features/profile/therapist/data/therapist_repository.dart';
+import 'features/profile/therapist/presentation/screens/therapist_edit_profile_screen.dart';
+import 'features/profile/therapist/presentation/screens/therapist_home_screen.dart';
+import 'features/profile/therapist/presentation/screens/therapist_profile_overview_screen.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return RepositoryProvider(
-      create: (_) => AuthRepository(),
-      child: BlocProvider(
-        create: (context) => AuthBloc(
-          authRepository: context.read<AuthRepository>(),
-        )..add(const AuthStarted()),
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider(create: (_) => AuthRepository()),
+        RepositoryProvider(create: (_) => TherapistRepository()),
+      ],
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (context) => AuthBloc(
+              authRepository: context.read<AuthRepository>(),
+            )..add(const AuthStarted()),
+          ),
+          BlocProvider(
+            create: (context) => TherapistProfileBloc(
+              therapistRepository: context.read<TherapistRepository>(),
+              authRepository: context.read<AuthRepository>(),
+            ),
+          ),
+        ],
         child: const _AppView(),
       ),
     );
@@ -76,11 +94,11 @@ class _AppViewState extends State<_AppView> {
         // ── Shared ──────────────────────────────────────────────────────
         GoRoute(
           path: Routes.roleSelection,
-          builder: (_, __) => const RoleSelectionScreen(),
+          builder: (_, _) => const RoleSelectionScreen(),
         ),
         GoRoute(
           path: Routes.login,
-          builder: (_, __) => const Scaffold(
+          builder: (_, _) => const Scaffold(
             body: Center(child: Text('Login Screen')),
           ),
         ),
@@ -88,13 +106,19 @@ class _AppViewState extends State<_AppView> {
         // ── Therapist ────────────────────────────────────────────────────
         GoRoute(
           path: Routes.registerTherapist,
-          builder: (_, __) => const TherapistRegistrationScreen(),
+          builder: (_, _) => const TherapistRegistrationScreen(),
         ),
         GoRoute(
           path: Routes.therapistHome,
-          builder: (_, __) => const Scaffold(
-            body: Center(child: Text('Therapist Home')),
-          ),
+          builder: (_, _) => const TherapistHomeScreen(),
+        ),
+        GoRoute(
+          path: Routes.therapistProfile,
+          builder: (_, _) => const TherapistProfileOverviewScreen(),
+        ),
+        GoRoute(
+          path: Routes.therapistProfileEdit,
+          builder: (_, _) => const TherapistEditProfileScreen(),
         ),
 
         // ── Parent ───────────────────────────────────────────────────────
@@ -117,6 +141,9 @@ class _AppViewState extends State<_AppView> {
         GoRoute(
           path: Routes.parentProfile,
           builder: (_, __) => const ParentProfileScreen(),
+          builder: (_, _) => const Scaffold(
+            body: Center(child: Text('Parent Home')),
+          ),
         ),
       ],
     );
@@ -140,6 +167,7 @@ class _AppViewState extends State<_AppView> {
   }
 }
 
+/// Converts AuthBloc state changes into GoRouter refresh notifications.
 class _AuthRouterNotifier extends ChangeNotifier {
   _AuthRouterNotifier(AuthBloc authBloc) {
     _subscription = authBloc.stream.listen((_) => notifyListeners());

@@ -48,10 +48,8 @@ class RoleSelectionScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.xl5),
               Text(
                 'Welcome to\nAutiLog',
-                style: AppTextStyles.display.copyWith(
+                style: AppTextStyles.hero.copyWith(
                   color: AppColors.textWhite,
-                  fontSize: 40,
-                  height: 1.1,
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),

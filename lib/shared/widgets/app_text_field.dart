@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/theme.dart';
 
 class AppTextField extends StatefulWidget {
@@ -12,6 +13,7 @@ class AppTextField extends StatefulWidget {
   final TextInputAction textInputAction;
   final ValueChanged<String>? onChanged;
   final bool enabled;
+  final List<TextInputFormatter>? inputFormatters;
 
   const AppTextField({
     required this.label,
@@ -24,6 +26,7 @@ class AppTextField extends StatefulWidget {
     this.textInputAction = TextInputAction.next,
     this.onChanged,
     this.enabled = true,
+    this.inputFormatters,
     super.key,
   });
 
@@ -113,6 +116,7 @@ class _AppTextFieldState extends State<AppTextField> {
       textInputAction: widget.textInputAction,
       onChanged: widget.onChanged,
       enabled: widget.enabled,
+      inputFormatters: widget.inputFormatters,
       style: valueStyle,
       decoration: InputDecoration(
         labelText: widget.label,

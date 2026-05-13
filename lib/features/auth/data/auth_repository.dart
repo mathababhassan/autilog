@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../shared/models/therapist_model.dart';
 import '../../../shared/models/user_model.dart';
 
 class AuthRepository {
@@ -102,6 +103,7 @@ class AuthRepository {
     required String licenceNumber,
     required String clinicName,
     required String specialisation,
+    required String gender,
   }) async {
     final credential = await _auth.createUserWithEmailAndPassword(
       email: email,
@@ -116,13 +118,17 @@ class AuthRepository {
       createdAt: DateTime.now(),
     );
 
+    final therapistModel = TherapistModel(
+      userId: userId,
+      name: name,
+      licenceNumber: licenceNumber,
+      clinicName: clinicName,
+      specialisation: specialisation,
+      gender: gender,
+    );
+
     await _firestore.collection('users').doc(userId).set(userModel.toMap());
-    await _firestore.collection('therapists').doc(userId).set({
-      'name': name,
-      'licenceNumber': licenceNumber,
-      'clinicName': clinicName,
-      'specialisation': specialisation,
-    });
+    await _firestore.collection('therapists').doc(userId).set(therapistModel.toMap());
 
     return userModel;
   }
