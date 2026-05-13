@@ -30,10 +30,10 @@ class ChildModel {
   }
 
   static int parseSeverity(dynamic value) {
-    if (value is int) return value.clamp(1, 3);
+    if (value is int) return value.clamp(1, 3).toInt();
     if (value is String) {
       final n = int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), ''));
-      return n != null ? n.clamp(1, 3) : 1;
+      return n != null ? n.clamp(1, 3).toInt() : 1;
     }
     return 1;
   }
