@@ -19,6 +19,7 @@ abstract final class AppSpacing {
   static const double screenMargin = xl;   // 20px horizontal margin
   static const double gutter = xl2;        // 24px column gutter
   static const double cardPadding = lg;    // 16px card inner padding
-  static const double borderRadius = 4;    // global corner radius
+  static const double borderRadius = 4;    // inputs, dialogs, snackbars
+  static const double cardRadius = lg;     // 16px — patient/content cards
   static const double pillRadius = xl3;    // 32px — pill-shaped buttons
 }

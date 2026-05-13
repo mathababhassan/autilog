@@ -24,9 +24,18 @@ class ChildModel {
       name: map['name'] ?? '',
       dateOfBirth: map['dateOfBirth']?.toDate() ?? DateTime.now(),
       diagnosisType: map['diagnosisType'] ?? '',
-      severityLevel: map['severityLevel'] ?? 1,
+      severityLevel: parseSeverity(map['severityLevel'] ?? map['asdSeverity']),
       linkedTherapistId: map['linkedTherapistId'],
     );
+  }
+
+  static int parseSeverity(dynamic value) {
+    if (value is int) return value.clamp(1, 3);
+    if (value is String) {
+      final n = int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), ''));
+      return n != null ? n.clamp(1, 3) : 1;
+    }
+    return 1;
   }
 
   Map<String, dynamic> toMap() {

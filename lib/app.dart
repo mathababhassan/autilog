@@ -15,6 +15,9 @@ import 'features/auth/presentation/parent/screens/child_onboarding_screen.dart';
 import 'features/auth/presentation/parent/screens/child_registration_screen.dart';
 import 'features/auth/presentation/parent/screens/parent_home_screen.dart';
 import 'features/auth/presentation/parent/screens/parent_profile_screen.dart';
+import 'features/patients/bloc/patient_list_bloc.dart';
+import 'features/patients/data/patient_repository.dart';
+import 'features/patients/presentation/therapist/screens/patient_list_screen.dart';
 import 'features/profile/therapist/bloc/therapist_profile_bloc.dart';
 import 'features/profile/therapist/data/therapist_repository.dart';
 import 'features/profile/therapist/presentation/screens/therapist_edit_profile_screen.dart';
@@ -30,6 +33,7 @@ class App extends StatelessWidget {
       providers: [
         RepositoryProvider(create: (_) => AuthRepository()),
         RepositoryProvider(create: (_) => TherapistRepository()),
+        RepositoryProvider(create: (_) => PatientRepository()),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -41,6 +45,12 @@ class App extends StatelessWidget {
           BlocProvider(
             create: (context) => TherapistProfileBloc(
               therapistRepository: context.read<TherapistRepository>(),
+              authRepository: context.read<AuthRepository>(),
+            ),
+          ),
+          BlocProvider(
+            create: (context) => PatientListBloc(
+              patientRepository: context.read<PatientRepository>(),
               authRepository: context.read<AuthRepository>(),
             ),
           ),
@@ -94,11 +104,11 @@ class _AppViewState extends State<_AppView> {
         // Shared
         GoRoute(
           path: Routes.roleSelection,
-          builder: (_, __) => const RoleSelectionScreen(),
+          builder: (_, _) => const RoleSelectionScreen(),
         ),
         GoRoute(
           path: Routes.login,
-          builder: (_, __) => const Scaffold(
+          builder: (_, _) => const Scaffold(
             body: Center(child: Text('Login Screen')),
           ),
         ),
@@ -106,41 +116,45 @@ class _AppViewState extends State<_AppView> {
         // Therapist
         GoRoute(
           path: Routes.registerTherapist,
-          builder: (_, __) => const TherapistRegistrationScreen(),
+          builder: (_, _) => const TherapistRegistrationScreen(),
         ),
         GoRoute(
           path: Routes.therapistHome,
-          builder: (_, __) => const TherapistHomeScreen(),
+          builder: (_, _) => const TherapistHomeScreen(),
         ),
         GoRoute(
           path: Routes.therapistProfile,
-          builder: (_, __) => const TherapistProfileOverviewScreen(),
+          builder: (_, _) => const TherapistProfileOverviewScreen(),
         ),
         GoRoute(
           path: Routes.therapistProfileEdit,
-          builder: (_, __) => const TherapistEditProfileScreen(),
+          builder: (_, _) => const TherapistEditProfileScreen(),
+        ),
+        GoRoute(
+          path: Routes.therapistPatients,
+          builder: (_, _) => const PatientListScreen(),
         ),
 
         // Parent
         GoRoute(
           path: Routes.registerParent,
-          builder: (_, __) => const ParentRegistrationScreen(),
+          builder: (_, _) => const ParentRegistrationScreen(),
         ),
         GoRoute(
           path: Routes.childOnboarding,
-          builder: (_, __) => const ChildOnboardingScreen(),
+          builder: (_, _) => const ChildOnboardingScreen(),
         ),
         GoRoute(
           path: Routes.childRegistration,
-          builder: (_, __) => const ChildRegistrationScreen(),
+          builder: (_, _) => const ChildRegistrationScreen(),
         ),
         GoRoute(
           path: Routes.parentHome,
-          builder: (_, __) => const ParentHomeScreen(),
+          builder: (_, _) => const ParentHomeScreen(),
         ),
         GoRoute(
           path: Routes.parentProfile,
-          builder: (_, __) => const ParentProfileScreen(),
+          builder: (_, _) => const ParentProfileScreen(),
         ),
       ],
     );
