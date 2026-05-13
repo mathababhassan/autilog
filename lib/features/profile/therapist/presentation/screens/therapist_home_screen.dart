@@ -159,7 +159,7 @@ class _HomeHeader extends StatelessWidget {
     }
     final parts =
         fullName.trim().split(' ').where((p) => p.isNotEmpty).toList();
-    return parts.isEmpty ? fullName : parts.last;
+    return parts.isEmpty ? fullName : parts.first;
   }
 
   String _formatDate(DateTime d) {
