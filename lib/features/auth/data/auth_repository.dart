@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../shared/models/therapist_model.dart';
@@ -16,29 +17,28 @@ class AuthRepository {
     return _auth.authStateChanges().asyncMap((user) async {
       if (user == null) return null;
       final doc = await _firestore.collection('users').doc(user.uid).get();
-      if (!doc.exists) return null;
+      if (!doc.exists) {
+        await _auth.signOut();
+        return null;
+      }
       return UserModel.fromMap(doc.data()!, user.uid);
     });
   }
 
   // ── Register parent ───────────────────────────────────────────────────────
-  // Child info is NOT collected here — it is added separately via addChild()
-  // after the parent completes the ChildRegistrationScreen.
   Future<UserModel> registerParent({
     required String email,
     required String password,
     required String name,
     String? gender,
-    String? profilePhotoPath,
+    String? profilePhotoBase64,
   }) async {
-    // 1. Create Firebase Auth account
     final credential = await _auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
     final userId = credential.user!.uid;
 
-    // 2. Build the shared UserModel (role = 'parent')
     final userModel = UserModel(
       userId: userId,
       email: email,
@@ -46,22 +46,19 @@ class AuthRepository {
       createdAt: DateTime.now(),
     );
 
-    // 3. Batched Firestore write
     final batch = _firestore.batch();
 
-    // /users/{uid} — shared auth document
     batch.set(
       _firestore.collection('users').doc(userId),
       userModel.toMap(),
     );
 
-    // /parents/{uid} — parent profile
     batch.set(
       _firestore.collection('parents').doc(userId),
       {
         'name': name,
         'gender': gender,
-        'profilePhotoPath': profilePhotoPath,
+        'profilePhotoBase64': profilePhotoBase64,
       },
     );
 
@@ -71,7 +68,6 @@ class AuthRepository {
   }
 
   // ── Add child ─────────────────────────────────────────────────────────────
-  // Called by ChildRegistrationBloc after parent registration is complete.
   Future<void> addChild({
     required String parentId,
     required String name,
@@ -82,15 +78,15 @@ class AuthRepository {
         .collection('parents')
         .doc(parentId)
         .collection('children')
-        .doc(); // auto-generated child ID
+        .doc();
 
     await childRef.set({
       'childId': childRef.id,
       'parentId': parentId,
       'name': name,
       'age': age,
-      'asdSeverity': asdSeverity, // 'Level 1' | 'Level 2' | 'Level 3'
-      'therapists': [],            // populated later via link-therapist feature
+      'asdSeverity': asdSeverity,
+      'therapists': [],
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
@@ -110,6 +106,8 @@ class AuthRepository {
       password: password,
     );
     final userId = credential.user!.uid;
+
+    await credential.user!.sendEmailVerification();
 
     final userModel = UserModel(
       userId: userId,
@@ -162,5 +160,31 @@ class AuthRepository {
   Future<String> getUserRole(String userId) async {
     final doc = await _firestore.collection('users').doc(userId).get();
     return doc.data()?['role'] ?? '';
+  }
+
+  // ── Update parent profile photo (base64) ──────────────────────────────────
+  Future<void> updateParentProfilePhoto({
+    required String userId,
+    required String base64Image,
+  }) async {
+    await _firestore.collection('parents').doc(userId).update({
+      'profilePhotoBase64': base64Image,
+    });
+  }
+
+  // ── Update child profile photo (base64) ───────────────────────────────────
+  Future<void> updateChildProfilePhoto({
+    required String parentId,
+    required String childId,
+    required String base64Image,
+  }) async {
+    await _firestore
+        .collection('parents')
+        .doc(parentId)
+        .collection('children')
+        .doc(childId)
+        .update({
+      'profilePhotoBase64': base64Image,
+    });
   }
 }
