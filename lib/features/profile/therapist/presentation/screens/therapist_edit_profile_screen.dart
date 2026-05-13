@@ -80,13 +80,14 @@ class _TherapistEditProfileScreenState
     final specialisation = _specialisationCtrl.text.trim();
 
     if (clinicName.isEmpty || specialisation.isEmpty) {
-      showAppSnackBar(
-        context,
-        message: 'Clinic name and specialisation cannot be empty.',
-        isError: true,
-      );
-      return;
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Clinic name and specialisation cannot be empty.'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
 
     final fields = <String, dynamic>{
       'clinicName': clinicName,

@@ -91,37 +91,37 @@ class _AppViewState extends State<_AppView> {
         return null;
       },
       routes: [
-        // ── Shared ──────────────────────────────────────────────────────
+        // Shared
         GoRoute(
           path: Routes.roleSelection,
-          builder: (_, _) => const RoleSelectionScreen(),
+          builder: (_, __) => const RoleSelectionScreen(),
         ),
         GoRoute(
           path: Routes.login,
-          builder: (_, _) => const Scaffold(
+          builder: (_, __) => const Scaffold(
             body: Center(child: Text('Login Screen')),
           ),
         ),
 
-        // ── Therapist ────────────────────────────────────────────────────
+        // Therapist
         GoRoute(
           path: Routes.registerTherapist,
-          builder: (_, _) => const TherapistRegistrationScreen(),
+          builder: (_, __) => const TherapistRegistrationScreen(),
         ),
         GoRoute(
           path: Routes.therapistHome,
-          builder: (_, _) => const TherapistHomeScreen(),
+          builder: (_, __) => const TherapistHomeScreen(),
         ),
         GoRoute(
           path: Routes.therapistProfile,
-          builder: (_, _) => const TherapistProfileOverviewScreen(),
+          builder: (_, __) => const TherapistProfileOverviewScreen(),
         ),
         GoRoute(
           path: Routes.therapistProfileEdit,
-          builder: (_, _) => const TherapistEditProfileScreen(),
+          builder: (_, __) => const TherapistEditProfileScreen(),
         ),
 
-        // ── Parent ───────────────────────────────────────────────────────
+        // Parent
         GoRoute(
           path: Routes.registerParent,
           builder: (_, __) => const ParentRegistrationScreen(),
@@ -141,9 +141,6 @@ class _AppViewState extends State<_AppView> {
         GoRoute(
           path: Routes.parentProfile,
           builder: (_, __) => const ParentProfileScreen(),
-          builder: (_, _) => const Scaffold(
-            body: Center(child: Text('Parent Home')),
-          ),
         ),
       ],
     );
@@ -167,7 +164,6 @@ class _AppViewState extends State<_AppView> {
   }
 }
 
-/// Converts AuthBloc state changes into GoRouter refresh notifications.
 class _AuthRouterNotifier extends ChangeNotifier {
   _AuthRouterNotifier(AuthBloc authBloc) {
     _subscription = authBloc.stream.listen((_) => notifyListeners());
