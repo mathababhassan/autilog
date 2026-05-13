@@ -12,8 +12,9 @@ import 'features/auth/data/auth_repository.dart';
 import 'features/auth/presentation/therapist/screens/therapist_registration_screen.dart';
 import 'features/auth/presentation/parent/screens/parent_registration_screen.dart';
 import 'features/auth/presentation/parent/screens/child_onboarding_screen.dart';
-
 import 'features/auth/presentation/parent/screens/child_registration_screen.dart';
+import 'features/auth/presentation/parent/screens/parent_home_screen.dart';
+import 'features/auth/presentation/parent/screens/parent_profile_screen.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -57,22 +58,22 @@ class _AppViewState extends State<_AppView> {
         final authState = _authBloc.state;
         final isOnAuthRoute = state.matchedLocation.startsWith('/auth');
 
-        // Unauthenticated users are always sent to role selection.
         if (authState is AuthUnauthenticated || authState is AuthInitial) {
           return isOnAuthRoute ? null : Routes.roleSelection;
         }
 
-        // Authenticated users are redirected away from auth screens to their home.
         if (authState is AuthAuthenticated && isOnAuthRoute) {
-         if (authState.user.role == 'therapist') {
-      return Routes.therapistHome;
-    } else if (authState.user.role == 'parent') {
-      // ✅ Parent goes to onboarding first
-      return '/child-onboarding';
-    }
-  }
+          if (authState.user.role == 'therapist') {
+            return Routes.therapistHome;
+          } else if (authState.user.role == 'parent') {
+            return Routes.childOnboarding;
+          }
+        }
+
+        return null;
       },
       routes: [
+        // ── Shared ──────────────────────────────────────────────────────
         GoRoute(
           path: Routes.roleSelection,
           builder: (_, __) => const RoleSelectionScreen(),
@@ -83,6 +84,8 @@ class _AppViewState extends State<_AppView> {
             body: Center(child: Text('Login Screen')),
           ),
         ),
+
+        // ── Therapist ────────────────────────────────────────────────────
         GoRoute(
           path: Routes.registerTherapist,
           builder: (_, __) => const TherapistRegistrationScreen(),
@@ -93,26 +96,27 @@ class _AppViewState extends State<_AppView> {
             body: Center(child: Text('Therapist Home')),
           ),
         ),
+
+        // ── Parent ───────────────────────────────────────────────────────
         GoRoute(
-  path: Routes.registerParent,
-  builder: (_, __) => const ParentRegistrationScreen(),
-),
-GoRoute(
-  path: '/child-onboarding',
-  builder: (_, __) => const ChildOnboardingScreen(),
-),
-GoRoute(
-  path: '/child-step2',
-  builder: (_, __) => const ChildRegistrationScreen(),
-),
-
-
-
+          path: Routes.registerParent,
+          builder: (_, __) => const ParentRegistrationScreen(),
+        ),
+        GoRoute(
+          path: Routes.childOnboarding,
+          builder: (_, __) => const ChildOnboardingScreen(),
+        ),
+        GoRoute(
+          path: Routes.childRegistration,
+          builder: (_, __) => const ChildRegistrationScreen(),
+        ),
         GoRoute(
           path: Routes.parentHome,
-          builder: (_, __) => const Scaffold(
-            body: Center(child: Text('Parent Home')),
-          ),
+          builder: (_, __) => const ParentHomeScreen(),
+        ),
+        GoRoute(
+          path: Routes.parentProfile,
+          builder: (_, __) => const ParentProfileScreen(),
         ),
       ],
     );
@@ -136,8 +140,6 @@ GoRoute(
   }
 }
 
-/// Converts AuthBloc state changes into GoRouter refresh notifications.
-/// GoRouter calls [redirect] every time [notifyListeners] fires.
 class _AuthRouterNotifier extends ChangeNotifier {
   _AuthRouterNotifier(AuthBloc authBloc) {
     _subscription = authBloc.stream.listen((_) => notifyListeners());

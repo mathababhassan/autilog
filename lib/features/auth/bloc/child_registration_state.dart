@@ -6,7 +6,9 @@ class ChildRegistrationState extends Equatable {
   final String? nameError;
   final String age;
   final String? ageError;
+  final DateTime? dob;
   final String asdSeverity;
+  final String? asdSeverityError;
   final String gender;
   final String therapistEmail;
   final FormzSubmissionStatus status;
@@ -17,7 +19,9 @@ class ChildRegistrationState extends Equatable {
     this.nameError,
     this.age = '',
     this.ageError,
-    this.asdSeverity = 'Level 1',
+    this.dob,
+    this.asdSeverity = '',
+    this.asdSeverityError,
     this.gender = '',
     this.therapistEmail = '',
     this.status = FormzSubmissionStatus.initial,
@@ -29,26 +33,48 @@ class ChildRegistrationState extends Equatable {
     String? nameError,
     String? age,
     String? ageError,
+    DateTime? dob,
     String? asdSeverity,
+    String? asdSeverityError,
     String? gender,
     String? therapistEmail,
     FormzSubmissionStatus? status,
     String? serverError,
+    bool clearNameError = false,
+    bool clearAgeError = false,
+    bool clearAsdSeverityError = false,
+    bool clearServerError = false,
   }) {
     return ChildRegistrationState(
       name: name ?? this.name,
-      nameError: nameError ?? this.nameError,
+      nameError: clearNameError ? null : (nameError ?? this.nameError),
       age: age ?? this.age,
-      ageError: ageError ?? this.ageError,
+      ageError: clearAgeError ? null : (ageError ?? this.ageError),
+      dob: dob ?? this.dob,
       asdSeverity: asdSeverity ?? this.asdSeverity,
+      asdSeverityError: clearAsdSeverityError
+          ? null
+          : (asdSeverityError ?? this.asdSeverityError),
       gender: gender ?? this.gender,
       therapistEmail: therapistEmail ?? this.therapistEmail,
       status: status ?? this.status,
-      serverError: serverError ?? this.serverError,
+      serverError:
+          clearServerError ? null : (serverError ?? this.serverError),
     );
   }
 
   @override
-  List<Object?> get props =>
-      [name, nameError, age, ageError, asdSeverity, gender, therapistEmail, status, serverError];
+  List<Object?> get props => [
+        name,
+        nameError,
+        age,
+        ageError,
+        dob,
+        asdSeverity,
+        asdSeverityError,
+        gender,
+        therapistEmail,
+        status,
+        serverError,
+      ];
 }

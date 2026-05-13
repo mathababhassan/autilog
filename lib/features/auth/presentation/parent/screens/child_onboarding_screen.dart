@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../../core/constants/routes.dart';
 
 class ChildOnboardingScreen extends StatelessWidget {
   const ChildOnboardingScreen({super.key});
@@ -30,21 +31,27 @@ class ChildOnboardingScreen extends StatelessWidget {
             const SizedBox(height: 40),
 
             // Add Child Profile Button
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: () => context.go('/child-step2'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF8A00),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                ),
-                child: const Text(
-                  "ADD YOUR CHILD'S PROFILE",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-              ),
-            ),
+           SizedBox(
+  width: double.infinity,
+  height: 56,
+  child: ElevatedButton(
+    onPressed: () => context.go(Routes.childRegistration),
+    style: ElevatedButton.styleFrom(
+      backgroundColor: const Color(0xFFFF8A00),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(30),
+      ),
+    ),
+    child: const Text(
+      "ADD YOUR CHILD'S PROFILE",
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      ),
+    ),
+  ),
+),
 
             const SizedBox(height: 20),
 

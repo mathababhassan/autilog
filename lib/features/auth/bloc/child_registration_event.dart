@@ -23,6 +23,14 @@ class ChildAgeChanged extends ChildRegistrationEvent {
   List<Object?> get props => [age];
 }
 
+class ChildDobChanged extends ChildRegistrationEvent {
+  final DateTime dob;
+  const ChildDobChanged(this.dob);
+
+  @override
+  List<Object?> get props => [dob];
+}
+
 class ChildSeverityChanged extends ChildRegistrationEvent {
   final String severity;
   const ChildSeverityChanged(this.severity);

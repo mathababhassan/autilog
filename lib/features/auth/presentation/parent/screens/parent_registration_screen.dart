@@ -55,7 +55,7 @@ class _RegistrationViewState extends State<_RegistrationView> {
     listener: (context, state) {
   // ✅ SUCCESS
   if (state.status == FormzSubmissionStatus.success) {
-    context.go('/child-onboarding');
+    context.go(Routes.childOnboarding); 
   }
 
   // ❌ FAILURE (THIS WAS MISSING)
