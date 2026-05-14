@@ -57,7 +57,7 @@ class ChildOnboardingScreen extends StatelessWidget {
 
             // Skip Option
             TextButton(
-              onPressed: () => context.go('/parentHome'),
+              onPressed: () => context.go(Routes.parentHome),
               child: const Text(
                 "I'll do this later →",
                 style: TextStyle(color: Colors.black54, fontSize: 14),
