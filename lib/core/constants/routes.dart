@@ -18,4 +18,7 @@ abstract final class Routes {
   // Child
   static const String childOnboarding = '/child-onboarding';
   static const String childRegistration = '/child-step2';
+
+  // shared
+  static const String forgotPassword = '/auth/forgot-password';
 }

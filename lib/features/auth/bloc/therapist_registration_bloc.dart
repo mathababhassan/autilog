@@ -121,11 +121,11 @@ class TherapistRegistrationBloc
         status: FormzSubmissionStatus.failure,
         serverError: mapFirebaseAuthError(e.code),
       ));
-    } catch (_) {
-      emit(state.copyWith(
-        status: FormzSubmissionStatus.failure,
-        serverError: 'Something went wrong. Please try again.',
-      ));
-    }
+    } catch (e) {
+    emit(state.copyWith(
+      status: FormzSubmissionStatus.failure,
+      serverError: e.toString(),
+    ));
+  }
   }
 }

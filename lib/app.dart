@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+
 import 'core/constants/routes.dart';
 import 'core/theme/theme.dart';
 import 'features/auth/bloc/auth_bloc.dart';
@@ -23,6 +24,9 @@ import 'features/profile/therapist/data/therapist_repository.dart';
 import 'features/profile/therapist/presentation/screens/therapist_edit_profile_screen.dart';
 import 'features/profile/therapist/presentation/screens/therapist_home_screen.dart';
 import 'features/profile/therapist/presentation/screens/therapist_profile_overview_screen.dart';
+
+import 'features/auth/presentation/shared/login_screen.dart';
+import 'features/auth/presentation/shared/forgot_password_screen.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -72,12 +76,28 @@ class _AppViewState extends State<_AppView> {
   late final GoRouter _router;
   late final _AuthRouterNotifier _notifier;
   late final AuthBloc _authBloc;
+  Timer? _inactivityTimer;
+
+  static const _inactivityDuration = Duration(minutes: 15);
+
+  void _resetInactivityTimer() {
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer(_inactivityDuration, _logoutDueToInactivity);
+  }
+
+  void _logoutDueToInactivity() {
+    final authState = _authBloc.state;
+    if (authState is AuthAuthenticated) {
+      context.read<AuthRepository>().logout();
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _authBloc = context.read<AuthBloc>();
     _notifier = _AuthRouterNotifier(_authBloc);
+    _resetInactivityTimer();
 
     _router = GoRouter(
       refreshListenable: _notifier,
@@ -101,60 +121,57 @@ class _AppViewState extends State<_AppView> {
         return null;
       },
       routes: [
-        // Shared
         GoRoute(
           path: Routes.roleSelection,
-          builder: (_, _) => const RoleSelectionScreen(),
+          builder: (_, __) => const RoleSelectionScreen(),
         ),
         GoRoute(
           path: Routes.login,
-          builder: (_, _) => const Scaffold(
-            body: Center(child: Text('Login Screen')),
-          ),
+          builder: (_, __) => const LoginScreen(),
         ),
-
-        // Therapist
+        GoRoute(
+          path: Routes.forgotPassword,
+          builder: (_, __) => const ForgetPasswordScreen(),
+        ),
         GoRoute(
           path: Routes.registerTherapist,
-          builder: (_, _) => const TherapistRegistrationScreen(),
+          builder: (_, __) => const TherapistRegistrationScreen(),
         ),
         GoRoute(
           path: Routes.therapistHome,
-          builder: (_, _) => const TherapistHomeScreen(),
+          builder: (_, __) => const TherapistHomeScreen(),
         ),
         GoRoute(
           path: Routes.therapistProfile,
-          builder: (_, _) => const TherapistProfileOverviewScreen(),
+          builder: (_, __) => const TherapistProfileOverviewScreen(),
         ),
         GoRoute(
           path: Routes.therapistProfileEdit,
-          builder: (_, _) => const TherapistEditProfileScreen(),
+          builder: (_, __) => const TherapistEditProfileScreen(),
         ),
         GoRoute(
           path: Routes.therapistPatients,
-          builder: (_, _) => const PatientListScreen(),
+          builder: (_, __) => const PatientListScreen(),
         ),
-
-        // Parent
         GoRoute(
           path: Routes.registerParent,
-          builder: (_, _) => const ParentRegistrationScreen(),
+          builder: (_, __) => const ParentRegistrationScreen(),
         ),
         GoRoute(
           path: Routes.childOnboarding,
-          builder: (_, _) => const ChildOnboardingScreen(),
+          builder: (_, __) => const ChildOnboardingScreen(),
         ),
         GoRoute(
           path: Routes.childRegistration,
-          builder: (_, _) => const ChildRegistrationScreen(),
+          builder: (_, __) => const ChildRegistrationScreen(),
         ),
         GoRoute(
           path: Routes.parentHome,
-          builder: (_, _) => const ParentHomeScreen(),
+          builder: (_, __) => const ParentHomeScreen(),
         ),
         GoRoute(
           path: Routes.parentProfile,
-          builder: (_, _) => const ParentProfileScreen(),
+          builder: (_, __) => const ParentProfileScreen(),
         ),
       ],
     );
@@ -162,6 +179,7 @@ class _AppViewState extends State<_AppView> {
 
   @override
   void dispose() {
+    _inactivityTimer?.cancel();
     _notifier.dispose();
     _router.dispose();
     super.dispose();
@@ -169,14 +187,19 @@ class _AppViewState extends State<_AppView> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'AutiLog',
-      theme: AppTheme.light,
-      routerConfig: _router,
-      debugShowCheckedModeBanner: false,
+    return Listener(
+      onPointerDown: (_) => _resetInactivityTimer(),
+      onPointerMove: (_) => _resetInactivityTimer(),
+      child: MaterialApp.router(
+        title: 'AutiLog',
+        theme: AppTheme.light,
+        routerConfig: _router,
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }
+
 
 class _AuthRouterNotifier extends ChangeNotifier {
   _AuthRouterNotifier(AuthBloc authBloc) {

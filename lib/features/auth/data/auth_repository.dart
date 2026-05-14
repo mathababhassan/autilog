@@ -93,44 +93,47 @@ class AuthRepository {
 
   // ── Register therapist ────────────────────────────────────────────────────
   Future<UserModel> registerTherapist({
-    required String email,
-    required String password,
-    required String name,
-    required String licenceNumber,
-    required String clinicName,
-    required String specialisation,
-    required String gender,
-  }) async {
-    final credential = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    final userId = credential.user!.uid;
+  required String email,
+  required String password,
+  required String name,
+  required String licenceNumber,
+  required String clinicName,
+  required String specialisation,
+  required String gender,
+}) async {
+  final credential = await _auth.createUserWithEmailAndPassword(
+    email: email,
+    password: password,
+  );
+  final userId = credential.user!.uid;
 
-    await credential.user!.sendEmailVerification();
+  final userModel = UserModel(
+    userId: userId,
+    email: email,
+    role: 'therapist',
+    createdAt: DateTime.now(),
+  );
 
-    final userModel = UserModel(
-      userId: userId,
-      email: email,
-      role: 'therapist',
-      createdAt: DateTime.now(),
-    );
+  final therapistModel = TherapistModel(
+    userId: userId,
+    name: name,
+    licenceNumber: licenceNumber,
+    clinicName: clinicName,
+    specialisation: specialisation,
+    gender: gender,
+  );
 
-    final therapistModel = TherapistModel(
-      userId: userId,
-      name: name,
-      licenceNumber: licenceNumber,
-      clinicName: clinicName,
-      specialisation: specialisation,
-      gender: gender,
-    );
+  // Write to Firestore first before auth state fires
+  final batch = _firestore.batch();
+  batch.set(_firestore.collection('users').doc(userId), userModel.toMap());
+  batch.set(_firestore.collection('therapists').doc(userId), therapistModel.toMap());
+  await batch.commit();
 
-    await _firestore.collection('users').doc(userId).set(userModel.toMap());
-    await _firestore.collection('therapists').doc(userId).set(therapistModel.toMap());
+  // Send verification email after Firestore is ready
+  await credential.user!.sendEmailVerification();
 
-    return userModel;
-  }
-
+  return userModel;
+}
   // ── Login ─────────────────────────────────────────────────────────────────
   Future<UserModel> login({
     required String email,
