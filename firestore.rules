@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper Functions ───────────────────────────────────────────────────
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+
+    function isLinkedTherapist(childId) {
+      return exists(
+        /databases/$(database)/documents/therapists/$(request.auth.uid)/patients/$(childId)
+      );
+    }
+
+    // ─── Users ──────────────────────────────────────────────────────────────
+
+    match /users/{uid} {
+      allow read, write: if isAuth() && isOwner(uid);
+
+      // ─── Children ─────────────────────────────────────────────────────────
+
+      match /children/{childId} {
+        allow read, write: if isAuth() && isOwner(uid);
+
+        // ─── Logs (Daily Summary, Incident, Positive Moment) ────────────────
+
+        match /logs/{logId} {
+          // Parent: full CRUD on their own child's logs
+          allow create, read, update, delete: if isAuth() && isOwner(uid);
+
+          // Therapist: read-only if they have this child as a patient
+          allow read: if isAuth() && isLinkedTherapist(childId);
+        }
+      }
+    }
+
+    // ─── Therapists ─────────────────────────────────────────────────────────
+
+    match /therapists/{therapistId} {
+      allow read, write: if isAuth() && isOwner(therapistId);
+    }
+
+  }
+}
