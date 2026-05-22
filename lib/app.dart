@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:autilog/features/splash/presentation/screens/splash_screen.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -83,6 +86,15 @@ class _AppViewState extends State<_AppView> {
   void _resetInactivityTimer() {
     _inactivityTimer?.cancel();
     _inactivityTimer = Timer(_inactivityDuration, _logoutDueToInactivity);
+    // Persist last activity time for cold-launch inactivity check
+    unawaited(
+      SharedPreferences.getInstance().then(
+        (prefs) => prefs.setInt(
+          'lastActiveAt',
+          DateTime.now().millisecondsSinceEpoch,
+        ),
+      ),
+    );
   }
 
   void _logoutDueToInactivity() {
@@ -99,82 +111,90 @@ class _AppViewState extends State<_AppView> {
     _notifier = _AuthRouterNotifier(_authBloc);
     _resetInactivityTimer();
 
-    _router = GoRouter(
-      refreshListenable: _notifier,
-      initialLocation: Routes.roleSelection,
-      redirect: (context, state) {
-        final authState = _authBloc.state;
-        final isOnAuthRoute = state.matchedLocation.startsWith('/auth');
+  _router = GoRouter(  
+    initialLocation: Routes.splash,
+    redirect: (context, state) {
+      final authState = _authBloc.state;
+      final isOnAuthRoute = state.matchedLocation.startsWith('/auth');
+      final isOnSplash = state.matchedLocation == Routes.splash;
 
-        if (authState is AuthUnauthenticated || authState is AuthInitial) {
-          return isOnAuthRoute ? null : Routes.roleSelection;
+      // Splash handles its own navigation — never redirect away from it
+      if (isOnSplash) return null;
+
+      if (authState is AuthUnauthenticated || authState is AuthInitial) {
+        return isOnAuthRoute ? null : Routes.roleSelection;
+      }
+
+      if (authState is AuthAuthenticated && isOnAuthRoute) {
+        if (authState.user.role == 'therapist') {
+          return Routes.therapistHome;
+        } else if (authState.user.role == 'parent') {
+          return Routes.childOnboarding;
         }
+      }
 
-        if (authState is AuthAuthenticated && isOnAuthRoute) {
-          if (authState.user.role == 'therapist') {
-            return Routes.therapistHome;
-          } else if (authState.user.role == 'parent') {
-            return Routes.childOnboarding;
-          }
-        }
+      return null;
+    },
+  routes: [   
+    GoRoute(
+      path: Routes.splash,
+      builder: (_, __) => const SplashScreen(),
+    ),
+    GoRoute(
+      path: Routes.roleSelection,
+      builder: (_, __) => const RoleSelectionScreen(),
+    ),
+    GoRoute(
+      path: Routes.login,
+      builder: (_, __) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: Routes.forgotPassword,
+      builder: (_, __) => const ForgetPasswordScreen(),
+    ),
+    GoRoute(
+      path: Routes.registerTherapist,
+      builder: (_, __) => const TherapistRegistrationScreen(),
+    ),
+    GoRoute(
+      path: Routes.therapistHome,
+      builder: (_, __) => const TherapistHomeScreen(),
+    ),
+    GoRoute(
+      path: Routes.therapistProfile,
+      builder: (_, __) => const TherapistProfileOverviewScreen(),
+    ),
+    GoRoute(
+      path: Routes.therapistProfileEdit,
+      builder: (_, __) => const TherapistEditProfileScreen(),
+    ),
+    GoRoute(
+      path: Routes.therapistPatients,
+      builder: (_, __) => const PatientListScreen(),
+    ),
+    GoRoute(
+      path: Routes.registerParent,
+      builder: (_, __) => const ParentRegistrationScreen(),
+    ),
+    GoRoute(
+      path: Routes.childOnboarding,
+      builder: (_, __) => const ChildOnboardingScreen(),
+    ),
+    GoRoute(
+      path: Routes.childRegistration,
+      builder: (_, __) => const ChildRegistrationScreen(),
+    ),
+    GoRoute(
+      path: Routes.parentHome,
+      builder: (_, __) => const ParentHomeScreen(),
+    ),
+    GoRoute(
+      path: Routes.parentProfile,
+      builder: (_, __) => const ParentProfileScreen(),
+    ),
+  ],
+);
 
-        return null;
-      },
-      routes: [
-        GoRoute(
-          path: Routes.roleSelection,
-          builder: (_, __) => const RoleSelectionScreen(),
-        ),
-        GoRoute(
-          path: Routes.login,
-          builder: (_, __) => const LoginScreen(),
-        ),
-        GoRoute(
-          path: Routes.forgotPassword,
-          builder: (_, __) => const ForgetPasswordScreen(),
-        ),
-        GoRoute(
-          path: Routes.registerTherapist,
-          builder: (_, __) => const TherapistRegistrationScreen(),
-        ),
-        GoRoute(
-          path: Routes.therapistHome,
-          builder: (_, __) => const TherapistHomeScreen(),
-        ),
-        GoRoute(
-          path: Routes.therapistProfile,
-          builder: (_, __) => const TherapistProfileOverviewScreen(),
-        ),
-        GoRoute(
-          path: Routes.therapistProfileEdit,
-          builder: (_, __) => const TherapistEditProfileScreen(),
-        ),
-        GoRoute(
-          path: Routes.therapistPatients,
-          builder: (_, __) => const PatientListScreen(),
-        ),
-        GoRoute(
-          path: Routes.registerParent,
-          builder: (_, __) => const ParentRegistrationScreen(),
-        ),
-        GoRoute(
-          path: Routes.childOnboarding,
-          builder: (_, __) => const ChildOnboardingScreen(),
-        ),
-        GoRoute(
-          path: Routes.childRegistration,
-          builder: (_, __) => const ChildRegistrationScreen(),
-        ),
-        GoRoute(
-          path: Routes.parentHome,
-          builder: (_, __) => const ParentHomeScreen(),
-        ),
-        GoRoute(
-          path: Routes.parentProfile,
-          builder: (_, __) => const ParentProfileScreen(),
-        ),
-      ],
-    );
   }
 
   @override
