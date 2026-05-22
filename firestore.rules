@@ -2,8 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ─── Helper Functions ───────────────────────────────────────────────────
-
     function isAuth() {
       return request.auth != null;
     }
@@ -13,37 +11,44 @@ service cloud.firestore {
     }
 
     function isLinkedTherapist(childId) {
-      return exists(
-        /databases/$(database)/documents/therapists/$(request.auth.uid)/patients/$(childId)
-      );
+      return exists(/databases/$(database)/documents/therapists/$(request.auth.uid)/patients/$(childId));
     }
 
-    // ─── Users ──────────────────────────────────────────────────────────────
-
+    // ── Users & Children ──────────────────────────────────────────────────────
     match /users/{uid} {
       allow read, write: if isAuth() && isOwner(uid);
-
-      // ─── Children ─────────────────────────────────────────────────────────
 
       match /children/{childId} {
         allow read, write: if isAuth() && isOwner(uid);
 
-        // ─── Logs (Daily Summary, Incident, Positive Moment) ────────────────
-
         match /logs/{logId} {
-          // Parent: full CRUD on their own child's logs
           allow create, read, update, delete: if isAuth() && isOwner(uid);
-
-          // Therapist: read-only if they have this child as a patient
           allow read: if isAuth() && isLinkedTherapist(childId);
+        }
+
+        // Written by Cloud Function (admin SDK) on link accept.
+        // Parent can read to know which therapists are linked.
+        match /linkedTherapists/{therapistId} {
+          allow read: if isAuth() && isOwner(uid);
         }
       }
     }
 
-    // ─── Therapists ─────────────────────────────────────────────────────────
-
+    // ── Therapists ────────────────────────────────────────────────────────────
     match /therapists/{therapistId} {
       allow read, write: if isAuth() && isOwner(therapistId);
+
+      // Pending link requests sent by parents.
+      // Written by Cloud Function (admin SDK). Therapist can read/delete their own.
+      match /pendingRequests/{requestId} {
+        allow read, delete: if isAuth() && isOwner(therapistId);
+      }
+
+      // Active patient links. Written by Cloud Function on accept.
+      // Therapist can read and delete (remove patient).
+      match /patients/{childId} {
+        allow read, delete: if isAuth() && isOwner(therapistId);
+      }
     }
 
   }
