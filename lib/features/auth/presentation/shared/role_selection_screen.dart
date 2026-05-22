@@ -23,10 +23,10 @@ class RoleSelectionScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(
-                        Icons.stars_rounded,
-                        color: AppColors.textWhite,
-                        size: 24,
+                      Image.asset(
+                        'assets/images/autilog_logo.png',
+                        width: 24,
+                        height: 24,
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Text(
