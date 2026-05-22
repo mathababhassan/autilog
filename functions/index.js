@@ -3,9 +3,17 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { onInit } = require("firebase-functions/v2/core");
 
+let db;
 
-admin.initializeApp();
+onInit(async () => {
+    if (!admin.apps.length) {
+        admin.initializeApp();
+    }
+    db = admin.firestore();
+    console.log("Firebase Admin initialized");
+});
 
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
@@ -24,8 +32,6 @@ exports.onDailySummaryCreated = onDocumentCreated(
     if (data.type !== "dailySummary") return;
 
     const { uid, childId } = event.params;
-    const db = admin.firestore();
-
     const logsRef = db.collection(`users/${uid}/children/${childId}/logs`);
     const summariesSnap = await logsRef
       .where("type", "==", "dailySummary")
@@ -34,7 +40,7 @@ exports.onDailySummaryCreated = onDocumentCreated(
       .get();
 
     const daysLogged = summariesSnap.size;
-    const aiInsightsRef = db.doc(`children/${childId}/aiInsights`);
+    const aiInsightsRef = db.doc(`users/${uid}/children/${childId}/aiInsights`);
 
     if (daysLogged < 7) {
       await aiInsightsRef.set({ isUnlocked: false, daysLogged }, { merge: true });
@@ -94,7 +100,6 @@ Respond ONLY with this JSON (no markdown, no extra text):
 
 // ─── TASK 3: Patient Link Backend ─────────────────────────────────────────────
 
-// Called by parent: sends a link request to a therapist by email
 exports.sendLinkRequest = onCall(
   { secrets: [GMAIL_APP_PASSWORD] },
   async (request) => {
@@ -108,9 +113,7 @@ exports.sendLinkRequest = onCall(
     }
 
     const parentId = request.auth.uid;
-    const db = admin.firestore();
 
-    // Find therapist by email
     const therapistsSnap = await db
       .collection("therapists")
       .where("email", "==", therapistEmail)
@@ -125,18 +128,15 @@ exports.sendLinkRequest = onCall(
     const therapistId = therapistDoc.id;
     const therapistData = therapistDoc.data();
 
-    // Get child info
     const childSnap = await db.doc(`users/${parentId}/children/${childId}`).get();
     if (!childSnap.exists) {
       throw new HttpsError("not-found", "Child not found.");
     }
     const childData = childSnap.data();
 
-    // Get parent info
     const parentSnap = await db.doc(`users/${parentId}`).get();
     const parentData = parentSnap.data() || {};
 
-    // Check for existing pending request
     const existingRequest = await db
       .collection(`therapists/${therapistId}/pendingRequests`)
       .where("childId", "==", childId)
@@ -147,7 +147,6 @@ exports.sendLinkRequest = onCall(
       throw new HttpsError("already-exists", "A request for this child is already pending.");
     }
 
-    // Check if already linked
     const existingLink = await db
       .doc(`therapists/${therapistId}/patients/${childId}`)
       .get();
@@ -156,7 +155,6 @@ exports.sendLinkRequest = onCall(
       throw new HttpsError("already-exists", "This therapist is already linked to your child.");
     }
 
-    // Create pending request under therapist
     const requestRef = await db
       .collection(`therapists/${therapistId}/pendingRequests`)
       .add({
@@ -168,7 +166,6 @@ exports.sendLinkRequest = onCall(
         status: "pending",
       });
 
-    // Send notification email to therapist
     const nodemailer = require("nodemailer");
     const transporter = nodemailer.createTransport({
       service: "gmail",
@@ -199,7 +196,6 @@ exports.sendLinkRequest = onCall(
   }
 );
 
-// Called by therapist: accepts a pending link request
 exports.acceptLinkRequest = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Must be signed in.");
@@ -211,9 +207,7 @@ exports.acceptLinkRequest = onCall(async (request) => {
   }
 
   const therapistId = request.auth.uid;
-  const db = admin.firestore();
 
-  // Verify the pending request exists under this therapist
   const requestRef = db.doc(`therapists/${therapistId}/pendingRequests/${requestId}`);
   const requestSnap = await requestRef.get();
 
@@ -224,11 +218,9 @@ exports.acceptLinkRequest = onCall(async (request) => {
   const requestData = requestSnap.data();
   const { parentId, childId, childName } = requestData;
 
-  // Get therapist name
   const therapistSnap = await db.doc(`therapists/${therapistId}`).get();
   const therapistData = therapistSnap.data() || {};
 
-  // Batch: create active link on both sides + delete pending request
   const batch = db.batch();
 
   batch.set(db.doc(`therapists/${therapistId}/patients/${childId}`), {
@@ -247,13 +239,11 @@ exports.acceptLinkRequest = onCall(async (request) => {
   );
 
   batch.delete(requestRef);
-
   await batch.commit();
 
   return { success: true };
 });
 
-// Called by therapist: rejects a pending link request
 exports.rejectLinkRequest = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Must be signed in.");
@@ -265,7 +255,6 @@ exports.rejectLinkRequest = onCall(async (request) => {
   }
 
   const therapistId = request.auth.uid;
-  const db = admin.firestore();
 
   const requestRef = db.doc(`therapists/${therapistId}/pendingRequests/${requestId}`);
   const requestSnap = await requestRef.get();

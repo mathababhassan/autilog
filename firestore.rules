@@ -31,6 +31,12 @@ service cloud.firestore {
         match /linkedTherapists/{therapistId} {
           allow read: if isAuth() && isOwner(uid);
         }
+
+        // Written by Cloud Function (admin SDK) after 7 daily summaries.
+        // Parent can read; linked therapist can read (for T-10/T-11 patient detail screens).
+        match /aiInsights/{doc} {
+          allow read: if isAuth() && (isOwner(uid) || isLinkedTherapist(childId));
+        }
       }
     }
 
