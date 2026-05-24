@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../../core/constants/routes.dart';
+import '../../../../../features/incident_log/presentation/widgets/log_type_sheet.dart';
 
 class ParentHomeScreen extends StatefulWidget {
   const ParentHomeScreen({super.key});
@@ -78,8 +79,8 @@ class _DashboardTabState extends State<_DashboardTab> {
       builder: (context, parentSnap) {
         final parentName = parentSnap.hasData && parentSnap.data!.exists
             ? (parentSnap.data!.data() as Map<String, dynamic>)['name']
-                    as String? ??
-                'Parent'
+                      as String? ??
+                  'Parent'
             : 'Parent';
 
         return StreamBuilder<QuerySnapshot>(
@@ -111,35 +112,26 @@ class _DashboardTabState extends State<_DashboardTab> {
             return CustomScrollView(
               slivers: [
                 // ── App Bar ────────────────────────────────────────────
-                SliverToBoxAdapter(
-                  child: _buildAppBar(context, parentName),
-                ),
+                SliverToBoxAdapter(child: _buildAppBar(context, parentName)),
 
                 // ── Child Switcher (only if more than 1 child) ─────────
                 if (children.length > 1)
-                  SliverToBoxAdapter(
-                    child: _buildChildSwitcher(children),
-                  ),
+                  SliverToBoxAdapter(child: _buildChildSwitcher(children)),
 
                 // ── Content based on child state ───────────────────────
                 if (!hasChild) ...[
-                  SliverToBoxAdapter(
-                      child: _buildNoChildBanner(context)),
-                  SliverToBoxAdapter(
-                      child: _buildEmptySummaryCards()),
+                  SliverToBoxAdapter(child: _buildNoChildBanner(context)),
+                  SliverToBoxAdapter(child: _buildEmptySummaryCards()),
                   SliverToBoxAdapter(child: _buildDisabledActions()),
                   SliverToBoxAdapter(child: _buildEmptyActivity()),
                   SliverToBoxAdapter(child: _buildEmptyInsights()),
                 ] else ...[
+                  SliverToBoxAdapter(child: _buildSummaryCards()),
                   SliverToBoxAdapter(
-                    child: _buildSummaryCards(),
+                    child: _buildActions(context, selectedChildName),
                   ),
-                  SliverToBoxAdapter(
-                      child: _buildActions(context)),
-                  SliverToBoxAdapter(
-                      child: _buildRecentActivity()),
-                  SliverToBoxAdapter(
-                      child: _buildInsights(selectedChildName)),
+                  SliverToBoxAdapter(child: _buildRecentActivity()),
+                  SliverToBoxAdapter(child: _buildInsights(selectedChildName)),
                 ],
 
                 SliverToBoxAdapter(
@@ -162,14 +154,18 @@ class _DashboardTabState extends State<_DashboardTab> {
     final greeting = now.hour < 12
         ? 'Good morning'
         : now.hour < 17
-            ? 'Good afternoon'
-            : 'Good evening';
+        ? 'Good afternoon'
+        : 'Good evening';
     final dateStr = DateFormat('EEEE, d MMMM yyyy').format(now);
 
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
-          24, MediaQuery.of(context).padding.top + 16, 24, 24),
+        24,
+        MediaQuery.of(context).padding.top + 16,
+        24,
+        24,
+      ),
       decoration: const BoxDecoration(
         color: Color(0xFFFF8A00),
         borderRadius: BorderRadius.only(
@@ -186,16 +182,16 @@ class _DashboardTabState extends State<_DashboardTab> {
               const Text(
                 'AutiLog',
                 style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold),
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               GestureDetector(
                 onTap: () => context.push(Routes.parentProfile),
                 child: CircleAvatar(
                   backgroundColor: Colors.white.withOpacity(0.3),
-                  child:
-                      const Icon(Icons.person, color: Colors.white),
+                  child: const Icon(Icons.person, color: Colors.white),
                 ),
               ),
             ],
@@ -204,15 +200,18 @@ class _DashboardTabState extends State<_DashboardTab> {
           Text(
             '$greeting, $parentName 👋',
             style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold),
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             dateStr,
             style: TextStyle(
-                color: Colors.white.withOpacity(0.85), fontSize: 13),
+              color: Colors.white.withOpacity(0.85),
+              fontSize: 13,
+            ),
           ),
         ],
       ),
@@ -225,13 +224,11 @@ class _DashboardTabState extends State<_DashboardTab> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border:
-              Border.all(color: const Color(0xFFFF8A00), width: 1.5),
+          border: Border.all(color: const Color(0xFFFF8A00), width: 1.5),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
@@ -244,8 +241,10 @@ class _DashboardTabState extends State<_DashboardTab> {
           child: DropdownButton<String>(
             value: _selectedChildId,
             isExpanded: true,
-            icon: const Icon(Icons.keyboard_arrow_down,
-                color: Color(0xFFFF8A00)),
+            icon: const Icon(
+              Icons.keyboard_arrow_down,
+              color: Color(0xFFFF8A00),
+            ),
             items: children.map((child) {
               final data = child.data() as Map<String, dynamic>;
               final name = data['name'] as String? ?? 'Child';
@@ -257,16 +256,20 @@ class _DashboardTabState extends State<_DashboardTab> {
                     const CircleAvatar(
                       radius: 14,
                       backgroundColor: Color(0xFFFFE0B2),
-                      child: Icon(Icons.child_care,
-                          size: 16, color: Color(0xFFFF8A00)),
+                      child: Icon(
+                        Icons.child_care,
+                        size: 16,
+                        color: Color(0xFFFF8A00),
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Text(
                       '$name  •  Age $age',
                       style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
                     ),
                   ],
                 ),
@@ -291,23 +294,26 @@ class _DashboardTabState extends State<_DashboardTab> {
         decoration: BoxDecoration(
           color: const Color(0xFFFFF3E0),
           borderRadius: BorderRadius.circular(16),
-          border:
-              Border.all(color: const Color(0xFFFF8A00), width: 1.5),
+          border: Border.all(color: const Color(0xFFFF8A00), width: 1.5),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Row(
               children: [
-                Icon(Icons.warning_amber_rounded,
-                    color: Color(0xFFFF8A00), size: 22),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: Color(0xFFFF8A00),
+                  size: 22,
+                ),
                 SizedBox(width: 8),
                 Text(
                   'No child profile yet',
                   style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.black87),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
                 ),
               ],
             ),
@@ -320,19 +326,20 @@ class _DashboardTabState extends State<_DashboardTab> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () =>
-                    context.push(Routes.childRegistration),
+                onPressed: () => context.push(Routes.childRegistration),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF8A00),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30)),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
                   elevation: 0,
                 ),
                 child: const Text(
                   'ADD CHILD PROFILE',
                   style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -351,16 +358,18 @@ class _DashboardTabState extends State<_DashboardTab> {
         children: [
           Expanded(
             child: _SummaryCard(
-                title: 'Logs This Week',
-                value: '— —',
-                subtitle: 'Add a child to start'),
+              title: 'Logs This Week',
+              value: '— —',
+              subtitle: 'Add a child to start',
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: _SummaryCard(
-                title: 'Upcoming Session',
-                value: '— —',
-                subtitle: 'Add a child to start'),
+              title: 'Upcoming Session',
+              value: '— —',
+              subtitle: 'Add a child to start',
+            ),
           ),
         ],
       ),
@@ -397,9 +406,10 @@ class _DashboardTabState extends State<_DashboardTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Recent Activity',
-              style: TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            'Recent Activity',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
@@ -426,9 +436,10 @@ class _DashboardTabState extends State<_DashboardTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('AI Insights',
-              style: TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            'AI Insights',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(20),
@@ -475,7 +486,7 @@ class _DashboardTabState extends State<_DashboardTab> {
     );
   }
 
-  Widget _buildActions(BuildContext context) {
+  Widget _buildActions(BuildContext context, String childName) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
       child: Column(
@@ -491,7 +502,11 @@ class _DashboardTabState extends State<_DashboardTab> {
             label: 'LOG AN INCIDENT',
             icon: Icons.warning_amber_rounded,
             enabled: true,
-            onTap: () => context.push('/log/incident'),
+            onTap: () {
+              final id = _selectedChildId;
+              if (id == null || id.isEmpty) return;
+              showLogTypeSheet(context, id, childName);
+            },
             secondary: true,
           ),
         ],
@@ -505,9 +520,10 @@ class _DashboardTabState extends State<_DashboardTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Recent Activity',
-              style: TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            'Recent Activity',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
           _ActivityCard(
             date: 'Mon 19 Apr',
@@ -540,9 +556,10 @@ class _DashboardTabState extends State<_DashboardTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('AI Insights',
-              style: TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            'AI Insights',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(20),
@@ -550,15 +567,15 @@ class _DashboardTabState extends State<_DashboardTab> {
               color: const Color(0xFFFFF8F0),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                  color: const Color(0xFFFF8A00).withOpacity(0.3)),
+                color: const Color(0xFFFF8A00).withOpacity(0.3),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '$childName tends to have better days when sleeping more than 7 hours. Try keeping bedtime consistent this week.',
-                  style: const TextStyle(
-                      fontSize: 14, color: Colors.black87),
+                  style: const TextStyle(fontSize: 14, color: Colors.black87),
                 ),
                 const SizedBox(height: 12),
                 Align(
@@ -568,8 +585,9 @@ class _DashboardTabState extends State<_DashboardTab> {
                     child: const Text(
                       'See all →',
                       style: TextStyle(
-                          color: Color(0xFFFF8A00),
-                          fontWeight: FontWeight.bold),
+                        color: Color(0xFFFF8A00),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -616,19 +634,24 @@ class _SummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style:
-                  const TextStyle(fontSize: 12, color: Colors.black45)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 12, color: Colors.black45),
+          ),
           const SizedBox(height: 8),
-          Text(value,
-              style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFFF8A00))),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFFFF8A00),
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(subtitle,
-              style: const TextStyle(
-                  fontSize: 12, color: Colors.black54)),
+          Text(
+            subtitle,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
         ],
       ),
     );
@@ -664,9 +687,7 @@ class _ActionButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: enabled
-                ? (secondary
-                    ? const Color(0xFFFF8A00)
-                    : Colors.transparent)
+                ? (secondary ? const Color(0xFFFF8A00) : Colors.transparent)
                 : Colors.grey.shade300,
           ),
           boxShadow: enabled
@@ -675,7 +696,7 @@ class _ActionButton extends StatelessWidget {
                     color: Colors.black.withOpacity(0.06),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
-                  )
+                  ),
                 ]
               : [],
         ),
@@ -684,9 +705,7 @@ class _ActionButton extends StatelessWidget {
             Icon(
               icon,
               color: enabled
-                  ? (secondary
-                      ? const Color(0xFFFF8A00)
-                      : Colors.white)
+                  ? (secondary ? const Color(0xFFFF8A00) : Colors.white)
                   : Colors.grey,
               size: 24,
             ),
@@ -697,9 +716,7 @@ class _ActionButton extends StatelessWidget {
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: enabled
-                    ? (secondary
-                        ? const Color(0xFFFF8A00)
-                        : Colors.white)
+                    ? (secondary ? const Color(0xFFFF8A00) : Colors.white)
                     : Colors.grey,
               ),
             ),
@@ -739,8 +756,7 @@ class _ActivityCard extends StatelessWidget {
             isIncident
                 ? Icons.warning_amber_rounded
                 : Icons.check_circle_outline,
-            color:
-                isIncident ? Colors.red : const Color(0xFFFF8A00),
+            color: isIncident ? Colors.red : const Color(0xFFFF8A00),
             size: 20,
           ),
           const SizedBox(width: 12),
@@ -751,19 +767,27 @@ class _ActivityCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(type,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14)),
-                    Text(date,
-                        style: const TextStyle(
-                            fontSize: 12, color: Colors.black45)),
+                    Text(
+                      type,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      date,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black45,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(detail,
-                    style: const TextStyle(
-                        fontSize: 13, color: Colors.black54)),
+                Text(
+                  detail,
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                ),
               ],
             ),
           ),
@@ -783,8 +807,10 @@ class _PlaceholderTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Text('Coming soon',
-          style: TextStyle(color: Colors.black45, fontSize: 16)),
+      child: Text(
+        'Coming soon',
+        style: TextStyle(color: Colors.black45, fontSize: 16),
+      ),
     );
   }
 }

@@ -28,6 +28,9 @@ import 'features/profile/therapist/presentation/screens/therapist_edit_profile_s
 import 'features/profile/therapist/presentation/screens/therapist_home_screen.dart';
 import 'features/profile/therapist/presentation/screens/therapist_profile_overview_screen.dart';
 
+import 'features/incident_log/presentation/screens/incident_detail_screen.dart';
+import 'features/incident_log/presentation/screens/incident_form_screen.dart';
+
 import 'features/auth/presentation/shared/login_screen.dart';
 import 'features/auth/presentation/shared/forgot_password_screen.dart';
 
@@ -111,7 +114,8 @@ class _AppViewState extends State<_AppView> {
     _notifier = _AuthRouterNotifier(_authBloc);
     _resetInactivityTimer();
 
-  _router = GoRouter(  
+  _router = GoRouter(
+    refreshListenable: _notifier,
     initialLocation: Routes.splash,
     redirect: (context, state) {
       final authState = _authBloc.state;
@@ -192,6 +196,27 @@ class _AppViewState extends State<_AppView> {
       path: Routes.parentProfile,
       builder: (_, __) => const ParentProfileScreen(),
     ),
+    GoRoute(
+      path: Routes.incidentForm,
+      builder: (context, state) {
+        final args = state.extra as IncidentFormArgs?;
+        if (args == null) return const SizedBox.shrink();
+        return IncidentFormScreen(
+          patientId: args.patientId,
+          patientName: args.patientName,
+          therapistName: args.therapistName,
+        );
+      },
+    ),
+    GoRoute(
+      path: Routes.incidentDetail,
+      builder: (context, state) {
+        final args = state.extra as IncidentDetailArgs?;
+        if (args == null) return const SizedBox.shrink();
+        return IncidentDetailScreen(args: args);
+      },
+    ),
+  
   ],
 );
 

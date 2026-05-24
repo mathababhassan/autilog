@@ -40,6 +40,19 @@ service cloud.firestore {
       }
     }
 
+    // ── Parents & Children ───────────────────────────────────────────────────
+    match /parents/{uid} {
+      allow read, write: if isAuth() && isOwner(uid);
+
+      match /children/{childId} {
+        allow read, write: if isAuth() && isOwner(uid);
+
+        match /incidents/{incidentId} {
+          allow read, write: if isAuth() && isOwner(uid);
+        }
+      }
+    }
+
     // ── Therapists ────────────────────────────────────────────────────────────
     match /therapists/{therapistId} {
       allow read, write: if isAuth() && isOwner(therapistId);
