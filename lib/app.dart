@@ -197,7 +197,8 @@ class _AppViewState extends State<_AppView> {
     GoRoute(
       path: Routes.incidentForm,
       builder: (context, state) {
-        final args = state.extra as IncidentFormArgs;
+        final args = state.extra as IncidentFormArgs?;
+        if (args == null) return const SizedBox.shrink();
         return IncidentFormScreen(
           patientId: args.patientId,
           patientName: args.patientName,

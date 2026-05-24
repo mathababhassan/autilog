@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../../shared/models/incident_model.dart';
 import '../data/incident_repository.dart';
@@ -115,7 +115,6 @@ class IncidentFormCubit extends Cubit<IncidentFormState> {
     emit(state.copyWith(status: IncidentFormStatus.saving));
     try {
       final parentId = FirebaseAuth.instance.currentUser!.uid;
-      if (kDebugMode) debugPrint('[IncidentFormCubit] saving → parentId=$parentId  childId=$_childId');
       final incident = IncidentModel(
         id: '',
         date: state.date,
@@ -157,18 +156,17 @@ class IncidentFormCubit extends Cubit<IncidentFormState> {
   bool _isValid() =>
       state.antecedentDescription.trim().isNotEmpty &&
       state.antecedentTriggers.isNotEmpty &&
-      state.antecedentSeverity != null &&
+      (state.antecedentSeverity ?? 0) > 0 &&
       state.behaviorDescription.trim().isNotEmpty &&
       state.behaviorTypes.isNotEmpty &&
       state.behaviorDuration != Duration.zero &&
-      state.behaviorSeverity != null &&
+      (state.behaviorSeverity ?? 0) > 0 &&
       state.consequenceDescription.trim().isNotEmpty &&
       state.strategies.isNotEmpty &&
       state.didItWork != null &&
-      state.effectiveness != null;
+      (state.effectiveness ?? 0) > 0;
 
   String _friendlyError(Object e) {
-    if (kDebugMode) debugPrint('[IncidentFormCubit] error: $e (${e.runtimeType})');
     if (e is FirebaseException) {
       return 'Could not save the incident (${e.code}). Please try again.';
     }
