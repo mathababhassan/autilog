@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
+import '../../../shared/models/incident_model.dart';
+
 enum IncidentFormStatus { idle, videoUploading, saving, success, error }
 
 class IncidentFormState extends Equatable {
@@ -48,6 +50,28 @@ class IncidentFormState extends Equatable {
     this.videoUrl,
     this.videoThumbnailPath,
   });
+
+  factory IncidentFormState.fromIncident(IncidentModel incident) {
+    return IncidentFormState(
+      status: IncidentFormStatus.idle,
+      showErrors: false,
+      date: incident.date,
+      time: incident.time,
+      antecedentDescription: incident.antecedentDescription,
+      antecedentTriggers: List<String>.from(incident.antecedentTriggers),
+      antecedentSeverity: incident.antecedentSeverity,
+      behaviorDescription: incident.behaviorDescription,
+      behaviorTypes: List<String>.from(incident.behaviorTypes),
+      behaviorDuration: incident.behaviorDuration,
+      behaviorSeverity: incident.behaviorSeverity,
+      consequenceDescription: incident.consequenceDescription,
+      strategies: List<String>.from(incident.strategies),
+      didItWork: incident.didItWork,
+      effectiveness: incident.effectiveness,
+      videoUrl: incident.videoUrl,
+      videoThumbnailPath: null,
+    );
+  }
 
   factory IncidentFormState.initial() {
     final now = DateTime.now();

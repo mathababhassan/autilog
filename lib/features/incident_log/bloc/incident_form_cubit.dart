@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,10 +16,22 @@ class IncidentFormCubit extends Cubit<IncidentFormState> {
     required String childId,
   })  : _repository = repository,
         _childId = childId,
+        _incidentId = null,
         super(IncidentFormState.initial());
+
+  IncidentFormCubit.fromIncident({
+    required IncidentModel incident,
+    required IncidentRepository repository,
+    required String childId,
+  })  : _repository = repository,
+        _childId = childId,
+        _incidentId = incident.id,
+        super(IncidentFormState.fromIncident(incident));
 
   final IncidentRepository _repository;
   final String _childId;
+  final String? _incidentId;
+  String? _pendingDeleteUrl;
 
   // ── Simple field updates ─────────────────────────────────────────────────
 
@@ -71,6 +84,7 @@ class IncidentFormCubit extends Cubit<IncidentFormState> {
   // ── Async operations ─────────────────────────────────────────────────────
 
   Future<void> videoSelected(XFile file) async {
+    _pendingDeleteUrl ??= state.videoUrl;
     emit(state.copyWith(status: IncidentFormStatus.videoUploading));
     try {
       final parentId = FirebaseAuth.instance.currentUser!.uid;
@@ -140,6 +154,58 @@ class IncidentFormCubit extends Cubit<IncidentFormState> {
         childId: _childId,
         incident: incident,
       );
+
+      emit(state.copyWith(status: IncidentFormStatus.success));
+    } catch (e) {
+      emit(state.copyWith(
+        status: IncidentFormStatus.error,
+        errorMessage: _friendlyError(e),
+      ));
+    }
+  }
+
+  void videoRemoved() {
+    _pendingDeleteUrl = state.videoUrl;
+    emit(state.copyWith(videoUrl: null, videoThumbnailPath: null));
+  }
+
+  Future<void> update() async {
+    if (!_isValid()) {
+      emit(state.copyWith(showErrors: true));
+      return;
+    }
+
+    emit(state.copyWith(status: IncidentFormStatus.saving));
+    try {
+      final parentId = FirebaseAuth.instance.currentUser!.uid;
+
+      await _repository.updateIncident(
+        parentId: parentId,
+        childId: _childId,
+        incidentId: _incidentId!,
+        data: {
+          'antecedentDescription': state.antecedentDescription,
+          'antecedentTriggers': state.antecedentTriggers,
+          'antecedentSeverity': state.antecedentSeverity!,
+          'behaviorDescription': state.behaviorDescription,
+          'behaviorTypes': state.behaviorTypes,
+          'behaviorDuration': state.behaviorDuration.inSeconds,
+          'behaviorSeverity': state.behaviorSeverity!,
+          'consequenceDescription': state.consequenceDescription,
+          'strategies': state.strategies,
+          'didItWork': state.didItWork ?? false,
+          'effectiveness': state.effectiveness!,
+          'videoUrl': state.videoUrl,
+          'updatedAt': Timestamp.fromDate(DateTime.now()),
+        },
+      );
+      if (isClosed) return;
+
+      if (_pendingDeleteUrl != null) {
+        await _repository.deleteVideo(_pendingDeleteUrl!);
+        _pendingDeleteUrl = null;
+        if (isClosed) return;
+      }
 
       emit(state.copyWith(status: IncidentFormStatus.success));
     } catch (e) {

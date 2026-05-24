@@ -10,7 +10,9 @@ import '../../../../shared/widgets/app_snackbar.dart';
 import '../../bloc/incident_detail_bloc.dart';
 import '../../bloc/incident_detail_event.dart';
 import '../../bloc/incident_detail_state.dart';
+import '../../../../core/constants/routes.dart';
 import '../../data/incident_repository.dart';
+import '../screens/incident_edit_screen.dart';
 
 // ─── Args ─────────────────────────────────────────────────────
 
@@ -69,7 +71,9 @@ class _IncidentDetailViewState extends State<_IncidentDetailView> {
       listenWhen: (prev, curr) {
         if (curr is! IncidentDetailLoaded) return false;
         if (prev is IncidentDetailLoaded &&
-            prev.actionStatus == curr.actionStatus) return false;
+            prev.actionStatus == curr.actionStatus) {
+          return false;
+        }
         return curr.actionStatus != IncidentDetailActionStatus.idle &&
             curr.actionStatus != IncidentDetailActionStatus.deleting;
       },
@@ -128,6 +132,23 @@ class _IncidentDetailViewState extends State<_IncidentDetailView> {
       child: loaded.child,
       isDeleting: loaded.actionStatus == IncidentDetailActionStatus.deleting,
       onDelete: () => _showDeleteSheet(context),
+      onEdit: () {
+        context.push(
+          Routes.incidentEdit,
+          extra: IncidentEditArgs(
+            incident: loaded.incident,
+            child: loaded.child,
+          ),
+        ).then((_) {
+          if (!context.mounted) return;
+          context.read<IncidentDetailBloc>().add(IncidentDetailStarted(
+            parentId: widget.args.child.parentId,
+            childId: widget.args.child.childId,
+            incidentId: widget.args.incidentId,
+            child: widget.args.child,
+          ));
+        });
+      },
     );
   }
 
@@ -250,12 +271,14 @@ class _LoadedBody extends StatelessWidget {
     required this.child,
     required this.isDeleting,
     required this.onDelete,
+    required this.onEdit,
   });
 
   final IncidentModel incident;
   final ChildModel child;
   final bool isDeleting;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -378,6 +401,7 @@ class _LoadedBody extends StatelessWidget {
           _ActionButtons(
             isDeleting: isDeleting,
             onDelete: onDelete,
+            onEdit: onEdit,
           ),
 
           const SizedBox(height: AppSpacing.xl2),
@@ -802,10 +826,12 @@ class _ActionButtons extends StatelessWidget {
   const _ActionButtons({
     required this.isDeleting,
     required this.onDelete,
+    required this.onEdit,
   });
 
   final bool isDeleting;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -813,9 +839,7 @@ class _ActionButtons extends StatelessWidget {
       children: [
         Expanded(
           child: OutlinedButton.icon(
-            onPressed: isDeleting
-                ? null
-                : () => AppSnackbar.showError(context, 'Edit is coming soon'),
+            onPressed: isDeleting ? null : onEdit,
             icon: const Icon(Icons.edit_outlined, size: 16),
             label: const Text('Edit'),
             style: OutlinedButton.styleFrom(
