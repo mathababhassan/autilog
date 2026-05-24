@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'therapist_feedback_model.dart';
 
 class IncidentModel {
   final String id;
@@ -18,6 +19,8 @@ class IncidentModel {
   final int effectiveness;
   final String? videoUrl;
   final DateTime createdAt;
+  final DateTime updatedAt;
+  final TherapistFeedback? therapistFeedback;
 
   const IncidentModel({
     required this.id,
@@ -36,6 +39,8 @@ class IncidentModel {
     required this.effectiveness,
     this.videoUrl,
     required this.createdAt,
+    required this.updatedAt,
+    this.therapistFeedback,
   });
 
   factory IncidentModel.fromMap(Map<String, dynamic> map, String id) {
@@ -58,6 +63,11 @@ class IncidentModel {
       effectiveness: (map['effectiveness'] as num?)?.toInt() ?? 0,
       videoUrl: map['videoUrl'] as String?,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      therapistFeedback: map['therapistFeedback'] != null
+          ? TherapistFeedback.fromMap(
+              map['therapistFeedback'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -78,6 +88,9 @@ class IncidentModel {
       'effectiveness': effectiveness,
       'videoUrl': videoUrl,
       'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': Timestamp.fromDate(updatedAt),
+      if (therapistFeedback != null)
+        'therapistFeedback': therapistFeedback!.toMap(),
     };
   }
 }
