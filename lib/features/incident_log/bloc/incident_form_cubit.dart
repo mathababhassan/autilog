@@ -132,6 +132,7 @@ class IncidentFormCubit extends Cubit<IncidentFormState> {
         effectiveness: state.effectiveness!,
         videoUrl: state.videoUrl,
         createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
 
       await _repository.saveIncident(
