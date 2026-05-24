@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../../core/constants/routes.dart';
+import '../../../../../features/incident_log/presentation/screens/incident_form_screen.dart';
 
 class ParentHomeScreen extends StatefulWidget {
   const ParentHomeScreen({super.key});
@@ -135,7 +136,7 @@ class _DashboardTabState extends State<_DashboardTab> {
                     child: _buildSummaryCards(),
                   ),
                   SliverToBoxAdapter(
-                      child: _buildActions(context)),
+                      child: _buildActions(context, selectedChildName)),
                   SliverToBoxAdapter(
                       child: _buildRecentActivity()),
                   SliverToBoxAdapter(
@@ -475,7 +476,7 @@ class _DashboardTabState extends State<_DashboardTab> {
     );
   }
 
-  Widget _buildActions(BuildContext context) {
+  Widget _buildActions(BuildContext context, String childName) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
       child: Column(
@@ -491,7 +492,18 @@ class _DashboardTabState extends State<_DashboardTab> {
             label: 'LOG AN INCIDENT',
             icon: Icons.warning_amber_rounded,
             enabled: true,
-            onTap: () => context.push('/log/incident'),
+            onTap: () {
+              final id = _selectedChildId;
+              if (id == null || id.isEmpty) return;
+              context.push(
+                Routes.incidentForm,
+                extra: IncidentFormArgs(
+                  patientId: id,
+                  patientName: childName,
+                  therapistName: null,
+                ),
+              );
+            },
             secondary: true,
           ),
         ],

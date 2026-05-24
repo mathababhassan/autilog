@@ -15,6 +15,7 @@ abstract final class Routes {
   static const String registerParent = '/auth/register/parent';
   static const String parentHome = '/parent/home';
   static const String parentProfile = '/parent/profile';
+  static const String incidentForm = '/parent/log/incident';
 
   // Child
   static const String childOnboarding = '/child-onboarding';

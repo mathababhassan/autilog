@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+
+    // Incident videos: incidents/{parentId}/{childId}/{incidentId}/video.mp4
+    match /incidents/{parentId}/{childId}/{incidentId}/{file} {
+      allow read, write: if isAuth() && isOwner(parentId);
+    }
+
+  }
+}
