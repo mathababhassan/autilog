@@ -29,6 +29,7 @@ import 'features/profile/therapist/presentation/screens/therapist_home_screen.da
 import 'features/profile/therapist/presentation/screens/therapist_profile_overview_screen.dart';
 
 import 'features/incident_log/presentation/screens/incident_detail_screen.dart';
+import 'features/incident_log/presentation/screens/incident_edit_screen.dart';
 import 'features/incident_log/presentation/screens/incident_form_screen.dart';
 
 import 'features/auth/presentation/shared/login_screen.dart';
@@ -214,6 +215,14 @@ class _AppViewState extends State<_AppView> {
         final args = state.extra as IncidentDetailArgs?;
         if (args == null) return const SizedBox.shrink();
         return IncidentDetailScreen(args: args);
+      },
+    ),
+    GoRoute(
+      path: Routes.incidentEdit,
+      builder: (context, state) {
+        final args = state.extra as IncidentEditArgs?;
+        if (args == null) return const SizedBox.shrink();
+        return IncidentEditScreen(args: args);
       },
     ),
   

@@ -64,6 +64,30 @@ class IncidentRepository {
         .delete();
   }
 
+  Future<void> updateIncident({
+    required String parentId,
+    required String childId,
+    required String incidentId,
+    required Map<String, dynamic> data,
+  }) async {
+    await _firestore
+        .collection('parents')
+        .doc(parentId)
+        .collection('children')
+        .doc(childId)
+        .collection('incidents')
+        .doc(incidentId)
+        .update(data);
+  }
+
+  Future<void> deleteVideo(String videoUrl) async {
+    try {
+      await _storage.refFromURL(videoUrl).delete();
+    } on FirebaseException catch (e) {
+      if (e.code != 'object-not-found') rethrow;
+    }
+  }
+
   Future<String> uploadVideo({
     required String parentId,
     required String childId,
