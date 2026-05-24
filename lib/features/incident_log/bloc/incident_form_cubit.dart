@@ -107,10 +107,10 @@ class IncidentFormCubit extends Cubit<IncidentFormState> {
   }
 
   Future<void> submit() async {
-    // Turn on validation display before checking — UI reads showErrors to
-    // decide whether to colour empty fields red.
-    emit(state.copyWith(showErrors: true));
-    if (!_isValid()) return;
+    if (!_isValid()) {
+      emit(state.copyWith(showErrors: true));
+      return;
+    }
 
     emit(state.copyWith(status: IncidentFormStatus.saving));
     try {

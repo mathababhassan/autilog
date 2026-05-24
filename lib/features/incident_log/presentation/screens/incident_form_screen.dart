@@ -517,7 +517,7 @@ class _AntecedentCard extends StatelessWidget {
           _SeverityRow(
             label: 'Severity',
             value: state.antecedentSeverity,
-            hasError: showErr && state.antecedentSeverity == null,
+            hasError: showErr && (state.antecedentSeverity ?? 0) == 0,
             onChanged: cubit.antecedentSeverityChanged,
           ),
         ],
@@ -584,7 +584,7 @@ class _BehaviorCard extends StatelessWidget {
           _SeverityRow(
             label: 'Severity',
             value: state.behaviorSeverity,
-            hasError: showErr && state.behaviorSeverity == null,
+            hasError: showErr && (state.behaviorSeverity ?? 0) == 0,
             onChanged: cubit.behaviorSeverityChanged,
           ),
         ],
@@ -647,7 +647,7 @@ class _ConsequenceCard extends StatelessWidget {
           _SeverityRow(
             label: 'Effectiveness',
             value: state.effectiveness,
-            hasError: showErr && state.effectiveness == null,
+            hasError: showErr && (state.effectiveness ?? 0) == 0,
             onChanged: cubit.effectivenessChanged,
           ),
         ],
