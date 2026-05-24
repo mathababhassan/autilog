@@ -22,4 +22,5 @@ abstract final class AppSpacing {
   static const double borderRadius = 4;    // inputs, dialogs, snackbars
   static const double cardRadius = lg;     // 16px — patient/content cards
   static const double pillRadius = xl3;    // 32px — pill-shaped buttons
+  static const double sheetRadius = xl2;  // 24px — modal bottom sheet top corners
 }
