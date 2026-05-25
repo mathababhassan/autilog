@@ -7,6 +7,7 @@ import '../../../../shared/models/child_model.dart';
 import '../../../../shared/models/incident_model.dart';
 import '../../../../shared/models/therapist_feedback_model.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
+import '../../../../shared/widgets/locked_state_badge.dart';
 import '../../bloc/incident_detail_bloc.dart';
 import '../../bloc/incident_detail_event.dart';
 import '../../bloc/incident_detail_state.dart';
@@ -127,6 +128,7 @@ class _IncidentDetailViewState extends State<_IncidentDetailView> {
       incident: loaded.incident,
       child: loaded.child,
       isDeleting: loaded.actionStatus == IncidentDetailActionStatus.deleting,
+      isLocked: DateTime.now().difference(loaded.incident.createdAt) > const Duration(hours: 24),
       onDelete: () => _showDeleteSheet(context),
     );
   }
@@ -249,12 +251,14 @@ class _LoadedBody extends StatelessWidget {
     required this.incident,
     required this.child,
     required this.isDeleting,
+    required this.isLocked,
     required this.onDelete,
   });
 
   final IncidentModel incident;
   final ChildModel child;
   final bool isDeleting;
+  final bool isLocked;
   final VoidCallback onDelete;
 
   @override
@@ -374,9 +378,14 @@ class _LoadedBody extends StatelessWidget {
 
           _LogFooter(updatedAt: incident.updatedAt),
           const SizedBox(height: AppSpacing.lg),
+          if (isLocked) ...[
+            const LockedStateBadge(),
+            const SizedBox(height: AppSpacing.lg),
+          ],
 
           _ActionButtons(
             isDeleting: isDeleting,
+            isLocked: isLocked,
             onDelete: onDelete,
           ),
 
@@ -801,14 +810,45 @@ class _LogFooter extends StatelessWidget {
 class _ActionButtons extends StatelessWidget {
   const _ActionButtons({
     required this.isDeleting,
+    required this.isLocked,
     required this.onDelete,
   });
 
   final bool isDeleting;
+  final bool isLocked;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
+    if (isLocked) {
+      return SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: isDeleting ? null : onDelete,
+          icon: isDeleting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.textDisabled,
+                  ),
+                )
+              : const Icon(Icons.delete_outline_rounded, size: 16),
+          label: const Text('Delete'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.textDisabled,
+            side: const BorderSide(color: AppColors.borderInactive),
+            minimumSize: const Size.fromHeight(48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
+            ),
+            textStyle: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
+      );
+    }
+
     return Row(
       children: [
         Expanded(
