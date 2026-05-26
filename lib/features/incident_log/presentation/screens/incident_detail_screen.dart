@@ -128,7 +128,7 @@ class _IncidentDetailViewState extends State<_IncidentDetailView> {
       incident: loaded.incident,
       child: loaded.child,
       isDeleting: loaded.actionStatus == IncidentDetailActionStatus.deleting,
-      isLocked: DateTime.now().difference(loaded.incident.createdAt) > const Duration(hours: 24),
+      isLocked: DateTime.now().difference(loaded.incident.createdAt) >= const Duration(hours: 24),
       onDelete: () => _showDeleteSheet(context),
     );
   }
