@@ -7,14 +7,17 @@ import 'video_player_state.dart';
 class VideoPlayerCubit extends Cubit<VideoPlayerState> {
   VideoPlayerCubit() : super(const VideoPlayerInitial());
 
-  Future<void> initialize(String videoUrl) async {
+    Future<void> initialize(String videoUrl) async {
     emit(const VideoPlayerLoading());
+    VideoPlayerController? videoController;
+    ChewieController? chewieController;
+    
     try {
-      final videoController = VideoPlayerController.networkUrl(
+      videoController = VideoPlayerController.networkUrl(
         Uri.parse(videoUrl),
       );
       await videoController.initialize();
-      final chewieController = ChewieController(
+      chewieController = ChewieController(
         videoPlayerController: videoController,
         autoPlay: true,
         looping: false,
@@ -25,6 +28,9 @@ class VideoPlayerCubit extends Cubit<VideoPlayerState> {
         chewieController: chewieController,
       ));
     } catch (_) {
+      // Clean up to prevent memory leak
+      videoController?.dispose();
+      chewieController?.dispose();
       emit(const VideoPlayerError(
         message: 'Could not load the video. Please check your connection and try again.',
       ));
