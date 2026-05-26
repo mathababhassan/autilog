@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -27,9 +28,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _cubit.initialize(widget.videoUrl);
   }
 
-  @override
+    @override
   void dispose() {
-    _cubit.close();
+    unawaited(_cubit.close());
     super.dispose();
   }
 
