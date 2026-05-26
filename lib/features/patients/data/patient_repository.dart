@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../shared/models/child_model.dart';
 import '../../../shared/models/link_request_model.dart';
+import '../../../shared/models/parent_model.dart';
+import 'patient_detail_info.dart';
 import 'pending_request_display.dart';
 
 class PatientRepository {
@@ -54,9 +56,44 @@ class PatientRepository {
         .where('linkedTherapistId', isEqualTo: therapistId)
         .get();
 
-    return snapshot.docs
-        .map((doc) => ChildModel.fromMap(doc.data(), doc.id))
-        .toList();
+    return snapshot.docs.map((doc) {
+      final parentId = doc.reference.parent.parent?.id ?? '';
+      final data = Map<String, dynamic>.from(doc.data());
+      if (parentId.isNotEmpty) {
+        data['parentId'] = parentId;
+      }
+      return ChildModel.fromMap(data, doc.id);
+    }).toList();
+  }
+
+  Future<PatientDetailInfo> fetchPatientDetail({
+    required String parentId,
+    required String childId,
+  }) async {
+    final childDoc = await _firestore
+        .collection('parents')
+        .doc(parentId)
+        .collection('children')
+        .doc(childId)
+        .get();
+
+    if (!childDoc.exists || childDoc.data() == null) {
+      throw Exception('Patient not found');
+    }
+
+    final childData = Map<String, dynamic>.from(childDoc.data()!);
+    childData['parentId'] = parentId;
+
+    final parentDoc = await _firestore.collection('parents').doc(parentId).get();
+    final parent = parentDoc.exists && parentDoc.data() != null
+        ? ParentModel.fromMap(parentDoc.data()!, parentId)
+        : ParentModel(userId: parentId, name: 'Unknown Parent', phone: '');
+
+    return PatientDetailInfo(
+      child: ChildModel.fromMap(childData, childId),
+      parentName: parent.name,
+      parentPhone: parent.phone.isNotEmpty ? parent.phone : '—',
+    );
   }
 
   Future<void> acceptLinkRequest({

@@ -10,6 +10,7 @@ abstract final class Routes {
   static const String therapistProfile = '/therapist/profile';
   static const String therapistProfileEdit = '/therapist/profile/edit';
   static const String therapistPatients = '/therapist/patients';
+  static const String therapistPatientDetail = '/therapist/patients/detail';
 
   // Parent
   static const String registerParent = '/auth/register/parent';

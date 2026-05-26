@@ -10,6 +10,8 @@ import '../../../bloc/patient_list_bloc.dart';
 import '../../../bloc/patient_list_event.dart';
 import '../../../bloc/patient_list_state.dart';
 import '../../../data/pending_request_display.dart';
+import '../widgets/therapist_bottom_nav.dart';
+import 'patient_details_screen.dart';
 
 
 // ─── Screen ───────────────────────────────────────────────────
@@ -105,7 +107,8 @@ class _PatientListScreenState extends State<PatientListScreen> {
             return const SizedBox.shrink();
           },
         ),
-        bottomNavigationBar: const _TabBar(),
+        bottomNavigationBar:
+            const TherapistBottomNav(activeTab: TherapistNavTab.patients),
       ),
     );
   }
@@ -251,7 +254,19 @@ class _PatientListScreenState extends State<PatientListScreen> {
                   return _PatientCard(
                     patient: patient,
                     isActionInProgress: isActionInProgress,
-                    onViewDetails: () => _showRemoveSheet(context, patient),
+                    onViewDetails: () {
+                      if (patient.parentId.isEmpty) {
+                        AppSnackbar.showError(
+                          context,
+                          'Patient link data is incomplete.',
+                        );
+                        return;
+                      }
+                      context.push(
+                        Routes.therapistPatientDetail,
+                        extra: PatientDetailsArgs(patient: patient),
+                      );
+                    },
                   );
                 },
               ),
@@ -262,57 +277,6 @@ class _PatientListScreenState extends State<PatientListScreen> {
     );
   }
 
-  void _showRemoveSheet(BuildContext context, ChildModel patient) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surfaceModal,
-      shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(AppSpacing.cardRadius)),
-      ),
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.dividerLight,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            ListTile(
-              leading: const Icon(Icons.person_remove_outlined,
-                  color: AppColors.error),
-              title: Text('Remove Patient',
-                  style: AppTextStyles.body.copyWith(color: AppColors.error)),
-              onTap: () {
-                Navigator.of(context).pop();
-                context.read<PatientListBloc>().add(
-                      ActivePatientRemoved(
-                        parentId: patient.parentId,
-                        childId: patient.childId,
-                      ),
-                    );
-              },
-            ),
-            ListTile(
-              leading:
-                  const Icon(Icons.close, color: AppColors.textPlaceholder),
-              title: Text('Cancel',
-                  style: AppTextStyles.body
-                      .copyWith(color: AppColors.textPlaceholder)),
-              onTap: () => Navigator.of(context).pop(),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // ─── Search bar ───────────────────────────────────────────────
@@ -910,101 +874,3 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-// ─── Bottom tab bar ───────────────────────────────────────────
-
-class _TabBar extends StatelessWidget {
-  const _TabBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-            top: BorderSide(color: AppColors.dividerLight, width: 0.5)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 50,
-          child: Row(
-            children: [
-              _TabItem(
-                iconOutline: 'assets/icons/home_outline.svg',
-                iconFilled: 'assets/icons/home_filled.svg',
-                label: 'Home',
-                onTap: () => context.go(Routes.therapistHome),
-              ),
-              const _TabItem(
-                iconOutline: 'assets/icons/patient_outline.svg',
-                iconFilled: 'assets/icons/patient_filled.svg',
-                label: 'Patients',
-                active: true,
-              ),
-              const _TabItem(
-                iconOutline: 'assets/icons/session_outline.svg',
-                iconFilled: 'assets/icons/session_filled.svg',
-                label: 'Sessions',
-              ),
-              const _TabItem(
-                iconOutline: 'assets/icons/report_outline.svg',
-                iconFilled: 'assets/icons/report_filled.svg',
-                label: 'Reports',
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TabItem extends StatelessWidget {
-  const _TabItem({
-    required this.iconOutline,
-    this.iconFilled,
-    required this.label,
-    this.active = false,
-    this.onTap,
-  });
-
-  final String iconOutline;
-  final String? iconFilled;
-  final String label;
-  final bool active;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final iconColor = active ? AppColors.primary : Colors.black;
-    final asset = active ? (iconFilled ?? iconOutline) : iconOutline;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SvgPicture.asset(
-              asset,
-              width: 20,
-              height: 20,
-              colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'PlusJakartaSans',
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-                color: active ? AppColors.primary : Colors.black,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

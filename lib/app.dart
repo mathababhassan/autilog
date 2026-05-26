@@ -21,6 +21,7 @@ import 'features/auth/presentation/parent/screens/parent_home_screen.dart';
 import 'features/auth/presentation/parent/screens/parent_profile_screen.dart';
 import 'features/patients/bloc/patient_list_bloc.dart';
 import 'features/patients/data/patient_repository.dart';
+import 'features/patients/presentation/therapist/screens/patient_details_screen.dart';
 import 'features/patients/presentation/therapist/screens/patient_list_screen.dart';
 import 'features/profile/therapist/bloc/therapist_profile_bloc.dart';
 import 'features/profile/therapist/data/therapist_repository.dart';
@@ -175,6 +176,14 @@ class _AppViewState extends State<_AppView> {
     GoRoute(
       path: Routes.therapistPatients,
       builder: (_, __) => const PatientListScreen(),
+    ),
+    GoRoute(
+      path: Routes.therapistPatientDetail,
+      builder: (context, state) {
+        final args = state.extra as PatientDetailsArgs?;
+        if (args == null) return const SizedBox.shrink();
+        return PatientDetailsScreen(args: args);
+      },
     ),
     GoRoute(
       path: Routes.registerParent,
