@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../../shared/models/child_model.dart';
+import '../data/patient_summary.dart';
 import '../data/pending_request_display.dart';
 
 enum PatientListActionStatus { idle, inProgress, success, error }
@@ -28,13 +28,13 @@ class PatientListLoaded extends PatientListState {
   });
 
   final List<PendingRequestDisplay> pendingRequests;
-  final List<ChildModel> activePatients;
+  final List<PatientSummary> activePatients;
   final PatientListActionStatus actionStatus;
   final String? actionMessage;
 
   PatientListLoaded copyWith({
     List<PendingRequestDisplay>? pendingRequests,
-    List<ChildModel>? activePatients,
+    List<PatientSummary>? activePatients,
     PatientListActionStatus? actionStatus,
     String? actionMessage,
   }) {

@@ -41,33 +41,61 @@ service cloud.firestore {
     }
 
     // ── Parents & Children ───────────────────────────────────────────────────
-    match /parents/{uid} {
-      allow read, write: if isAuth() && isOwner(uid);
+    match /parents/{parentId} {
+      allow read, write: if isAuth() && isOwner(parentId);
+      // Therapists read parent name for pending request display cards.
+      allow read: if isAuth();
 
       match /children/{childId} {
-        allow read, write: if isAuth() && isOwner(uid);
+        allow read, write: if isAuth() && isOwner(parentId);
+        // Therapist reads child data for pending and accepted patient cards.
+        allow read: if isAuth();
+        // Therapist can accept (link themselves) or remove (unlink themselves).
+        allow update: if isAuth() && (
+          request.resource.data.linkedTherapistId == request.auth.uid ||
+          resource.data.linkedTherapistId == request.auth.uid
+        );
 
         match /incidents/{incidentId} {
-          allow read, write: if isAuth() && isOwner(uid);
+          allow read, write: if isAuth() && isOwner(parentId);
+          allow read: if isAuth() && isLinkedTherapist(childId);
         }
       }
+    }
+
+    // ── Link Requests ─────────────────────────────────────────────────────────
+    match /linkRequests/{requestId} {
+      // Parent: read and delete their own requests; create new ones.
+      allow read, delete: if isAuth() && resource.data.parentId == request.auth.uid;
+      allow create: if isAuth() && request.resource.data.parentId == request.auth.uid;
+      // Therapist: read and update status of requests addressed to them.
+      allow read, update: if isAuth() &&
+        request.auth.token.email == resource.data.therapistEmail;
     }
 
     // ── Therapists ────────────────────────────────────────────────────────────
     match /therapists/{therapistId} {
       allow read, write: if isAuth() && isOwner(therapistId);
+      // Parents read therapist name/clinic when a child is linked to them.
+      // Mirrors the symmetric rule on /parents that lets therapists read parent names.
+      allow read: if isAuth();
 
-      // Pending link requests sent by parents.
-      // Written by Cloud Function (admin SDK). Therapist can read/delete their own.
       match /pendingRequests/{requestId} {
         allow read, delete: if isAuth() && isOwner(therapistId);
       }
 
-      // Active patient links. Written by Cloud Function on accept.
-      // Therapist can read and delete (remove patient).
+      // Written by PatientRepository.acceptLinkRequest — powers isLinkedTherapist().
       match /patients/{childId} {
         allow read, delete: if isAuth() && isOwner(therapistId);
+        allow create: if isAuth() && isOwner(therapistId);
+        // Parent can delete their own child's patient record when revoking access.
+        allow delete: if isAuth() && resource.data.parentId == request.auth.uid;
       }
+    }
+
+    // ── Collection group: lets fetchAcceptedPatients query across all parents ──
+    match /{path=**}/children/{childId} {
+      allow read: if isAuth() && resource.data.linkedTherapistId == request.auth.uid;
     }
 
   }

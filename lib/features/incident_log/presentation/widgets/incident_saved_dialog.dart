@@ -28,7 +28,7 @@ class IncidentSavedDialog extends StatelessWidget {
     return Dialog(
       backgroundColor: AppColors.surfaceModal,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl2),
