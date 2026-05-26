@@ -49,7 +49,15 @@ class PositiveMomentFormCubit extends Cubit<PositiveMomentFormState> {
   Future<void> videoSelected(XFile file) async {
     emit(state.copyWith(status: PositiveMomentFormStatus.videoUploading));
     try {
-      final parentId = FirebaseAuth.instance.currentUser!.uid;
+      final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser == null) {
+          emit(state.copyWith(
+            status: PositiveMomentFormStatus.error,
+            errorMessage: 'Your session has expired. Please log in again.',
+          ));
+          return;
+        }
+final parentId = currentUser.uid;
       final uploadFuture = _repository.uploadVideo(
         parentId: parentId,
         childId: _childId,
@@ -87,11 +95,19 @@ class PositiveMomentFormCubit extends Cubit<PositiveMomentFormState> {
 
     emit(state.copyWith(status: PositiveMomentFormStatus.saving));
     try {
-      final parentId = FirebaseAuth.instance.currentUser!.uid;
+      final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser == null) {
+          emit(state.copyWith(
+            status: PositiveMomentFormStatus.error,
+            errorMessage: 'Your session has expired. Please log in again.',
+          ));
+          return;
+        }
+        final parentId = currentUser.uid;
       final moment = PositiveMomentModel(
         id: '',
         date: state.date,
-        time: state.time,
+        timeMinutes: state.time.hour * 60 + state.time.minute,
         antecedentDescription: state.antecedentDescription,
         setting: state.setting!,
         behaviorDescription: state.behaviorDescription,
