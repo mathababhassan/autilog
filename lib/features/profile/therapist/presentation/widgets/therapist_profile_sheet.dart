@@ -29,8 +29,7 @@ class _TherapistProfileSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocConsumer<TherapistProfileBloc, TherapistProfileState>(
       listener: (context, state) {
-        if (state is TherapistProfileSignedOut ||
-            state is TherapistProfileDeleted) {
+        if (state is TherapistProfileDeleted) {
           Navigator.of(context).pop();
         }
       },
@@ -199,7 +198,7 @@ class _TherapistProfileSheet extends StatelessWidget {
       builder: (_) => AlertDialog(
         backgroundColor: AppColors.surfaceModal,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
         ),
         title: Text(
           'Sign out?',
@@ -228,7 +227,10 @@ class _TherapistProfileSheet extends StatelessWidget {
               ),
             ),
             onPressed: () {
-              Navigator.of(context).pop(true);
+              // Close dialog then sheet before sign-out so GoRouter's
+              // redirect to role-selection doesn't pop the wrong route.
+              Navigator.of(context).pop(); // close dialog
+              Navigator.of(context).pop(); // close sheet
               context.read<TherapistProfileBloc>().add(
                 const TherapistProfileSignOutRequested(),
               );
