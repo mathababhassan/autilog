@@ -43,13 +43,25 @@ class _LogsListTabState extends State<LogsListTab> {
     final uid = user.uid;
 
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('parents')
-          .doc(uid)
-          .collection('children')
-          .snapshots(),
-      builder: (context, childSnap) {
-        final childDocs = childSnap.data?.docs ?? <QueryDocumentSnapshot>[];
+  stream: FirebaseFirestore.instance
+      .collection('parents')
+      .doc(uid)
+      .collection('children')
+      .snapshots(),
+  builder: (context, childSnap) {
+    // Show loading spinner while waiting
+    if (childSnap.connectionState == ConnectionState.waiting) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
+    // Show error message if something went wrong
+    if (childSnap.hasError) {
+      return Center(
+        child: Text('Error loading children: ${childSnap.error}'),
+      );
+    }
+    
+    final childDocs = childSnap.data?.docs ?? <QueryDocumentSnapshot>[];
 
         if (childDocs.isNotEmpty && _selectedChildId == null) {
           _selectedChildId = childDocs.first.id;
