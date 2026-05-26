@@ -28,8 +28,19 @@ class _LogsListTabState extends State<LogsListTab> {
   String? _selectedChildId;
 
   @override
-  Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    
+    // If not logged in, show login required message
+    if (user == null) {
+      return const Scaffold(
+        body: Center(
+          child: Text('Please log in to view incidents'),
+        ),
+      );
+    }
+    
+    final uid = user.uid;
 
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
