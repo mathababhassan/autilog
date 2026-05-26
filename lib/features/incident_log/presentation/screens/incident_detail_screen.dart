@@ -8,6 +8,7 @@ import '../../../../shared/models/incident_model.dart';
 import '../../../../shared/models/therapist_feedback_model.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/locked_state_badge.dart';
+import '../../../../shared/widgets/video_card.dart';
 import '../../bloc/incident_detail_bloc.dart';
 import '../../bloc/incident_detail_event.dart';
 import '../../bloc/incident_detail_state.dart';
@@ -367,7 +368,7 @@ class _LoadedBody extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
 
           if (incident.videoUrl != null) ...[
-            _VideoCard(videoUrl: incident.videoUrl!),
+            VideoCard(videoUrl: incident.videoUrl!),
             const SizedBox(height: AppSpacing.lg),
           ],
 
@@ -610,74 +611,6 @@ class _DidItWorkRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ─── Video Card ───────────────────────────────────────────────
-
-class _VideoCard extends StatelessWidget {
-  const _VideoCard({required this.videoUrl});
-
-  final String videoUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.borderInactive),
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-      ),
-      padding: const EdgeInsets.all(AppSpacing.cardPadding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.videocam_outlined,
-                size: 20,
-                color: AppColors.textMain,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Text('Attached Video', style: AppTextStyles.subtitle),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          GestureDetector(
-            onTap: () => AppSnackbar.showError(context, 'Video playback is coming soon'),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppSpacing.sm),
-              child: Container(
-                height: 180,
-                color: AppColors.borderInactive,
-                alignment: Alignment.center,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.play_arrow_rounded,
-                    color: AppColors.textWhite,
-                    size: 22,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs2),
-          Text(
-            'Tap to play',
-            style:
-                AppTextStyles.tag.copyWith(color: AppColors.textPlaceholder),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
     );
   }
 }
