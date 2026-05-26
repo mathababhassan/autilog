@@ -69,7 +69,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 top: AppSpacing.lg,
                 right: AppSpacing.lg,
                 child: IconButton(
-                  onTap: () => context.pop(),
+                  onPressed: () => context.pop(),
                   icon: const Icon(
                     Icons.close,
                     color: AppColors.textWhite,
