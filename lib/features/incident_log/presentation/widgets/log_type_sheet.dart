@@ -5,7 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/constants/routes.dart';
 import '../screens/incident_form_screen.dart';
-
+import '../../../positive_moment/positive_moment_route_args.dart';
 
 void showLogTypeSheet(
   BuildContext context,
@@ -95,13 +95,21 @@ class LogTypeSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _LogTypeCard(
-                  title: 'Positive Moment',
-                  description:
-                      'Social wins, breakthroughs, or moments worth celebrating',
-                  bgColor: AppColors.secondary20,
-                  borderColor: AppColors.secondary,
-                  onTap: null, // not yet implemented
-                ),
+                    title: 'Positive Moment',
+                    description: 'Social wins, breakthroughs, or moments worth celebrating',
+                    bgColor: AppColors.secondary20,
+                    borderColor: AppColors.secondary,
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.push(
+                        Routes.positiveMomentForm,
+                        extra: PositiveMomentFormArgs(
+                          patientId: patientId,
+                          patientName: patientName,
+                        ),
+                      );
+                    },
+                  ),
                 const SizedBox(height: AppSpacing.md),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
