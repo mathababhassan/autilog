@@ -243,6 +243,9 @@ class _AppViewState extends State<_AppView> {
         final args = state.extra as PositiveMomentDetailArgs?;
         if (args == null) return const SizedBox.shrink();
         return PositiveMomentDetailScreen(args: args);
+      },
+    ),
+    GoRoute(
       path: Routes.videoPlayer,
       builder: (context, state) {
         final videoUrl = state.extra as String?;
@@ -250,7 +253,6 @@ class _AppViewState extends State<_AppView> {
         return VideoPlayerScreen(videoUrl: videoUrl);
       },
     ),
-
   ],
 );
 
