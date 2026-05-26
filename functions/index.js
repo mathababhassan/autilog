@@ -55,6 +55,24 @@ exports.onDailySummaryCreated = onDocumentCreated(
     const summaries = summariesSnap.docs.map((d) => d.data());
     const summariesJSON = JSON.stringify(summaries, null, 2);
 
+    let positiveMomentsJSON = "[]";
+    try {
+      const momentsSnap = await db
+        .collection(`parents/${uid}/children/${childId}/positiveMoments`)
+        .orderBy("date", "desc")
+        .limit(7)
+        .get();
+      if (!momentsSnap.empty) {
+        positiveMomentsJSON = JSON.stringify(
+          momentsSnap.docs.map((d) => d.data()),
+          null,
+          2
+        );
+      }
+    } catch (err) {
+      console.warn("Could not load positive moments for insights:", err.message);
+    }
+
     try {
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -62,6 +80,10 @@ exports.onDailySummaryCreated = onDocumentCreated(
       const prompt = `You are a clinical behavioral analyst assistant for parents of children with autism.
 Based on the last 7 daily summaries for a child aged ${childAge}, ASD Level ${asdLevel}:
 ${summariesJSON}
+
+Recent positive moments logged by the parent:
+${positiveMomentsJSON}
+
 Respond ONLY with this JSON (no markdown, no extra text):
 {
   "summary": "2-3 sentence plain-language summary of this week's patterns",
@@ -243,6 +265,18 @@ exports.acceptLinkRequest = onCall(async (request) => {
 
   return { success: true };
 });
+
+// ─── Positive Moment Backend ─────────────────────────────────────────────────
+
+const {
+  onPositiveMomentCreated,
+  onPositiveMomentUpdated,
+  onPositiveMomentDeleted,
+} = require("./positive_moment");
+
+exports.onPositiveMomentCreated = onPositiveMomentCreated;
+exports.onPositiveMomentUpdated = onPositiveMomentUpdated;
+exports.onPositiveMomentDeleted = onPositiveMomentDeleted;
 
 exports.rejectLinkRequest = onCall(async (request) => {
   if (!request.auth) {

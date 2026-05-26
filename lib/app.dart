@@ -30,6 +30,9 @@ import 'features/profile/therapist/presentation/screens/therapist_profile_overvi
 
 import 'features/incident_log/presentation/screens/incident_detail_screen.dart';
 import 'features/incident_log/presentation/screens/incident_form_screen.dart';
+import 'features/positive_moment/positive_moment_route_args.dart';
+import 'features/positive_moment/presentation/screens/positive_moment_detail_screen.dart';
+import 'features/positive_moment/presentation/screens/positive_moment_form_screen.dart';
 
 import 'features/auth/presentation/shared/login_screen.dart';
 import 'features/auth/presentation/shared/forgot_password_screen.dart';
@@ -216,7 +219,32 @@ class _AppViewState extends State<_AppView> {
         return IncidentDetailScreen(args: args);
       },
     ),
-  
+    GoRoute(
+      path: Routes.positiveMomentForm,
+      builder: (context, state) {
+        final args = state.extra is PositiveMomentFormArgs
+            ? state.extra! as PositiveMomentFormArgs
+            : positiveMomentFormArgsFromUri(state.uri);
+        if (args == null) {
+          return const Scaffold(
+            body: Center(child: Text('Missing patient for positive moment log')),
+          );
+        }
+        return PositiveMomentFormScreen(
+          patientId: args.patientId,
+          patientName: args.patientName,
+        );
+      },
+    ),
+    GoRoute(
+      path: Routes.positiveMomentDetail,
+      builder: (context, state) {
+        final args = state.extra as PositiveMomentDetailArgs?;
+        if (args == null) return const SizedBox.shrink();
+        return PositiveMomentDetailScreen(args: args);
+      },
+    ),
+
   ],
 );
 

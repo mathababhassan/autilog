@@ -10,9 +10,32 @@ service firebase.storage {
       return request.auth.uid == uid;
     }
 
+    function isLinkedTherapist(childId) {
+      return firestore.exists(
+        /databases/(default)/documents/therapists/$(request.auth.uid)/patients/$(childId)
+      );
+    }
+
+    function canAccessChildMedia(parentId, childId) {
+      return isAuth() && (isOwner(parentId) || isLinkedTherapist(childId));
+    }
+
+    function isVideoUpload() {
+      return request.resource != null
+        && request.resource.size < 100 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*');
+    }
+
     // Incident videos: incidents/{parentId}/{childId}/{incidentId}/video.mp4
     match /incidents/{parentId}/{childId}/{incidentId}/{file} {
-      allow read, write: if isAuth() && isOwner(parentId);
+      allow read: if canAccessChildMedia(parentId, childId);
+      allow write: if isAuth() && isOwner(parentId) && isVideoUpload();
+    }
+
+    // Positive moment videos: positiveMoments/{parentId}/{childId}/{momentId}/video.*
+    match /positiveMoments/{parentId}/{childId}/{momentId}/{file} {
+      allow read: if canAccessChildMedia(parentId, childId);
+      allow write: if isAuth() && isOwner(parentId) && isVideoUpload();
     }
 
   }
