@@ -64,15 +64,21 @@ class _LogsListTabState extends State<LogsListTab> {
     final childDocs = childSnap.data?.docs ?? <QueryDocumentSnapshot>[];
 
         if (childDocs.isNotEmpty && _selectedChildId == null) {
-          _selectedChildId = childDocs.first.id;
-        }
+  _selectedChildId = childDocs.first.id;
+}
 
-        final childModels = <String, ChildModel>{
-          for (final doc in childDocs) doc.id: _toChildModel(doc, uid),
-        };
+// Fix: If selected child no longer exists, pick the first available child
+if (_selectedChildId != null && 
+    !childDocs.any((doc) => doc.id == _selectedChildId)) {
+  _selectedChildId = childDocs.isNotEmpty ? childDocs.first.id : null;
+}
 
-        final selectedChild =
-            _selectedChildId != null ? childModels[_selectedChildId] : null;
+final childModels = <String, ChildModel>{
+  for (final doc in childDocs) doc.id: _toChildModel(doc, uid),
+};
+
+final selectedChild =
+    _selectedChildId != null ? childModels[_selectedChildId] : null;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
