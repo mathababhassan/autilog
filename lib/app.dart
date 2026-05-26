@@ -33,6 +33,10 @@ import 'features/incident_log/presentation/screens/incident_form_screen.dart';
 
 import 'features/auth/presentation/shared/login_screen.dart';
 import 'features/auth/presentation/shared/forgot_password_screen.dart';
+import 'features/child_profile/bloc/child_profile_bloc.dart';
+import 'features/child_profile/bloc/child_profile_event.dart';
+import 'features/child_profile/data/child_profile_repository.dart';
+import 'features/child_profile/presentation/screens/child_profile_screen.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -44,6 +48,7 @@ class App extends StatelessWidget {
         RepositoryProvider(create: (_) => AuthRepository()),
         RepositoryProvider(create: (_) => TherapistRepository()),
         RepositoryProvider(create: (_) => PatientRepository()),
+        RepositoryProvider(create: (_) => ChildProfileRepository()),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -205,6 +210,22 @@ class _AppViewState extends State<_AppView> {
           patientId: args.patientId,
           patientName: args.patientName,
           therapistName: args.therapistName,
+        );
+      },
+    ),
+    GoRoute(
+      path: Routes.childProfile,
+      builder: (context, state) {
+        final args = state.extra as ChildProfileArgs?;
+        if (args == null) return const SizedBox.shrink();
+        return BlocProvider(
+          create: (_) => ChildProfileBloc(
+            repository: context.read<ChildProfileRepository>(),
+          )..add(ChildProfileStarted(
+              parentId: args.parentId,
+              childId: args.childId,
+            )),
+          child: ChildProfileScreen(args: args),
         );
       },
     ),
