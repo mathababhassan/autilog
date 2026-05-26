@@ -384,8 +384,12 @@ class _DashboardTabState extends State<_DashboardTab> {
           _ActionButton(
             label: "LOG TODAY'S SUMMARY",
             icon: Icons.edit_note_rounded,
-            enabled: false,
-            onTap: null,
+            enabled: true,
+            onTap: () {
+    final id = _selectedChildId;
+    if (id == null || id.isEmpty) return;
+    context.push(Routes.dailySummary, extra: id);
+  },
           ),
           const SizedBox(height: 12),
           _ActionButton(
@@ -491,12 +495,28 @@ class _DashboardTabState extends State<_DashboardTab> {
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
       child: Column(
         children: [
-          _ActionButton(
-            label: "LOG TODAY'S SUMMARY",
-            icon: Icons.edit_note_rounded,
-            enabled: true,
-            onTap: () => context.push('/log/daily'),
-          ),
+      _ActionButton(
+  label: "LOG TODAY'S SUMMARY",
+  icon: Icons.edit_note_rounded,
+  enabled: true,
+  onTap: () {
+    final id = _selectedChildId;
+    if (id == null || id.isEmpty) return;
+
+    final parentId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    context.push(
+      Routes.dailySummary,
+      extra: {
+        'parentId': parentId,
+        'childId': id,
+        'childName': childName,
+      },
+    );
+  },
+),
+
+
           const SizedBox(height: 12),
           _ActionButton(
             label: 'LOG AN INCIDENT',
