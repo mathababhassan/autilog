@@ -65,25 +65,22 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   return const SizedBox.shrink();
                 },
               ),
-              Positioned(
+            Positioned(
                 top: AppSpacing.lg,
                 right: AppSpacing.lg,
-                child: GestureDetector(
+                child: IconButton(
                   onTap: () => context.pop(),
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.close,
-                      color: AppColors.textWhite,
-                      size: 18,
-                    ),
+                  icon: const Icon(
+                    Icons.close,
+                    color: AppColors.textWhite,
+                    size: 24,
                   ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black.withValues(alpha: 0.5),
+                    minimumSize: const Size(48, 48),
+                    shape: const CircleBorder(),
+                  ),
+                  tooltip: 'Close video',
                 ),
               ),
             ],
