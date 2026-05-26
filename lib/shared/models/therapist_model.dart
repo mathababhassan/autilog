@@ -1,5 +1,6 @@
 class TherapistModel {
   final String userId;
+  final String email;
   final String name;
   final String licenceNumber;
   final String clinicName;
@@ -10,6 +11,7 @@ class TherapistModel {
 
   TherapistModel({
     required this.userId,
+    required this.email,
     required this.name,
     required this.licenceNumber,
     required this.clinicName,
@@ -22,11 +24,12 @@ class TherapistModel {
   factory TherapistModel.fromMap(Map<String, dynamic> map, String userId) {
     return TherapistModel(
       userId: userId,
-      name: map['name'] ?? '',
-      licenceNumber: map['licenceNumber'] ?? '',
-      clinicName: map['clinicName'] ?? '',
-      specialisation: map['specialisation'] ?? '',
-      gender: map['gender'] ?? '',
+      email: map['email'] as String? ?? '',
+      name: map['name'] as String? ?? '',
+      licenceNumber: map['licenceNumber'] as String? ?? '',
+      clinicName: map['clinicName'] as String? ?? '',
+      specialisation: map['specialisation'] as String? ?? '',
+      gender: map['gender'] as String? ?? '',
       phone: map['phone'] as String?,
       experience: map['experience'] as String?,
     );
@@ -34,6 +37,7 @@ class TherapistModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'email': email,
       'name': name,
       'licenceNumber': licenceNumber,
       'clinicName': clinicName,
@@ -53,6 +57,7 @@ class TherapistModel {
   }) {
     return TherapistModel(
       userId: userId,
+      email: email,
       name: name ?? this.name,
       licenceNumber: licenceNumber,
       clinicName: clinicName ?? this.clinicName,

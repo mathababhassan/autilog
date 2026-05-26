@@ -116,6 +116,7 @@ class AuthRepository {
 
   final therapistModel = TherapistModel(
     userId: userId,
+    email: email,
     name: name,
     licenceNumber: licenceNumber,
     clinicName: clinicName,

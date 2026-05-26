@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../shared/models/child_model.dart';
 import '../../../shared/models/link_request_model.dart';
+import 'patient_summary.dart';
 import 'pending_request_display.dart';
 
 class PatientRepository {
@@ -48,15 +49,56 @@ class PatientRepository {
   }
 
   // Uses collectionGroup to query children across all parents/{parentId}/children/
-  Future<List<ChildModel>> fetchAcceptedPatients(String therapistId) async {
+  Future<List<PatientSummary>> fetchAcceptedPatients(String therapistId) async {
     final snapshot = await _firestore
         .collectionGroup('children')
         .where('linkedTherapistId', isEqualTo: therapistId)
         .get();
 
-    return snapshot.docs
+    final children = snapshot.docs
         .map((doc) => ChildModel.fromMap(doc.data(), doc.id))
         .toList();
+
+    final sevenDaysAgo = Timestamp.fromDate(
+      DateTime.now().subtract(const Duration(days: 7)),
+    );
+
+    return Future.wait(children.map((child) async {
+      final incidentsRef = _firestore
+          .collection('parents')
+          .doc(child.parentId)
+          .collection('children')
+          .doc(child.childId)
+          .collection('incidents');
+
+      final results = await Future.wait([
+        incidentsRef
+            .where('createdAt', isGreaterThanOrEqualTo: sevenDaysAgo)
+            .get(),
+        incidentsRef
+            .orderBy('createdAt', descending: true)
+            .limit(1)
+            .get(),
+      ]);
+
+      final recentSnap = results[0];
+      final lastSnap = results[1];
+
+      final highSeverityCount = recentSnap.docs
+          .where((d) =>
+              ((d.data()['behaviorSeverity'] as num?)?.toInt() ?? 0) > 3)
+          .length;
+
+      final lastIncidentDate = lastSnap.docs.isNotEmpty
+          ? (lastSnap.docs.first.data()['createdAt'] as Timestamp?)?.toDate()
+          : null;
+
+      return PatientSummary(
+        child: child,
+        recentHighSeverityCount: highSeverityCount,
+        lastIncidentDate: lastIncidentDate,
+      );
+    }));
   }
 
   Future<void> acceptLinkRequest({
@@ -79,6 +121,15 @@ class PatientRepository {
       'linkedTherapistId': therapistId,
       'therapists': FieldValue.arrayUnion([therapistId]),
     });
+
+    // Populate therapists/{id}/patients/{childId} so isLinkedTherapist() in
+    // security rules returns true (needed for log and aiInsights access).
+    await _firestore
+        .collection('therapists')
+        .doc(therapistId)
+        .collection('patients')
+        .doc(childId)
+        .set({'parentId': parentId, 'linkedAt': FieldValue.serverTimestamp()});
   }
 
   Future<void> rejectLinkRequest(String requestId) async {
@@ -102,5 +153,12 @@ class PatientRepository {
       'linkedTherapistId': null,
       'therapists': FieldValue.arrayRemove([therapistId]),
     });
+
+    await _firestore
+        .collection('therapists')
+        .doc(therapistId)
+        .collection('patients')
+        .doc(childId)
+        .delete();
   }
 }
