@@ -4,8 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/constants/routes.dart';
 import '../../../../../core/theme/theme.dart';
-import '../../../../../shared/models/child_model.dart';
 import '../../../../../shared/widgets/app_snackbar.dart';
+import '../../../data/patient_summary.dart';
 import '../../../bloc/patient_list_bloc.dart';
 import '../../../bloc/patient_list_event.dart';
 import '../../../bloc/patient_list_state.dart';
@@ -91,8 +91,8 @@ class _PatientListScreenState extends State<PatientListScreen> {
                   ? state.activePatients
                   : state.activePatients
                       .where((p) =>
-                          p.name.toLowerCase().contains(_searchQuery) ||
-                          p.diagnosisType.toLowerCase().contains(_searchQuery))
+                          p.child.name.toLowerCase().contains(_searchQuery) ||
+                          p.child.diagnosisType.toLowerCase().contains(_searchQuery))
                       .toList();
 
               final isActionInProgress =
@@ -147,7 +147,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
   Widget _buildContent(
     BuildContext context,
     List<PendingRequestDisplay> pending,
-    List<ChildModel> active,
+    List<PatientSummary> active,
     bool isActionInProgress,
   ) {
     return SingleChildScrollView(
@@ -262,7 +262,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
     );
   }
 
-  void _showRemoveSheet(BuildContext context, ChildModel patient) {
+  void _showRemoveSheet(BuildContext context, PatientSummary patient) {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surfaceModal,
@@ -293,8 +293,8 @@ class _PatientListScreenState extends State<PatientListScreen> {
                 Navigator.of(context).pop();
                 context.read<PatientListBloc>().add(
                       ActivePatientRemoved(
-                        parentId: patient.parentId,
-                        childId: patient.childId,
+                        parentId: patient.child.parentId,
+                        childId: patient.child.childId,
                       ),
                     );
               },
@@ -636,11 +636,19 @@ class _PatientCard extends StatelessWidget {
     required this.onViewDetails,
   });
 
-  final ChildModel patient;
+  final PatientSummary patient;
   final bool isActionInProgress;
   final VoidCallback onViewDetails;
 
-  bool get _isAlert => patient.severityLevel == 3;
+  bool get _isAlert => patient.recentHighSeverityCount > 3;
+
+  String _formatLastLog(DateTime? date) {
+    if (date == null) return 'No logs yet';
+    final diff = DateTime.now().difference(date);
+    if (diff.inDays == 0) return 'Last log today';
+    if (diff.inDays == 1) return 'Last log yesterday';
+    return 'Last log ${diff.inDays} days ago';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -669,14 +677,14 @@ class _PatientCard extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    _PatientAvatar(name: patient.name),
+                    _PatientAvatar(name: patient.child.name),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            patient.name,
+                            patient.child.name,
                             style: AppTextStyles.subtitle.copyWith(
                               color: AppColors.textHighContrast,
                               fontWeight: FontWeight.w700,
@@ -687,7 +695,7 @@ class _PatientCard extends StatelessWidget {
                           if (_isAlert) ...[
                             const SizedBox(height: 2),
                             Text(
-                              '4 High severity incidents this week',
+                              '${patient.recentHighSeverityCount} high-severity incidents this week',
                               style: AppTextStyles.caption.copyWith(
                                 color: AppColors.textMain,
                               ),
@@ -700,7 +708,7 @@ class _PatientCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              _ActiveSeverityBadge(severityLevel: patient.severityLevel),
+              _ActiveSeverityBadge(severityLevel: patient.child.severityLevel),
             ],
           ),
           const SizedBox(height: 12),
@@ -730,7 +738,7 @@ class _PatientCard extends StatelessWidget {
                     _InfoRow(
                       icon: Icons.access_time_outlined,
                       iconSize: 14,
-                      text: 'Last log 2 days ago',
+                      text: _formatLastLog(patient.lastIncidentDate),
                       color: infoTextColor,
                     ),
                   ],
