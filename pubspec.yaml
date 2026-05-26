@@ -28,6 +28,8 @@ dependencies:
   video_thumbnail: ^0.5.3
   intl: ^0.20.2
   shared_preferences: ^2.5.5
+  video_player: ^2.11.1
+  chewie: ^1.14.1
 
 dev_dependencies:
   flutter_test:
