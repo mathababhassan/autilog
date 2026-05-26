@@ -181,6 +181,9 @@ class _IncidentFormViewState extends State<_IncidentFormView> {
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+          ),
           title: Text('Could not save', style: AppTextStyles.heading2),
           content: Text(
             state.errorMessage ?? 'Something went wrong. Please try again.',

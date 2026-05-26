@@ -64,7 +64,7 @@ class _AppConfirmationDialogState extends State<_AppConfirmationDialog> {
     return AlertDialog(
       backgroundColor: AppColors.surfaceModal,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
       ),
       title: Text(widget.title, style: AppTextStyles.heading2),
       content: Column(
