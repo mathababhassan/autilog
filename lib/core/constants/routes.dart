@@ -24,4 +24,5 @@ abstract final class Routes {
 
   // shared
   static const String forgotPassword = '/auth/forgot-password';
+  static const String videoPlayer = '/video-player';
 }

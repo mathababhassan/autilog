@@ -30,6 +30,7 @@ import 'features/profile/therapist/presentation/screens/therapist_profile_overvi
 
 import 'features/incident_log/presentation/screens/incident_detail_screen.dart';
 import 'features/incident_log/presentation/screens/incident_form_screen.dart';
+import 'features/video_player/presentation/screens/video_player_screen.dart';
 
 import 'features/auth/presentation/shared/login_screen.dart';
 import 'features/auth/presentation/shared/forgot_password_screen.dart';
@@ -216,7 +217,15 @@ class _AppViewState extends State<_AppView> {
         return IncidentDetailScreen(args: args);
       },
     ),
-  
+    GoRoute(
+      path: Routes.videoPlayer,
+      builder: (context, state) {
+        final videoUrl = state.extra as String?;
+        if (videoUrl == null) return const SizedBox.shrink();
+        return VideoPlayerScreen(videoUrl: videoUrl);
+      },
+    ),
+
   ],
 );
 
