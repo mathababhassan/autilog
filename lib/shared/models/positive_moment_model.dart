@@ -1,12 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
-
 import 'therapist_feedback_model.dart';
 
 class PositiveMomentModel {
   final String id;
   final DateTime date;
-  final TimeOfDay time;
+  final int timeMinutes;
   final String antecedentDescription;
   final String setting;
   final String behaviorDescription;
@@ -22,7 +20,7 @@ class PositiveMomentModel {
   const PositiveMomentModel({
     required this.id,
     required this.date,
-    required this.time,
+    required this.timeMinutes,
     required this.antecedentDescription,
     required this.setting,
     required this.behaviorDescription,
@@ -44,7 +42,7 @@ class PositiveMomentModel {
     return PositiveMomentModel(
       id: id,
       date: (map['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      time: TimeOfDay(hour: timeMinutes ~/ 60, minute: timeMinutes % 60),
+      timeMinutes: timeMinutes,
       antecedentDescription: map['antecedentDescription'] as String? ?? '',
       setting: map['setting'] as String? ?? '',
       behaviorDescription: map['behaviorDescription'] as String? ?? '',
@@ -68,7 +66,7 @@ class PositiveMomentModel {
     return {
       'type': 'positiveMoment',
       'date': Timestamp.fromDate(date),
-      'time': time.hour * 60 + time.minute,
+      'time': timeMinutes,
       'antecedentDescription': antecedentDescription,
       'setting': setting,
       'behaviorDescription': behaviorDescription,
