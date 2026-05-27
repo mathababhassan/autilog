@@ -1,6 +1,9 @@
 import 'package:equatable/equatable.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// Sentinel for nullable copyWith fields
+const _clear = Object();
+
 /// Rating scale for sleep and mood
 enum Rating { bad, poor, average, good, excellent }
 
@@ -42,6 +45,51 @@ class DailySummaryModel extends Equatable {
     this.therapistComments,
     this.sleepHours,
   });
+
+  DailySummaryModel copyWith({
+    String? childId,
+    DateTime? date,
+    Rating? sleepRating,
+    Object? bedtime = _clear,
+    Object? wakeTime = _clear,
+    Rating? moodRating,
+    bool? breakfastEaten,
+    bool? lunchEaten,
+    bool? dinnerEaten,
+    bool? routineNormal,
+    Object? hadScreenTime = _clear,
+    Object? screenTimeHours = _clear,
+    bool? medicationTaken,
+    Object? notes = _clear,
+    Object? createdBy = _clear,
+    Object? therapistComments = _clear,
+    Object? sleepHours = _clear,
+  }) {
+    return DailySummaryModel(
+      childId: childId ?? this.childId,
+      date: date ?? this.date,
+      sleepRating: sleepRating ?? this.sleepRating,
+      bedtime: bedtime == _clear ? this.bedtime : bedtime as DateTime?,
+      wakeTime: wakeTime == _clear ? this.wakeTime : wakeTime as DateTime?,
+      moodRating: moodRating ?? this.moodRating,
+      breakfastEaten: breakfastEaten ?? this.breakfastEaten,
+      lunchEaten: lunchEaten ?? this.lunchEaten,
+      dinnerEaten: dinnerEaten ?? this.dinnerEaten,
+      routineNormal: routineNormal ?? this.routineNormal,
+      hadScreenTime:
+          hadScreenTime == _clear ? this.hadScreenTime : hadScreenTime as bool?,
+      screenTimeHours: screenTimeHours == _clear
+          ? this.screenTimeHours
+          : screenTimeHours as double?,
+      medicationTaken: medicationTaken ?? this.medicationTaken,
+      notes: notes == _clear ? this.notes : notes as String?,
+      createdBy: createdBy == _clear ? this.createdBy : createdBy as String?,
+      therapistComments: therapistComments == _clear
+          ? this.therapistComments
+          : therapistComments as String?,
+      sleepHours: sleepHours == _clear ? this.sleepHours : sleepHours as int?,
+    );
+  }
 
   /// Convert to Firestore JSON
   Map<String, dynamic> toJson() {

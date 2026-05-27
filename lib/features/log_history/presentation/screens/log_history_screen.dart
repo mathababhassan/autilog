@@ -37,19 +37,16 @@ class LogHistoryScreen extends StatelessWidget {
                     subtitle: Text(
                       "Sleep: ${summary.sleepRating.name}, Mood: ${summary.moodRating.name}",
                     ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.arrow_forward),
-                      onPressed: () {
-                        context.go(
-                          Routes.dailySummary,
-                          extra: {
-                            'parentId': summary.createdBy ?? '',
-                            'childId': summary.childId,
-                            'childName': '', // add if available
-                          },
-                        );
-                      },
-                    ),
+                  trailing: IconButton(
+  icon: const Icon(Icons.arrow_forward),
+  onPressed: () {
+    context.go(
+      Routes.editSummary,        // 👈 use the edit route instead
+      extra: summary,            // 👈 pass the whole DailySummaryModel
+    );
+  },
+),
+
                   ),
                 );
               },

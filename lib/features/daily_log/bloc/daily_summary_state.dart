@@ -44,4 +44,8 @@ class DailySummaryDeleting extends DailySummaryState {
 class DailySummaryDeleted extends DailySummaryState {
   const DailySummaryDeleted();
 }
+class DailySummaryUpdated extends DailySummaryState {
+  const DailySummaryUpdated();
+}
+
 

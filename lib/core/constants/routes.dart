@@ -20,6 +20,9 @@ abstract final class Routes {
 static const String logHistory = '/parent/log/history';
 
 static const String dailySummary = '/parent/log/daily-summary';
+static const editSummary = '/parent/log/edit';
+
+
 
 
   // Child

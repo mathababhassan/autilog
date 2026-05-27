@@ -155,14 +155,17 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
             ),
           );
         }
-        if (state is DailySummarySaved) {
-          showDialog(
-  context: context,
-  barrierDismissible: false,
-  builder: (_) => SummarySavedDialog(childId: widget.childId),
-);
+    if (state is DailySummarySaved) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => SummarySavedDialog(
+      childId: widget.childId, // 👈 pass the required argument
+    ),
+  );
+}
 
-        }
+
       },
       builder: (context, state) {
         final isSaving = state is DailySummarySaving;

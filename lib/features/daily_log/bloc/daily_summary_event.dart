@@ -20,3 +20,11 @@ class DeleteDailySummaryEvent extends DailySummaryEvent {
   final DateTime date;
   const DeleteDailySummaryEvent({required this.childId, required this.date});
 }
+class UpdateDailySummaryEvent extends DailySummaryEvent {
+  final DailySummaryModel summary;
+  const UpdateDailySummaryEvent(this.summary);
+
+  @override
+  List<Object?> get props => [summary];
+}
+

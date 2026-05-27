@@ -68,6 +68,24 @@ class DailySummaryRepository {
       throw Exception("Failed to delete summary: $e");
     }
   }
+Future<void> updateSummary(DailySummaryModel summary) async {
+  final uid = FirebaseAuth.instance.currentUser!.uid;
+  final docId = summary.date.toIso8601String(); // keep consistent with saveSummary
+
+  try {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('children')
+        .doc(summary.childId)
+        .collection('logs')
+        .doc(docId)
+        .set(summary.toJson(), SetOptions(merge: true)); 
+        // 👈 merge ensures updates don’t overwrite missing fields
+  } catch (e) {
+    throw Exception("Failed to update summary: $e");
+  }
+}
 
   Future<void> updateTherapistComments({
     required String childId,

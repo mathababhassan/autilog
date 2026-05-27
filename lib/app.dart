@@ -32,8 +32,11 @@ import 'features/incident_log/presentation/screens/incident_form_screen.dart';
 import 'features/daily_log/presentation/screens/daily_summary_screen.dart';
 import 'features/daily_log/bloc/daily_summary_bloc.dart';
 import 'features/daily_log/data/daily_summary_repository.dart';
+import '../../../../../shared/models/daily_summary_model.dart';
 import 'features/auth/presentation/shared/login_screen.dart';
 import 'features/auth/presentation/shared/forgot_password_screen.dart';
+import '/features/daily_log/presentation/screens/edit_summary_screen.dart';
+
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -200,6 +203,15 @@ class _AppViewState extends State<_AppView> {
             );
           },
         ),
+   GoRoute(
+  path: Routes.editSummary,
+  builder: (context, state) {
+    final summary = state.extra as DailySummaryModel;
+    return EditSummaryScreen(summary: summary);
+  },
+),
+
+
       ],
     );
   }
