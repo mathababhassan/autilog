@@ -133,7 +133,7 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
     // Validate at least one meal was marked Eaten (optional but recommended)
     if (!_breakfastEaten && !_lunchEaten && !_dinnerEaten) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please mark at least one meal as eaten')),
+        const SnackBar(content: Text('Please maryk at least one meal as eaten')),
       );
       return;
     }

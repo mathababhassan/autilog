@@ -10,34 +10,47 @@ class DailySummaryRepository {
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   Future<void> saveSummary(DailySummaryModel summary) async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    final docId = summary.date.toIso8601String(); // unique per day
+    final user = FirebaseAuth.instance.currentUser;
+    print("Current user UID: ${user?.uid}");
+    if (user == null) {
+      print("No user logged in!");
+      throw Exception("User not logged in");
+    }
+    
+    final parentId = user.uid;
+    print("Saving to parentId: $parentId");
+    print("ChildId: ${summary.childId}");
+    final docId = summary.date.toIso8601String();
 
     try {
       await _firestore
-          .collection('users')
-          .doc(uid)
+          .collection('parents')
+          .doc(parentId)
           .collection('children')
           .doc(summary.childId)
-          .collection('logs')
+          .collection('dailySummaries')
           .doc(docId)
-          .set(summary.toJson(), SetOptions(merge: true)); 
-          // 👈 merge ensures hadScreenTime & screenTimeHours are saved safely
+          .set(summary.toJson(), SetOptions(merge: true));
+      print("Save successful!");
     } catch (e) {
+      print("Save failed: $e");
       throw Exception("Failed to save summary: $e");
     }
   }
 
   Future<List<DailySummaryModel>> getSummaries(String childId) async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception("User not logged in");
+    
+    final parentId = user.uid;
 
     try {
       final snapshot = await _firestore
-          .collection('users')
-          .doc(uid)
+          .collection('parents')
+          .doc(parentId)
           .collection('children')
           .doc(childId)
-          .collection('logs')
+          .collection('dailySummaries')
           .orderBy('date', descending: true)
           .get();
 
@@ -53,16 +66,19 @@ class DailySummaryRepository {
     required String childId,
     required DateTime date,
   }) async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception("User not logged in");
+    
+    final parentId = user.uid;
     final docId = date.toIso8601String();
 
     try {
       await _firestore
-          .collection('users')
-          .doc(uid)
+          .collection('parents')
+          .doc(parentId)
           .collection('children')
           .doc(childId)
-          .collection('logs')
+          .collection('dailySummaries')
           .doc(docId)
           .delete();
     } catch (e) {
@@ -75,16 +91,19 @@ class DailySummaryRepository {
     required DateTime date,
     required String comments,
   }) async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception("User not logged in");
+    
+    final parentId = user.uid;
     final docId = date.toIso8601String();
 
     try {
       await _firestore
-          .collection('users')
-          .doc(uid)
+          .collection('parents')
+          .doc(parentId)
           .collection('children')
           .doc(childId)
-          .collection('logs')
+          .collection('dailySummaries')
           .doc(docId)
           .set({"therapistComments": comments}, SetOptions(merge: true));
     } catch (e) {

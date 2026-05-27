@@ -50,6 +50,7 @@ class PositiveMomentRepository {
     final ref = moment.id.isEmpty
         ? _momentsRef(parentId, childId).doc()
         : _momentsRef(parentId, childId).doc(moment.id);
+    print("Saving positive moment to path: parents/$parentId/children/$childId/positiveMoments/${ref.id}");
 
     await ref.set(moment.toMap());
     return ref.id;

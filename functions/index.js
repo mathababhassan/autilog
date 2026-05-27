@@ -2,10 +2,13 @@ const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { onInit } = require("firebase-functions/v2/core");
 
 let db;
+
+// Define secrets at the top level (outside any function)
+const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 
 onInit(async () => {
     if (!admin.apps.length) {
@@ -15,50 +18,51 @@ onInit(async () => {
     console.log("Firebase Admin initialized");
 });
 
-const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
-const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
-
-// ─── TASK 2: Gemini AI Insights ───────────────────────────────────────────────
+// ─── Gemini AI Insights ───────────────────────────────────────────────
 
 exports.onDailySummaryCreated = onDocumentCreated(
   {
-    document: "users/{uid}/children/{childId}/logs/{logId}",
+    document: "parents/{parentId}/children/{childId}/dailySummaries/{summaryId}",
     secrets: [GEMINI_API_KEY],
   },
   async (event) => {
+    // Import Gemini INSIDE the function (lazy load)
+    const { GoogleGenerativeAI } = require("@google/generative-ai");
+    
     const snap = event.data;
     if (!snap) return;
-    const data = snap.data();
-    if (data.type !== "dailySummary") return;
 
-    const { uid, childId } = event.params;
-    const logsRef = db.collection(`users/${uid}/children/${childId}/logs`);
-    const summariesSnap = await logsRef
-      .where("type", "==", "dailySummary")
+    const { parentId, childId } = event.params;
+    
+    // Get daily summaries
+    const summariesRef = db.collection(`parents/${parentId}/children/${childId}/dailySummaries`);
+    const summariesSnap = await summariesRef
       .orderBy("date", "desc")
       .limit(7)
       .get();
 
     const daysLogged = summariesSnap.size;
-    const aiInsightsRef = db.doc(`users/${uid}/children/${childId}/aiInsights`);
+    const aiInsightsRef = db.doc(`parents/${parentId}/children/${childId}/aiInsights`);
 
     if (daysLogged < 7) {
       await aiInsightsRef.set({ isUnlocked: false, daysLogged }, { merge: true });
       return;
     }
 
-    const childSnap = await db.doc(`users/${uid}/children/${childId}`).get();
+    // Get child info
+    const childSnap = await db.doc(`parents/${parentId}/children/${childId}`).get();
     const childData = childSnap.data() || {};
+    const childName = childData.name || "your child";
     const childAge = childData.age || "unknown";
-    const asdLevel = childData.asdLevel || "unknown";
 
     const summaries = summariesSnap.docs.map((d) => d.data());
     const summariesJSON = JSON.stringify(summaries, null, 2);
 
+    // Get positive moments
     let positiveMomentsJSON = "[]";
     try {
       const momentsSnap = await db
-        .collection(`parents/${uid}/children/${childId}/positiveMoments`)
+        .collection(`parents/${parentId}/children/${childId}/positiveMoments`)
         .orderBy("date", "desc")
         .limit(7)
         .get();
@@ -70,7 +74,26 @@ exports.onDailySummaryCreated = onDocumentCreated(
         );
       }
     } catch (err) {
-      console.warn("Could not load positive moments for insights:", err.message);
+      console.warn("Could not load positive moments:", err.message);
+    }
+
+    // Get incidents
+    let incidentsJSON = "[]";
+    try {
+      const incidentsSnap = await db
+        .collection(`parents/${parentId}/children/${childId}/incidents`)
+        .orderBy("date", "desc")
+        .limit(7)
+        .get();
+      if (!incidentsSnap.empty) {
+        incidentsJSON = JSON.stringify(
+          incidentsSnap.docs.map((d) => d.data()),
+          null,
+          2
+        );
+      }
+    } catch (err) {
+      console.warn("Could not load incidents:", err.message);
     }
 
     try {
@@ -78,18 +101,24 @@ exports.onDailySummaryCreated = onDocumentCreated(
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
       const prompt = `You are a clinical behavioral analyst assistant for parents of children with autism.
-Based on the last 7 daily summaries for a child aged ${childAge}, ASD Level ${asdLevel}:
+Child: ${childName}, Age: ${childAge}
+
+Based on the last 7 daily summaries (sleep, mood, meals, routine):
 ${summariesJSON}
 
-Recent positive moments logged by the parent:
+Recent positive moments logged:
 ${positiveMomentsJSON}
+
+Recent behavioral incidents (meltdowns, triggers, severity):
+${incidentsJSON}
 
 Respond ONLY with this JSON (no markdown, no extra text):
 {
   "summary": "2-3 sentence plain-language summary of this week's patterns",
   "progressDirection": "improving|stable|needs_attention",
   "tips": ["tip1", "tip2", "tip3"],
-  "positiveMomentsHighlight": "1 sentence highlighting a positive trend"
+  "positiveMomentsHighlight": "1 sentence highlighting a positive trend",
+  "incidentPattern": "1 sentence about incident patterns if any"
 }`;
 
       const result = await model.generateContent(prompt);
@@ -106,6 +135,7 @@ Respond ONLY with this JSON (no markdown, no extra text):
             progressDirection: insights.progressDirection,
             tips: insights.tips,
             positiveMomentsHighlight: insights.positiveMomentsHighlight,
+            incidentPattern: insights.incidentPattern,
           },
         },
         { merge: true }
@@ -120,7 +150,7 @@ Respond ONLY with this JSON (no markdown, no extra text):
   }
 );
 
-// ─── TASK 3: Patient Link Backend ─────────────────────────────────────────────
+// ─── Patient Link Backend ─────────────────────────────────────────────
 
 exports.sendLinkRequest = onCall(
   { secrets: [GMAIL_APP_PASSWORD] },
@@ -150,13 +180,13 @@ exports.sendLinkRequest = onCall(
     const therapistId = therapistDoc.id;
     const therapistData = therapistDoc.data();
 
-    const childSnap = await db.doc(`users/${parentId}/children/${childId}`).get();
+    const childSnap = await db.doc(`parents/${parentId}/children/${childId}`).get();
     if (!childSnap.exists) {
       throw new HttpsError("not-found", "Child not found.");
     }
     const childData = childSnap.data();
 
-    const parentSnap = await db.doc(`users/${parentId}`).get();
+    const parentSnap = await db.doc(`parents/${parentId}`).get();
     const parentData = parentSnap.data() || {};
 
     const existingRequest = await db
@@ -253,7 +283,7 @@ exports.acceptLinkRequest = onCall(async (request) => {
   });
 
   batch.set(
-    db.doc(`users/${parentId}/children/${childId}/linkedTherapists/${therapistId}`),
+    db.doc(`parents/${parentId}/children/${childId}/linkedTherapists/${therapistId}`),
     {
       therapistName: therapistData.name || "Your therapist",
       linkedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -265,18 +295,6 @@ exports.acceptLinkRequest = onCall(async (request) => {
 
   return { success: true };
 });
-
-// ─── Positive Moment Backend ─────────────────────────────────────────────────
-
-const {
-  onPositiveMomentCreated,
-  onPositiveMomentUpdated,
-  onPositiveMomentDeleted,
-} = require("./positive_moment");
-
-exports.onPositiveMomentCreated = onPositiveMomentCreated;
-exports.onPositiveMomentUpdated = onPositiveMomentUpdated;
-exports.onPositiveMomentDeleted = onPositiveMomentDeleted;
 
 exports.rejectLinkRequest = onCall(async (request) => {
   if (!request.auth) {
@@ -301,3 +319,15 @@ exports.rejectLinkRequest = onCall(async (request) => {
 
   return { success: true };
 });
+
+// ─── Positive Moment Backend ─────────────────────────────────────────
+
+const {
+  onPositiveMomentCreated,
+  onPositiveMomentUpdated,
+  onPositiveMomentDeleted,
+} = require("./positive_moment");
+
+exports.onPositiveMomentCreated = onPositiveMomentCreated;
+exports.onPositiveMomentUpdated = onPositiveMomentUpdated;
+exports.onPositiveMomentDeleted = onPositiveMomentDeleted;
