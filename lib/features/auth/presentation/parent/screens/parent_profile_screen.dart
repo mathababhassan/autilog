@@ -334,16 +334,19 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
   }
 
   Future<void> _saveChanges() async {
-    await FirebaseFirestore.instance
-        .collection('parents')
-        .doc(widget.uid)
-        .update({
-      'name': _nameController.text.trim(),
-      'gender': _selectedGender,
-      if (_newPhotoPath != null) 'profilePhotoPath': _newPhotoPath,
-    });
-    setState(() => _isEditing = false);
-  }
+  final uid = FirebaseAuth.instance.currentUser!.uid; // 👈 actual auth UID
+
+  await FirebaseFirestore.instance
+      .collection('parents')
+      .doc(uid) // 👈 must match request.auth.uid
+      .update({
+    'name': _nameController.text.trim(),
+    'gender': _selectedGender,
+    if (_newPhotoPath != null) 'profilePhotoPath': _newPhotoPath,
+  });
+
+  setState(() => _isEditing = false);
+}
 
   @override
   Widget build(BuildContext context) {
@@ -574,17 +577,18 @@ class _ChildCardState extends State<_ChildCard> {
   }
 
   Future<void> _saveChild() async {
-    await FirebaseFirestore.instance
-        .collection('parents')
-        .doc(widget.parentId)
-        .collection('children')
-        .doc(widget.childId)
-        .update({
-      'name': _nameController.text.trim(),
-      'asdSeverity': _selectedSeverity,
-    });
-    setState(() => _isEditing = false);
-  }
+  final uid = FirebaseAuth.instance.currentUser!.uid; // 👈 actual auth UID
+
+  await FirebaseFirestore.instance
+      .collection('parents')
+      .doc(uid) // 👈 must match request.auth.uid
+      .collection('children')
+      .doc(widget.childId)
+      .update({
+    'name': _nameController.text.trim(),
+    'asdSeverity': _selectedSeverity,
+  });
+}
 
   @override
   Widget build(BuildContext context) {
