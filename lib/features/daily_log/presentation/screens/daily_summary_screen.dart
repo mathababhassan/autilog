@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:autilog/shared/models/daily_summary_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../../../core/constants/routes.dart';
 import '../../../../../features/daily_log/bloc/daily_summary_bloc.dart';
@@ -11,6 +13,8 @@ import '../../../../../features/daily_log/data/daily_summary_repository.dart';
 import '../../../../../shared/models/daily_summary_model.dart';
 import '../widgets/sleep_details_sheet.dart';
 import '../widgets/summary_saved_dialog.dart';
+import '../../../../../core/theme/theme.dart';
+import '../widgets/meal_details_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry point
@@ -52,6 +56,7 @@ class _DailySummaryView extends StatefulWidget {
   final String childName;
   final String parentId;
 
+
   const _DailySummaryView({
     required this.childId,
     required this.childName,
@@ -70,11 +75,21 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
   bool _breakfastEaten = false;
   bool _lunchEaten = false;
   bool _dinnerEaten = false;
-  bool _routineNormal = true;
+  String? _breakfastDetails; 
+  String? _lunchDetails;         
+  String? _dinnerDetails;         
+  bool? _routineNormal;
   bool? _hadScreenTime;
   final _screenTimeController = TextEditingController();
   bool? _tookMedication;
   final _notesController = TextEditingController();
+  String? _therapistName;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTherapistName();
+  }
 
   @override
   void dispose() {
@@ -82,6 +97,7 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
     _notesController.dispose();
     super.dispose();
   }
+    
 
   DateTime? _toDateTime(TimeOfDay? time) {
     if (time == null) return null;
@@ -89,7 +105,73 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
     return DateTime(now.year, now.month, now.day, time.hour, time.minute);
   }
 
-  void _submit() {
+    void _submit() {
+    // Validate Sleep Rating
+    if (_sleepRating == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please rate how well your child slept')),
+      );
+      return;
+    }
+
+    // Validate Morning Mood
+    if (_moodRating == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please rate your child\'s morning mood')),
+      );
+      return;
+    }
+
+    // Validate Routine
+    if (_routineNormal == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please indicate if routine was normal')),
+      );
+      return;
+    }
+
+    // Validate at least one meal was marked Eaten (optional but recommended)
+    if (!_breakfastEaten && !_lunchEaten && !_dinnerEaten) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please mark at least one meal as eaten')),
+      );
+      return;
+    }
+
+    // Validate screen time question was answered
+    if (_hadScreenTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please answer if child had screen time 1 hour before bed')),
+      );
+      return;
+    }
+
+    // Validate screen time hours if parent said Yes
+    if (_hadScreenTime == true) {
+      final hoursText = _screenTimeController.text.trim();
+      if (hoursText.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter screen time hours')),
+        );
+        return;
+      }
+      final hours = double.tryParse(hoursText);
+      if (hours == null || hours <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid number of hours')),
+        );
+        return;
+      }
+    }
+
+    // Validate medication taken selection
+    if (_tookMedication == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please indicate if medication was taken')),
+      );
+      return;
+    }
+    
     final uid = FirebaseAuth.instance.currentUser?.uid ?? widget.parentId;
 
     final summary = DailySummaryModel(
@@ -102,7 +184,10 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
       breakfastEaten: _breakfastEaten,
       lunchEaten: _lunchEaten,
       dinnerEaten: _dinnerEaten,
-      routineNormal: _routineNormal,
+      breakfastDetails: _breakfastDetails,   
+      lunchDetails: _lunchDetails,         
+      dinnerDetails: _dinnerDetails,     
+      routineNormal: _routineNormal ?? true,
       hadScreenTime: _hadScreenTime,
       screenTimeHours: _hadScreenTime == true
           ? double.tryParse(_screenTimeController.text)
@@ -139,6 +224,93 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
     );
   }
 
+  void _showMealDetails(String meal, String? currentDetails, Function(String?) onSave) {
+  final controller = TextEditingController(text: currentDetails);
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: Text('$meal Details'),
+      content: TextField(
+        controller: controller,
+        maxLines: 3,
+        decoration: InputDecoration(
+          hintText: 'Add details about $meal...',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            onSave(controller.text.trim().isEmpty ? null : controller.text.trim());
+            Navigator.pop(context);
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showAllMealDetails() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => MealDetailsSheet(
+        breakfastEaten: _breakfastEaten,
+        lunchEaten: _lunchEaten,
+        dinnerEaten: _dinnerEaten,
+        initialBreakfastDetails: _breakfastDetails,
+        initialLunchDetails: _lunchDetails,
+        initialDinnerDetails: _dinnerDetails,
+        onSave: (breakfast, lunch, dinner) {
+          setState(() {
+            _breakfastDetails = breakfast;
+            _lunchDetails = lunch;
+            _dinnerDetails = dinner;
+          });
+        },
+      ),
+    );
+  }
+
+  void _fetchTherapistName() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      setState(() => _therapistName = 'Dr. Sara');
+      return;
+    }
+    
+    try {
+      final childDoc = await FirebaseFirestore.instance
+          .collection('parents')
+          .doc(uid)
+          .collection('children')
+          .doc(widget.childId)
+          .get();
+      
+      final linkedTherapistId = childDoc.data()?['linkedTherapistId'] as String?;
+      if (linkedTherapistId != null && linkedTherapistId.isNotEmpty) {
+        final therapistDoc = await FirebaseFirestore.instance
+            .collection('therapists')
+            .doc(linkedTherapistId)
+            .get();
+        final name = therapistDoc.data()?['name'] as String?;
+        setState(() => _therapistName = name ?? 'Dr. Sara');
+      } else {
+        setState(() => _therapistName = 'Dr. Sara');
+      }
+    } catch (e) {
+      setState(() => _therapistName = 'Dr. Sara');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
@@ -157,15 +329,18 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
         }
         if (state is DailySummarySaved) {
           showDialog(
-  context: context,
-  barrierDismissible: false,
-  builder: (_) => SummarySavedDialog(childId: widget.childId),
-);
-
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => SummarySavedDialog(
+              childId: widget.childId,
+              childName: widget.childName,
+              date: DateTime.now(),
+            ),
+          );
         }
       },
       builder: (context, state) {
-        final isSaving = state is DailySummarySaving;
+      final isSaving = state is DailySummarySaving;
 
         return Scaffold(
           backgroundColor: const Color(0xFFF9F9F9),
@@ -204,7 +379,8 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
                             setState(() => _sleepRating = r),
                       ),
                       const SizedBox(height: 8),
-                      _AddDetailsButton(onTap: _showSleepDetails),
+                      if (_sleepRating != null)
+                        _AddDetailsButton(onTap: _showSleepDetails),
                       if (_bedtime != null || _wakeTime != null) ...[
                         const SizedBox(height: 8),
                         _SleepDetailChips(
@@ -267,8 +443,8 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      _AddDetailsButton(onTap: () {}),
-                      const SizedBox(height: 28),
+                      if (_breakfastEaten || _lunchEaten || _dinnerEaten)
+                        _AddDetailsButton(onTap: _showAllMealDetails),
 
                       // ── Section 4: Routine ────────────────────────────────
                       const _SectionTitle('Section 4: Routine'),
@@ -287,7 +463,7 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
                       const SizedBox(height: 28),
 
                       // ── Therapist questions ───────────────────────────────
-                      const _SectionTitle('Added by Dr. Sara'),
+                      _SectionTitle('Added by ${_therapistName ?? "Dr. Sara"}'),
                       const SizedBox(height: 16),
                       Text(
                         'Did ${widget.childName} have screen time 1 hour before bed?',
@@ -338,11 +514,9 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
                         child: ElevatedButton(
                           onPressed: isSaving ? null : _submit,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1A7A6E),
+                            backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
-                            disabledBackgroundColor:
-                                const Color(0xFF1A7A6E)
-                                    .withOpacity(0.6),
+                            disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -381,7 +555,7 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
             onTap: (i) {
               if (i == 0) context.go(Routes.parentHome);
             },
-            selectedItemColor: const Color(0xFFFF8A00),
+            selectedItemColor:  AppColors.primary,
             unselectedItemColor: Colors.black38,
             type: BottomNavigationBarType.fixed,
             elevation: 12,
@@ -467,7 +641,7 @@ class _ScreenTimeInputRow extends StatelessWidget {
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: const BorderSide(
-                  color: Color(0xFFFF8A00),
+                  color: AppColors.primary,
                   width: 1.5,
                 ),
               ),
@@ -486,7 +660,7 @@ class _ScreenTimeInputRow extends StatelessWidget {
             child: ElevatedButton(
               onPressed: () => FocusScope.of(context).unfocus(),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A7A6E),
+                backgroundColor: AppColors.secondary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -548,9 +722,9 @@ class _BannerDelegate extends SliverPersistentHeaderDelegate {
 
     return ClipRRect(
       borderRadius:
-          BorderRadius.vertical(bottom: Radius.circular(radius)),
-      child: Container(
-        color: const Color(0xFFFF8A00),
+        BorderRadius.vertical(bottom: Radius.circular(radius)),
+        child: Container(
+        color: AppColors.primary,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -780,18 +954,18 @@ class _SleepDetailChips extends StatelessWidget {
         if (bedtime != null)
           Chip(
             label: Text('Bedtime: ${_fmt(bedtime!)}'),
-            backgroundColor: const Color(0xFFFFF3E0),
+            backgroundColor: AppColors.primary20,
             labelStyle: const TextStyle(
-                fontSize: 12, color: Color(0xFFFF8A00)),
-            side: const BorderSide(color: Color(0xFFFF8A00)),
+                fontSize: 12, color: AppColors.primary),
+            side: const BorderSide(color: AppColors.primary),
           ),
         if (wakeTime != null)
           Chip(
             label: Text('Wake: ${_fmt(wakeTime!)}'),
-            backgroundColor: const Color(0xFFFFF3E0),
+            backgroundColor: AppColors.primary20,
             labelStyle: const TextStyle(
-                fontSize: 12, color: Color(0xFFFF8A00)),
-            side: const BorderSide(color: Color(0xFFFF8A00)),
+                fontSize: 12, color: AppColors.primary),
+            side: const BorderSide(color: AppColors.primary),
           ),
       ],
     );
@@ -813,16 +987,15 @@ class _AddDetailsButton extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
-            color: const Color(0xFFFF8A00).withOpacity(0.08),
+            color: AppColors.primary20,
             borderRadius: BorderRadius.circular(20),
           ),
           child: const Text(
             '+Add Details',
             style: TextStyle(
-              color: Color(0xFFFF8A00),
+              color: AppColors.primary,
               fontWeight: FontWeight.w600,
               fontSize: 13,
             ),
@@ -861,14 +1034,14 @@ class _MealCard extends StatelessWidget {
       onTap: () => onToggle(!eaten),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
+                decoration: BoxDecoration(
           color: eaten
-              ? const Color(0xFFFF8A00).withOpacity(0.08)
+              ? AppColors.primary20
               : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: eaten
-                ? const Color(0xFFFF8A00)
+                ? AppColors.primary
                 : const Color(0xFFE0E0E0),
             width: eaten ? 1.5 : 1,
           ),
@@ -882,7 +1055,7 @@ class _MealCard extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
                 color: eaten
-                    ? const Color(0xFFFF8A00)
+                    ? AppColors.primary
                     : const Color(0xFF1A1A1A),
               ),
             ),
@@ -892,7 +1065,7 @@ class _MealCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 color:
-                    eaten ? const Color(0xFFFF8A00) : Colors.black38,
+                    eaten ? AppColors.primary : Colors.black38,
               ),
             ),
           ],
@@ -951,14 +1124,14 @@ class _YesNoChip extends StatelessWidget {
       child: Container(
         padding:
             const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
-        decoration: BoxDecoration(
+                decoration: BoxDecoration(
           color: selected
-              ? const Color(0xFFFF8A00).withOpacity(0.08)
+              ? AppColors.primary20
               : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected
-                ? const Color(0xFFFF8A00)
+                ? AppColors.primary
                 : const Color(0xFFE0E0E0),
             width: selected ? 1.5 : 1,
           ),
@@ -967,7 +1140,7 @@ class _YesNoChip extends StatelessWidget {
           label,
           style: TextStyle(
             color: selected
-                ? const Color(0xFFFF8A00)
+                ? AppColors.primary
                 : const Color(0xFF1A1A1A),
             fontWeight:
                 selected ? FontWeight.w600 : FontWeight.normal,

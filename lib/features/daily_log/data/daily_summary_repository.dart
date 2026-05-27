@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../shared/models/daily_summary_model.dart';
+import 'package:autilog/shared/models/daily_summary_model.dart';
 
 class DailySummaryRepository {
   final FirebaseFirestore _firestore;

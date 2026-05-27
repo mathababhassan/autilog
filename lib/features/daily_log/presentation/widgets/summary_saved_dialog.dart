@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../../shared/widgets/success_animation_widget.dart';
 import '../../../../../core/constants/routes.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../../core/theme/theme.dart';
 
 class SummarySavedDialog extends StatelessWidget {
-  final String childId; // 👈 receive childId so we can pass it to Log History
+  final String childId;
+  final String childName;
+  final DateTime date;
 
   const SummarySavedDialog({
     super.key,
     required this.childId,
+    required this.childName,
+    required this.date,
   });
 
   @override
@@ -28,8 +34,13 @@ class SummarySavedDialog extends StatelessWidget {
               "Daily Summary Saved!",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 8),
+            Text(
+              "$childName's summary for ${_formatDate(date)} has been saved.",
+              style: const TextStyle(fontSize: 14, color: Colors.black54),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 24),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               mainAxisSize: MainAxisSize.min,
@@ -38,9 +49,11 @@ class SummarySavedDialog extends StatelessWidget {
                   width: 140,
                   child: ElevatedButton(
                     onPressed: () {
-                      // 👇 Pass childId into GoRouter extra
                       context.go(Routes.logHistory, extra: childId);
                     },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.secondary,
+                    ),
                     child: const Text("View Log History"),
                   ),
                 ),
@@ -49,7 +62,6 @@ class SummarySavedDialog extends StatelessWidget {
                   width: 140,
                   child: ElevatedButton(
                     onPressed: () {
-                      // 👇 Use GoRouter for consistency
                       context.go(Routes.parentHome);
                     },
                     child: const Text("Back to Home"),
@@ -61,5 +73,9 @@ class SummarySavedDialog extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return DateFormat('EEEE, d MMMM').format(date);
   }
 }

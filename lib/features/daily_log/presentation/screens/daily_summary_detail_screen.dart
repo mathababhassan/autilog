@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:autilog/shared/models/daily_summary_model.dart';
 
 class SleepDetailsSheet extends StatefulWidget {
   final TimeOfDay? initialBedtime;
