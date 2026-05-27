@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../../core/constants/routes.dart';
+import '../../../../../features/incident_log/presentation/screens/logs_list_screen.dart';
 import '../../../../../features/incident_log/presentation/widgets/log_type_sheet.dart';
 
 class ParentHomeScreen extends StatefulWidget {
@@ -21,9 +22,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9F9),
-      body: _currentIndex == 0
-          ? const _DashboardTab()
-          : const _PlaceholderTab(),
+      body: switch (_currentIndex) {
+        0 => const _DashboardTab(),
+        1 => const LogsListTab(),
+        _ => const _PlaceholderTab(),
+      },
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (i) => setState(() => _currentIndex = i),

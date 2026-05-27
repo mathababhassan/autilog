@@ -32,6 +32,11 @@ import 'features/incident_log/presentation/screens/incident_form_screen.dart';
 import 'features/daily_log/presentation/screens/daily_summary_screen.dart';
 import 'features/daily_log/bloc/daily_summary_bloc.dart';
 import 'features/daily_log/data/daily_summary_repository.dart';
+import 'features/positive_moment/positive_moment_route_args.dart';
+import 'features/positive_moment/presentation/screens/positive_moment_detail_screen.dart';
+import 'features/positive_moment/presentation/screens/positive_moment_form_screen.dart';
+import 'features/video_player/presentation/screens/video_player_screen.dart';
+
 import 'features/auth/presentation/shared/login_screen.dart';
 import 'features/auth/presentation/shared/forgot_password_screen.dart';
 
@@ -202,6 +207,51 @@ class _AppViewState extends State<_AppView> {
         ),
       ],
     );
+    ),
+    GoRoute(
+      path: Routes.incidentDetail,
+      builder: (context, state) {
+        final args = state.extra as IncidentDetailArgs?;
+        if (args == null) return const SizedBox.shrink();
+        return IncidentDetailScreen(args: args);
+      },
+    ),
+    GoRoute(
+      path: Routes.positiveMomentForm,
+      builder: (context, state) {
+        final args = state.extra is PositiveMomentFormArgs
+            ? state.extra! as PositiveMomentFormArgs
+            : positiveMomentFormArgsFromUri(state.uri);
+        if (args == null) {
+          return const Scaffold(
+            body: Center(child: Text('Missing patient for positive moment log')),
+          );
+        }
+        return PositiveMomentFormScreen(
+          patientId: args.patientId,
+          patientName: args.patientName,
+        );
+      },
+    ),
+    GoRoute(
+      path: Routes.positiveMomentDetail,
+      builder: (context, state) {
+        final args = state.extra as PositiveMomentDetailArgs?;
+        if (args == null) return const SizedBox.shrink();
+        return PositiveMomentDetailScreen(args: args);
+      },
+    ),
+    GoRoute(
+      path: Routes.videoPlayer,
+      builder: (context, state) {
+        final videoUrl = state.extra as String?;
+        if (videoUrl == null) return const SizedBox.shrink();
+        return VideoPlayerScreen(videoUrl: videoUrl);
+      },
+    ),
+  ],
+);
+
   }
 
   @override

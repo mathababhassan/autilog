@@ -21,6 +21,22 @@ static const String logHistory = '/parent/log/history';
 
 static const String dailySummary = '/parent/log/daily-summary';
 
+  static const String positiveMomentForm = '/parent/log/positive_moment';
+  static const String positiveMomentDetail = '/parent/log/positive_moment_detail';
+
+  /// Navigates to the positive-moment form with patient context in the URI.
+  static String positiveMomentFormLocation({
+    required String patientId,
+    required String patientName,
+  }) {
+    return Uri(
+      path: positiveMomentForm,
+      queryParameters: {
+        'patientId': patientId,
+        'patientName': patientName,
+      },
+    ).toString();
+  }
 
   // Child
   static const String childOnboarding = '/child-onboarding';
@@ -28,4 +44,5 @@ static const String dailySummary = '/parent/log/daily-summary';
 
   // shared
   static const String forgotPassword = '/auth/forgot-password';
+  static const String videoPlayer = '/video-player';
 }

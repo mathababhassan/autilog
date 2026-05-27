@@ -1,119 +1,100 @@
-import 'package:equatable/equatable.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Rating scale for sleep and mood
-enum Rating { bad, poor, average, good, excellent }
-
-class DailySummaryModel extends Equatable {
+class DailySummary {
+  final String id;
+  final String parentId;
   final String childId;
   final DateTime date;
-  final Rating sleepRating;
-  final DateTime? bedtime;
-  final DateTime? wakeTime;
-  final Rating moodRating;
+  
+  // Section 1: Sleep
+  final String sleepQuality; // 'Bad', 'Poor', 'Average', 'Good', 'Excellent'
+  final String? bedtime;  // Store as string like "22:00" (10:00 PM)
+  final String? wakeTime; // Store as string like "06:30" (6:30 AM)
+  final String? sleepDetails;
+  
+  // Section 2: Morning Mood
+  final String morningMood; // 'Bad', 'Poor', 'Average', 'Good', 'Excellent'
+  
+  // Section 3: Meals
   final bool breakfastEaten;
   final bool lunchEaten;
   final bool dinnerEaten;
-  final bool routineNormal;
-  final bool? hadScreenTime;
-  final double? screenTimeHours;
-  final bool medicationTaken;
-  final String? notes;
-  final String? createdBy;
-  final String? therapistComments;
-  final int? sleepHours;
+  final String? breakfastDetails;
+  final String? lunchDetails;
+  final String? dinnerDetails;
+  
+  // Section 4: Routine
+  final bool isRoutineNormal;
+  
+  // TODO: Future feature - Therapist custom questions
+  // Will be implemented in a later sprint when therapist review system is built
+  
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
-  const DailySummaryModel({
+  DailySummary({
+    required this.id,
+    required this.parentId,
     required this.childId,
     required this.date,
-    required this.sleepRating,
+    required this.sleepQuality,
     this.bedtime,
     this.wakeTime,
-    required this.moodRating,
+    this.sleepDetails,
+    required this.morningMood,
     required this.breakfastEaten,
     required this.lunchEaten,
     required this.dinnerEaten,
-    required this.routineNormal,
-    this.hadScreenTime,
-    this.screenTimeHours,
-    required this.medicationTaken,
-    this.notes,
-    this.createdBy,
-    this.therapistComments,
-    this.sleepHours,
+    this.breakfastDetails,
+    this.lunchDetails,
+    this.dinnerDetails,
+    required this.isRoutineNormal,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
-  /// Convert to Firestore JSON
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toMap() {
     return {
+      'parentId': parentId,
       'childId': childId,
       'date': Timestamp.fromDate(date),
-      'sleepRating': sleepRating.index,
-      'bedtime': bedtime != null ? Timestamp.fromDate(bedtime!) : null,
-      'wakeTime': wakeTime != null ? Timestamp.fromDate(wakeTime!) : null,
-      'moodRating': moodRating.index,
+      'sleepQuality': sleepQuality,
+      'bedtime': bedtime,
+      'wakeTime': wakeTime,
+      'sleepDetails': sleepDetails,
+      'morningMood': morningMood,
       'breakfastEaten': breakfastEaten,
       'lunchEaten': lunchEaten,
       'dinnerEaten': dinnerEaten,
-      'routineNormal': routineNormal,
-      'hadScreenTime': hadScreenTime,
-      'screenTimeHours': screenTimeHours,
-      'medicationTaken': medicationTaken,
-      'notes': notes,
-      'createdBy': createdBy,
-      'therapistComments': therapistComments,
-      'sleepHours': sleepHours,
+      'breakfastDetails': breakfastDetails,
+      'lunchDetails': lunchDetails,
+      'dinnerDetails': dinnerDetails,
+      'isRoutineNormal': isRoutineNormal,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': Timestamp.fromDate(updatedAt),
     };
   }
 
-  /// Robust parser for Firestore values
-  static DateTime? _parseDate(dynamic value) {
-    if (value == null) return null;
-    if (value is Timestamp) return value.toDate();
-    if (value is String) return DateTime.tryParse(value);
-    return null;
-  }
-
-  factory DailySummaryModel.fromJson(Map<String, dynamic> json) {
-    return DailySummaryModel(
-      childId: json['childId'] as String,
-      date: _parseDate(json['date']) ?? DateTime.now(),
-      sleepRating: Rating.values[json['sleepRating'] as int],
-      bedtime: _parseDate(json['bedtime']),
-      wakeTime: _parseDate(json['wakeTime']),
-      moodRating: Rating.values[json['moodRating'] as int],
-      breakfastEaten: json['breakfastEaten'] as bool,
-      lunchEaten: json['lunchEaten'] as bool,
-      dinnerEaten: json['dinnerEaten'] as bool,
-      routineNormal: json['routineNormal'] as bool,
-      hadScreenTime: json['hadScreenTime'] as bool?,
-      screenTimeHours: (json['screenTimeHours'] as num?)?.toDouble(),
-      medicationTaken: json['medicationTaken'] as bool,
-      notes: json['notes'] as String?,
-      createdBy: json['createdBy'] as String?,
-      therapistComments: json['therapistComments'] as String?,
-      sleepHours: json['sleepHours'] as int?,
+  factory DailySummary.fromMap(Map<String, dynamic> map, String id) {
+    return DailySummary(
+      id: id,
+      parentId: map['parentId'] as String,
+      childId: map['childId'] as String,
+      date: (map['date'] as Timestamp).toDate(),
+      sleepQuality: map['sleepQuality'] as String? ?? 'Average',
+      bedtime: map['bedtime'] as String?,
+      wakeTime: map['wakeTime'] as String?,
+      sleepDetails: map['sleepDetails'] as String?,
+      morningMood: map['morningMood'] as String? ?? 'Average',
+      breakfastEaten: map['breakfastEaten'] as bool? ?? false,
+      lunchEaten: map['lunchEaten'] as bool? ?? false,
+      dinnerEaten: map['dinnerEaten'] as bool? ?? false,
+      breakfastDetails: map['breakfastDetails'] as String?,
+      lunchDetails: map['lunchDetails'] as String?,
+      dinnerDetails: map['dinnerDetails'] as String?,
+      isRoutineNormal: map['isRoutineNormal'] as bool? ?? true,
+      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      updatedAt: (map['updatedAt'] as Timestamp).toDate(),
     );
   }
-
-  @override
-  List<Object?> get props => [
-        childId,
-        date,
-        sleepRating,
-        bedtime,
-        wakeTime,
-        moodRating,
-        breakfastEaten,
-        lunchEaten,
-        dinnerEaten,
-        routineNormal,
-        hadScreenTime,
-        screenTimeHours,
-        medicationTaken,
-        notes,
-        createdBy,
-        therapistComments,
-        sleepHours,
-      ];
 }

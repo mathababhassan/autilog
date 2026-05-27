@@ -7,6 +7,8 @@ import '../../../../shared/models/child_model.dart';
 import '../../../../shared/models/incident_model.dart';
 import '../../../../shared/models/therapist_feedback_model.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
+import '../../../../shared/widgets/locked_state_badge.dart';
+import '../../../../shared/widgets/video_card.dart';
 import '../../bloc/incident_detail_bloc.dart';
 import '../../bloc/incident_detail_event.dart';
 import '../../bloc/incident_detail_state.dart';
@@ -127,6 +129,7 @@ class _IncidentDetailViewState extends State<_IncidentDetailView> {
       incident: loaded.incident,
       child: loaded.child,
       isDeleting: loaded.actionStatus == IncidentDetailActionStatus.deleting,
+      isLocked: DateTime.now().difference(loaded.incident.createdAt) >= const Duration(hours: 24),
       onDelete: () => _showDeleteSheet(context),
     );
   }
@@ -249,12 +252,14 @@ class _LoadedBody extends StatelessWidget {
     required this.incident,
     required this.child,
     required this.isDeleting,
+    required this.isLocked,
     required this.onDelete,
   });
 
   final IncidentModel incident;
   final ChildModel child;
   final bool isDeleting;
+  final bool isLocked;
   final VoidCallback onDelete;
 
   @override
@@ -363,7 +368,7 @@ class _LoadedBody extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
 
           if (incident.videoUrl != null) ...[
-            _VideoCard(videoUrl: incident.videoUrl!),
+            VideoCard(videoUrl: incident.videoUrl!),
             const SizedBox(height: AppSpacing.lg),
           ],
 
@@ -374,9 +379,14 @@ class _LoadedBody extends StatelessWidget {
 
           _LogFooter(updatedAt: incident.updatedAt),
           const SizedBox(height: AppSpacing.lg),
+          if (isLocked) ...[
+            const LockedStateBadge(),
+            const SizedBox(height: AppSpacing.lg),
+          ],
 
           _ActionButtons(
             isDeleting: isDeleting,
+            isLocked: isLocked,
             onDelete: onDelete,
           ),
 
@@ -605,74 +615,6 @@ class _DidItWorkRow extends StatelessWidget {
   }
 }
 
-// ─── Video Card ───────────────────────────────────────────────
-
-class _VideoCard extends StatelessWidget {
-  const _VideoCard({required this.videoUrl});
-
-  final String videoUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.borderInactive),
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-      ),
-      padding: const EdgeInsets.all(AppSpacing.cardPadding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.videocam_outlined,
-                size: 20,
-                color: AppColors.textMain,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Text('Attached Video', style: AppTextStyles.subtitle),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          GestureDetector(
-            onTap: () => AppSnackbar.showError(context, 'Video playback is coming soon'),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppSpacing.sm),
-              child: Container(
-                height: 180,
-                color: AppColors.borderInactive,
-                alignment: Alignment.center,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.play_arrow_rounded,
-                    color: AppColors.textWhite,
-                    size: 22,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs2),
-          Text(
-            'Tap to play',
-            style:
-                AppTextStyles.tag.copyWith(color: AppColors.textPlaceholder),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ─── Therapist Feedback Card ──────────────────────────────────
 
 class _TherapistFeedbackCard extends StatelessWidget {
@@ -801,14 +743,45 @@ class _LogFooter extends StatelessWidget {
 class _ActionButtons extends StatelessWidget {
   const _ActionButtons({
     required this.isDeleting,
+    required this.isLocked,
     required this.onDelete,
   });
 
   final bool isDeleting;
+  final bool isLocked;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
+    if (isLocked) {
+      return SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: isDeleting ? null : onDelete,
+          icon: isDeleting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.textDisabled,
+                  ),
+                )
+              : const Icon(Icons.delete_outline_rounded, size: 16),
+          label: const Text('Delete'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.textDisabled,
+            side: const BorderSide(color: AppColors.borderInactive),
+            minimumSize: const Size.fromHeight(48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
+            ),
+            textStyle: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
+      );
+    }
+
     return Row(
       children: [
         Expanded(
