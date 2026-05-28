@@ -5,8 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../../core/constants/routes.dart';
-import '../../../../../features/incident_log/presentation/screens/logs_list_screen.dart';
 import '../../../../../features/incident_log/presentation/widgets/log_type_sheet.dart';
+import '../../../../../features/ai_insights/presentation/widgets/ai_insights_preview.dart';
+import '../../../../../features/log_history/presentation/screens/log_history_screen.dart';
 
 class ParentHomeScreen extends StatefulWidget {
   const ParentHomeScreen({super.key});
@@ -24,7 +25,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       backgroundColor: const Color(0xFFF9F9F9),
       body: switch (_currentIndex) {
         0 => const _DashboardTab(),
-        1 => const LogsListTab(),
+        1 => const _LogHistoryTab(),
         _ => const _PlaceholderTab(),
       },
       bottomNavigationBar: BottomNavigationBar(
@@ -98,12 +99,10 @@ class _DashboardTabState extends State<_DashboardTab> {
                 : <QueryDocumentSnapshot>[];
             final hasChild = children.isNotEmpty;
 
-            // Auto-select first child if none selected yet
             if (hasChild && _selectedChildId == null) {
               _selectedChildId = children.first.id;
             }
 
-            // Selected child data
             final selectedChildDoc = hasChild
                 ? children.where((c) => c.id == _selectedChildId).firstOrNull
                 : null;
@@ -114,14 +113,11 @@ class _DashboardTabState extends State<_DashboardTab> {
 
             return CustomScrollView(
               slivers: [
-                // ── App Bar ────────────────────────────────────────────
                 SliverToBoxAdapter(child: _buildAppBar(context, parentName)),
 
-                // ── Child Switcher (only if more than 1 child) ─────────
                 if (children.length > 1)
                   SliverToBoxAdapter(child: _buildChildSwitcher(children)),
 
-                // ── Content based on child state ───────────────────────
                 if (!hasChild) ...[
                   SliverToBoxAdapter(child: _buildNoChildBanner(context)),
                   SliverToBoxAdapter(child: _buildEmptySummaryCards()),
@@ -129,12 +125,24 @@ class _DashboardTabState extends State<_DashboardTab> {
                   SliverToBoxAdapter(child: _buildEmptyActivity()),
                   SliverToBoxAdapter(child: _buildEmptyInsights()),
                 ] else ...[
-                  SliverToBoxAdapter(child: _buildSummaryCards()),
+                  SliverToBoxAdapter(
+                    child: _buildSummaryCards(uid!, _selectedChildId!),
+                  ),
                   SliverToBoxAdapter(
                     child: _buildActions(context, selectedChildName),
                   ),
-                  SliverToBoxAdapter(child: _buildRecentActivity()),
-                  SliverToBoxAdapter(child: _buildInsights(selectedChildName)),
+                  SliverToBoxAdapter(
+                    child: _buildRecentActivity(uid, _selectedChildId!),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 20, 0, 0),
+                      child: AIInsightsPreview(
+                        childId: _selectedChildId ?? '',
+                        childName: selectedChildName,
+                      ),
+                    ),
+                  ),
                 ],
 
                 SliverToBoxAdapter(
@@ -149,8 +157,6 @@ class _DashboardTabState extends State<_DashboardTab> {
       },
     );
   }
-
-  // ── App Bar ──────────────────────────────────────────────────────────────
 
   Widget _buildAppBar(BuildContext context, String parentName) {
     final now = DateTime.now();
@@ -221,8 +227,6 @@ class _DashboardTabState extends State<_DashboardTab> {
     );
   }
 
-  // ── Child Switcher Dropdown ──────────────────────────────────────────────
-
   Widget _buildChildSwitcher(List<QueryDocumentSnapshot> children) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
@@ -287,8 +291,6 @@ class _DashboardTabState extends State<_DashboardTab> {
     );
   }
 
-  // ── No child banner ──────────────────────────────────────────────────────
-
   Widget _buildNoChildBanner(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
@@ -304,19 +306,11 @@ class _DashboardTabState extends State<_DashboardTab> {
           children: [
             const Row(
               children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  color: Color(0xFFFF8A00),
-                  size: 22,
-                ),
+                Icon(Icons.warning_amber_rounded, color: Color(0xFFFF8A00), size: 22),
                 SizedBox(width: 8),
                 Text(
                   'No child profile yet',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.black87,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
                 ),
               ],
             ),
@@ -332,18 +326,10 @@ class _DashboardTabState extends State<_DashboardTab> {
                 onPressed: () => context.push(Routes.childRegistration),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF8A00),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   elevation: 0,
                 ),
-                child: const Text(
-                  'ADD CHILD PROFILE',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: const Text('ADD CHILD PROFILE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -352,28 +338,14 @@ class _DashboardTabState extends State<_DashboardTab> {
     );
   }
 
-  // ── Empty state ──────────────────────────────────────────────────────────
-
   Widget _buildEmptySummaryCards() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
       child: Row(
         children: [
-          Expanded(
-            child: _SummaryCard(
-              title: 'Logs This Week',
-              value: '— —',
-              subtitle: 'Add a child to start',
-            ),
-          ),
+          Expanded(child: _SummaryCard(title: 'Logs This Week', value: '— —', subtitle: 'Add a child to start')),
           const SizedBox(width: 12),
-          Expanded(
-            child: _SummaryCard(
-              title: 'Upcoming Session',
-              value: '— —',
-              subtitle: 'Add a child to start',
-            ),
-          ),
+          Expanded(child: _SummaryCard(title: 'Upcoming Session', value: '— —', subtitle: 'Add a child to start')),
         ],
       ),
     );
@@ -389,19 +361,13 @@ class _DashboardTabState extends State<_DashboardTab> {
             icon: Icons.edit_note_rounded,
             enabled: true,
             onTap: () {
-    final id = _selectedChildId;
-    if (id == null || id.isEmpty) return;
-    context.push(Routes.dailySummary, extra: id);
-  },
+              final id = _selectedChildId;
+              if (id == null || id.isEmpty) return;
+              context.push(Routes.dailySummary, extra: id);
+            },
           ),
           const SizedBox(height: 12),
-          _ActionButton(
-            label: 'LOG AN INCIDENT',
-            icon: Icons.warning_amber_rounded,
-            enabled: false,
-            onTap: null,
-            secondary: true,
-          ),
+          _ActionButton(label: 'LOG AN INCIDENT', icon: Icons.warning_amber_rounded, enabled: false, onTap: null, secondary: true),
         ],
       ),
     );
@@ -413,24 +379,13 @@ class _DashboardTabState extends State<_DashboardTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Recent Activity',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          const Text('Recent Activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.black12),
-            ),
-            child: const Text(
-              'No activity yet. Add a child profile and start logging to see your activity here.',
-              style: TextStyle(color: Colors.black45, fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.black12)),
+            child: const Text('No activity yet. Add a child profile and start logging to see your activity here.', style: TextStyle(color: Colors.black45, fontSize: 14), textAlign: TextAlign.center),
           ),
         ],
       ),
@@ -443,48 +398,56 @@ class _DashboardTabState extends State<_DashboardTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'AI Insights',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          const Text('AI Insights', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.black12),
-            ),
-            child: const Text(
-              'Insights will appear after 7 days of logging. Add a child profile to begin.',
-              style: TextStyle(color: Colors.black45, fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.black12)),
+            child: const Text('Insights will appear after 7 days of logging. Add a child profile to begin.', style: TextStyle(color: Colors.black45, fontSize: 14), textAlign: TextAlign.center),
           ),
         ],
       ),
     );
   }
 
-  // ── Has-child state ──────────────────────────────────────────────────────
+  // ── Real summary cards ───────────────────────────────────────────────────
 
-  Widget _buildSummaryCards() {
+  Widget _buildSummaryCards(String uid, String childId) {
+    final now = DateTime.now();
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    final weekStart = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+    final weekEnd = weekStart.add(const Duration(days: 7));
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
       child: Row(
         children: [
           Expanded(
-            child: _SummaryCard(
-              title: 'Logs This Week',
-              value: '4 / 7',
-              subtitle: 'days logged ✓',
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('parents')
+                  .doc(uid)
+                  .collection('children')
+                  .doc(childId)
+                  .collection('dailySummaries')
+                  .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(weekStart))
+                  .where('date', isLessThan: Timestamp.fromDate(weekEnd))
+                  .snapshots(),
+              builder: (context, snap) {
+                final count = snap.hasData ? snap.data!.docs.length : 0;
+                return _SummaryCard(
+                  title: 'Logs This Week',
+                  value: '$count / 7',
+                  subtitle: count >= 7 ? 'Full week logged ✓' : 'days logged',
+                );
+              },
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: _SummaryCard(
               title: 'Upcoming Session',
-              value: 'Thu 22 Apr',
+              value: 'Thu 12 Jun',
               subtitle: '2:00 PM',
             ),
           ),
@@ -493,33 +456,150 @@ class _DashboardTabState extends State<_DashboardTab> {
     );
   }
 
+  // ── Real recent activity ─────────────────────────────────────────────────
+
+  Widget _buildRecentActivity(String uid, String childId) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _fetchRecentActivity(uid, childId),
+      builder: (context, snap) {
+        final items = snap.data ?? [];
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Recent Activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              if (!snap.hasData)
+                const Center(child: CircularProgressIndicator())
+              else if (items.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.black12)),
+                  child: const Text('No activity yet. Start logging to see your activity here.', style: TextStyle(color: Colors.black45, fontSize: 14), textAlign: TextAlign.center),
+                )
+              else
+                ...items.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final item = entry.value;
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: i < items.length - 1 ? 10 : 0),
+                    child: _ActivityCard(
+                      date: item['date'] as String,
+                      type: item['type'] as String,
+                      detail: item['detail'] as String,
+                      isIncident: item['isIncident'] as bool,
+                    ),
+                  );
+                }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchRecentActivity(String uid, String childId) async {
+    final db = FirebaseFirestore.instance;
+    final base = db.collection('parents').doc(uid).collection('children').doc(childId);
+    final dateFormat = DateFormat('EEE d MMM');
+
+    final results = <Map<String, dynamic>>[];
+
+    // Fetch daily summaries
+    try {
+      final summaries = await base.collection('dailySummaries').orderBy('createdAt', descending: true).limit(3).get();
+      for (final doc in summaries.docs) {
+        final data = doc.data();
+        final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+        final mood = data['moodRating'] as int?;
+        final sleep = data['sleepRating'] as int?;
+        final breakfast = data['breakfastEaten'] as bool? ?? false;
+        final lunch = data['lunchEaten'] as bool? ?? false;
+        final dinner = data['dinnerEaten'] as bool? ?? false;
+        final mealsText = [if (breakfast) 'B', if (lunch) 'L', if (dinner) 'D'].join('+');
+        final detail = [
+          if (sleep != null) 'Sleep $sleep/5',
+          if (mood != null) 'Mood $mood/5',
+          mealsText.isNotEmpty ? 'Meals: $mealsText' : 'Meals skipped',
+        ].join(' · ');
+        results.add({
+          'date': dateFormat.format(createdAt),
+          'type': 'Daily Summary',
+          'detail': detail,
+          'isIncident': false,
+          'sortDate': createdAt,
+        });
+      }
+    } catch (_) {}
+
+    // Fetch incidents
+    try {
+      final incidents = await base.collection('incidents').orderBy('createdAt', descending: true).limit(3).get();
+      for (final doc in incidents.docs) {
+        final data = doc.data();
+        final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+        final severity = data['behaviorSeverity'] as int?;
+        final triggers = (data['antecedentTriggers'] as List<dynamic>?)?.cast<String>() ?? [];
+        final detail = [
+          if (triggers.isNotEmpty) 'Trigger: ${triggers.first}',
+          if (severity != null) 'Severity $severity/5',
+        ].join(' · ');
+        results.add({
+          'date': dateFormat.format(createdAt),
+          'type': 'Behavioral Incident',
+          'detail': detail.isNotEmpty ? detail : 'Incident logged',
+          'isIncident': true,
+          'sortDate': createdAt,
+        });
+      }
+    } catch (_) {}
+
+    // Fetch positive moments
+    try {
+      final moments = await base.collection('positiveMoments').orderBy('createdAt', descending: true).limit(3).get();
+      for (final doc in moments.docs) {
+        final data = doc.data();
+        final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+        final rating = data['positiveBehaviorRating'] as int?;
+        final types = (data['behaviorTypes'] as List<dynamic>?)?.cast<String>() ?? [];
+        final detail = [
+          if (types.isNotEmpty) types.first,
+          if (rating != null) 'Rating $rating/5',
+        ].join(' · ');
+        results.add({
+          'date': dateFormat.format(createdAt),
+          'type': 'Positive Moment',
+          'detail': detail.isNotEmpty ? detail : 'Positive moment logged',
+          'isIncident': false,
+          'sortDate': createdAt,
+        });
+      }
+    } catch (_) {}
+
+    // Sort by most recent and take top 3
+    results.sort((a, b) => (b['sortDate'] as DateTime).compareTo(a['sortDate'] as DateTime));
+    return results.take(3).toList();
+  }
+
   Widget _buildActions(BuildContext context, String childName) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
       child: Column(
         children: [
-      _ActionButton(
-  label: "LOG TODAY'S SUMMARY",
-  icon: Icons.edit_note_rounded,
-  enabled: true,
-  onTap: () {
-    final id = _selectedChildId;
-    if (id == null || id.isEmpty) return;
-
-    final parentId = FirebaseAuth.instance.currentUser?.uid ?? '';
-
-    context.push(
-      Routes.dailySummary,
-      extra: {
-        'parentId': parentId,
-        'childId': id,
-        'childName': childName,
-      },
-    );
-  },
-),
-
-
+          _ActionButton(
+            label: "LOG TODAY'S SUMMARY",
+            icon: Icons.edit_note_rounded,
+            enabled: true,
+            onTap: () {
+              final id = _selectedChildId;
+              if (id == null || id.isEmpty) return;
+              final parentId = FirebaseAuth.instance.currentUser?.uid ?? '';
+              context.push(Routes.dailySummary, extra: {'parentId': parentId, 'childId': id, 'childName': childName});
+            },
+          ),
           const SizedBox(height: 12),
           _ActionButton(
             label: 'LOG AN INCIDENT',
@@ -536,91 +616,6 @@ class _DashboardTabState extends State<_DashboardTab> {
       ),
     );
   }
-
-  Widget _buildRecentActivity() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Recent Activity',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          _ActivityCard(
-            date: 'Mon 19 Apr',
-            type: 'Daily Summary',
-            detail: 'Sleep 4/5 · Mood 3/5 · Meals all eaten',
-            isIncident: false,
-          ),
-          const SizedBox(height: 10),
-          _ActivityCard(
-            date: 'Mon 19 Apr',
-            type: 'Behavioral Incident',
-            detail: 'Trigger: Loud environment · Severity 4/5',
-            isIncident: true,
-          ),
-          const SizedBox(height: 10),
-          _ActivityCard(
-            date: 'Sun 18 Apr',
-            type: 'Daily Summary',
-            detail: 'Sleep 3/5 · Mood 2/5 · Skipped dinner',
-            isIncident: false,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInsights(String childName) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'AI Insights',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF8F0),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: const Color(0xFFFF8A00).withOpacity(0.3),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$childName tends to have better days when sleeping more than 7 hours. Try keeping bedtime consistent this week.',
-                  style: const TextStyle(fontSize: 14, color: Colors.black87),
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {},
-                    child: const Text(
-                      'See all →',
-                      style: TextStyle(
-                        color: Color(0xFFFF8A00),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -632,11 +627,7 @@ class _SummaryCard extends StatelessWidget {
   final String value;
   final String subtitle;
 
-  const _SummaryCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-  });
+  const _SummaryCard({required this.title, required this.value, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -646,35 +637,16 @@ class _SummaryCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.black12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 12, color: Colors.black45),
-          ),
+          Text(title, style: const TextStyle(fontSize: 12, color: Colors.black45)),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFFFF8A00),
-            ),
-          ),
+          Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFFFF8A00))),
           const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
-          ),
+          Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.black54)),
         ],
       ),
     );
@@ -688,13 +660,7 @@ class _ActionButton extends StatelessWidget {
   final VoidCallback? onTap;
   final bool secondary;
 
-  const _ActionButton({
-    required this.label,
-    required this.icon,
-    required this.enabled,
-    required this.onTap,
-    this.secondary = false,
-  });
+  const _ActionButton({required this.label, required this.icon, required this.enabled, required this.onTap, this.secondary = false});
 
   @override
   Widget build(BuildContext context) {
@@ -704,45 +670,16 @@ class _ActionButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
         decoration: BoxDecoration(
-          color: enabled
-              ? (secondary ? Colors.white : const Color(0xFFFF8A00))
-              : Colors.grey.shade100,
+          color: enabled ? (secondary ? Colors.white : const Color(0xFFFF8A00)) : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: enabled
-                ? (secondary ? const Color(0xFFFF8A00) : Colors.transparent)
-                : Colors.grey.shade300,
-          ),
-          boxShadow: enabled
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : [],
+          border: Border.all(color: enabled ? (secondary ? const Color(0xFFFF8A00) : Colors.transparent) : Colors.grey.shade300),
+          boxShadow: enabled ? [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))] : [],
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: enabled
-                  ? (secondary ? const Color(0xFFFF8A00) : Colors.white)
-                  : Colors.grey,
-              size: 24,
-            ),
+            Icon(icon, color: enabled ? (secondary ? const Color(0xFFFF8A00) : Colors.white) : Colors.grey, size: 24),
             const SizedBox(width: 12),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: enabled
-                    ? (secondary ? const Color(0xFFFF8A00) : Colors.white)
-                    : Colors.grey,
-              ),
-            ),
+            Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: enabled ? (secondary ? const Color(0xFFFF8A00) : Colors.white) : Colors.grey)),
           ],
         ),
       ),
@@ -756,15 +693,11 @@ class _ActivityCard extends StatelessWidget {
   final String detail;
   final bool isIncident;
 
-  const _ActivityCard({
-    required this.date,
-    required this.type,
-    required this.detail,
-    required this.isIncident,
-  });
+  const _ActivityCard({required this.date, required this.type, required this.detail, required this.isIncident});
 
   @override
   Widget build(BuildContext context) {
+    final isPositive = type == 'Positive Moment';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -776,10 +709,8 @@ class _ActivityCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            isIncident
-                ? Icons.warning_amber_rounded
-                : Icons.check_circle_outline,
-            color: isIncident ? Colors.red : const Color(0xFFFF8A00),
+            isIncident ? Icons.warning_amber_rounded : isPositive ? Icons.star_rounded : Icons.check_circle_outline,
+            color: isIncident ? Colors.red : isPositive ? const Color(0xFFFF8A00) : const Color(0xFF2D9D78),
             size: 20,
           ),
           const SizedBox(width: 12),
@@ -790,33 +721,31 @@ class _ActivityCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      type,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      date,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black45,
-                      ),
-                    ),
+                    Text(type, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(date, style: const TextStyle(fontSize: 12, color: Colors.black45)),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  detail,
-                  style: const TextStyle(fontSize: 13, color: Colors.black54),
-                ),
+                Text(detail, style: const TextStyle(fontSize: 13, color: Colors.black54)),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Log History Tab
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LogHistoryTab extends StatelessWidget {
+  const _LogHistoryTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return LogHistoryScreen(childId: '');
   }
 }
 
@@ -830,10 +759,7 @@ class _PlaceholderTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Text(
-        'Coming soon',
-        style: TextStyle(color: Colors.black45, fontSize: 16),
-      ),
+      child: Text('Coming soon', style: TextStyle(color: Colors.black45, fontSize: 16)),
     );
   }
 }

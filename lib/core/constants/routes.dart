@@ -10,6 +10,7 @@ abstract final class Routes {
   static const String therapistProfile = '/therapist/profile';
   static const String therapistProfileEdit = '/therapist/profile/edit';
   static const String therapistPatients = '/therapist/patients';
+  static const String patientDetails = '/therapist/patients/details';
 
   // Parent
   static const String registerParent = '/auth/register/parent';
@@ -17,12 +18,15 @@ abstract final class Routes {
   static const String parentProfile = '/parent/profile';
   static const String incidentForm = '/parent/log/incident';
   static const String incidentDetail = '/parent/log/incident-detail';
-static const String logHistory = '/parent/log/history';
+  static const String logHistory = '/parent/log/history';
+  static const String aiInsights = '/parent/ai-insights';
 
-static const String dailySummary = '/parent/log/daily-summary';
+  static const String dailySummary = '/parent/log/daily-summary';
 
   static const String positiveMomentForm = '/parent/log/positive_moment';
   static const String positiveMomentDetail = '/parent/log/positive_moment_detail';
+  static const String dailySummaryDetail = '/parent/log/daily-summary-detail';
+  
 
   /// Navigates to the positive-moment form with patient context in the URI.
   static String positiveMomentFormLocation({

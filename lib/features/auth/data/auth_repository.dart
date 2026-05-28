@@ -68,7 +68,7 @@ class AuthRepository {
   }
 
   // ── Add child ─────────────────────────────────────────────────────────────
-  Future<void> addChild({
+  Future<String> addChild({
     required String parentId,
     required String name,
     required int age,
@@ -81,12 +81,28 @@ class AuthRepository {
         .doc();
 
     await childRef.set({
-      'childId': childRef.id,
+    'childId': childRef.id,
+    'parentId': parentId,
+    'name': name,
+    'age': age,
+    'asdSeverity': asdSeverity,
+    'therapists': [],
+    'createdAt': FieldValue.serverTimestamp(),
+  });
+
+  return childRef.id;
+}
+
+  Future<void> sendLinkRequest({
+    required String parentId,
+    required String childId,
+    required String therapistEmail,
+  }) async {
+    await _firestore.collection('linkRequests').add({
       'parentId': parentId,
-      'name': name,
-      'age': age,
-      'asdSeverity': asdSeverity,
-      'therapists': [],
+      'childId': childId,
+      'therapistEmail': therapistEmail.trim().toLowerCase(),
+      'status': 'pending',
       'createdAt': FieldValue.serverTimestamp(),
     });
   }

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'features/log_history/presentation/screens/log_history_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:autilog/features/splash/presentation/screens/splash_screen.dart';
 
@@ -13,6 +12,7 @@ import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/presentation/shared/role_selection_screen.dart';
 import 'features/auth/presentation/therapist/screens/therapist_registration_screen.dart';
+import 'features/patients/presentation/therapist/screens/patient_details_screen.dart';
 import 'features/auth/presentation/parent/screens/parent_registration_screen.dart';
 import 'features/auth/presentation/parent/screens/child_onboarding_screen.dart';
 import 'features/auth/presentation/parent/screens/child_registration_screen.dart';
@@ -26,17 +26,16 @@ import 'features/profile/therapist/data/therapist_repository.dart';
 import 'features/profile/therapist/presentation/screens/therapist_edit_profile_screen.dart';
 import 'features/profile/therapist/presentation/screens/therapist_home_screen.dart';
 import 'features/profile/therapist/presentation/screens/therapist_profile_overview_screen.dart';
-
 import 'features/incident_log/presentation/screens/incident_detail_screen.dart';
 import 'features/incident_log/presentation/screens/incident_form_screen.dart';
 import 'features/daily_log/presentation/screens/daily_summary_screen.dart';
-import 'features/daily_log/bloc/daily_summary_bloc.dart';
-import 'features/daily_log/data/daily_summary_repository.dart';
+import 'features/daily_log/presentation/screens/daily_summary_detail_screen.dart';
 import 'features/positive_moment/positive_moment_route_args.dart';
 import 'features/positive_moment/presentation/screens/positive_moment_detail_screen.dart';
 import 'features/positive_moment/presentation/screens/positive_moment_form_screen.dart';
 import 'features/video_player/presentation/screens/video_player_screen.dart';
-
+import 'features/ai_insights/presentation/screens/ai_insights_screen.dart';
+import 'features/log_history/presentation/screens/log_history_screen.dart';
 import 'features/auth/presentation/shared/login_screen.dart';
 import 'features/auth/presentation/shared/forgot_password_screen.dart';
 
@@ -153,6 +152,13 @@ class _AppViewState extends State<_AppView> {
         GoRoute(path: Routes.therapistProfile, builder: (_, __) => const TherapistProfileOverviewScreen()),
         GoRoute(path: Routes.therapistProfileEdit, builder: (_, __) => const TherapistEditProfileScreen()),
         GoRoute(path: Routes.therapistPatients, builder: (_, __) => const PatientListScreen()),
+        GoRoute(
+          path: Routes.patientDetails,
+          builder: (context, state) {
+            final args = state.extra as PatientDetailArgs;
+            return PatientDetailsScreen(args: args);
+          },
+        ),
         GoRoute(path: Routes.registerParent, builder: (_, __) => const ParentRegistrationScreen()),
         GoRoute(path: Routes.childOnboarding, builder: (_, __) => const ChildOnboardingScreen()),
         GoRoute(path: Routes.childRegistration, builder: (_, __) => const ChildRegistrationScreen()),
@@ -193,34 +199,54 @@ class _AppViewState extends State<_AppView> {
           },
         ),
         GoRoute(
-          path: Routes.logHistory,
+          path: Routes.dailySummaryDetail,
           builder: (context, state) {
-            final childId = state.extra as String? ?? '';
-            return BlocProvider(
-              create: (_) => DailySummaryBloc(
-                repository: DailySummaryRepository(),
-              ),
-              child: LogHistoryScreen(childId: childId),
+            final args = state.extra as Map<String, dynamic>? ?? {};
+            return DailySummaryDetailScreen(
+              summaryId: args['summaryId'] as String? ?? '',
+              parentId: args['parentId'] as String? ?? '',
+              childId: args['childId'] as String? ?? '',
+              childName: args['childName'] as String? ?? '',
             );
           },
         ),
         GoRoute(
-          path: Routes.positiveMomentForm,
+          path: Routes.logHistory,
           builder: (context, state) {
-            final args = state.extra is PositiveMomentFormArgs
-                ? state.extra! as PositiveMomentFormArgs
-                : positiveMomentFormArgsFromUri(state.uri);
-            if (args == null) {
-              return const Scaffold(
-                body: Center(child: Text('Missing patient for positive moment log')),
-              );
-            }
-            return PositiveMomentFormScreen(
-              patientId: args.patientId,
-              patientName: args.patientName,
+            final childId = state.extra as String? ?? '';
+            return LogHistoryScreen(childId: childId);
+          },
+        ),
+        GoRoute(
+          path: Routes.aiInsights,
+          builder: (context, state) {
+            final args = state.extra as Map<String, dynamic>? ?? {};
+            final childId = args['childId'] as String? ?? '';
+            final childName = args['childName'] as String? ?? '';
+            return AIInsightsScreen(
+              childId: childId,
+              childName: childName,
             );
           },
         ),
+       GoRoute(
+        path: Routes.positiveMomentForm,
+        builder: (context, state) {
+          final args = state.extra is PositiveMomentFormArgs
+              ? state.extra! as PositiveMomentFormArgs
+              : positiveMomentFormArgsFromUri(state.uri);
+          if (args == null) {
+            return const Scaffold(
+              body: Center(child: Text('Missing patient for positive moment log')),
+            );
+          }
+          return PositiveMomentFormScreen(
+            patientId: args.patientId,
+            patientName: args.patientName,
+            existingMoment: args.existingMoment,
+          );
+        },
+      ),
         GoRoute(
           path: Routes.positiveMomentDetail,
           builder: (context, state) {

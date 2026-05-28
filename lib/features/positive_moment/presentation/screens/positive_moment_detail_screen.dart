@@ -11,6 +11,8 @@ import '../../bloc/positive_moment_detail_bloc.dart';
 import '../../bloc/positive_moment_detail_event.dart';
 import '../../bloc/positive_moment_detail_state.dart';
 import '../../data/positive_moment_repository.dart';
+import '../../positive_moment_route_args.dart';
+import '../../../../core/constants/routes.dart';
 
 // ─── Args ─────────────────────────────────────────────────────
 
@@ -158,7 +160,14 @@ class _PositiveMomentDetailViewState extends State<_PositiveMomentDetailView> {
       );
       return;
     }
-    AppSnackbar.showError(context, 'Edit is coming soon');
+    context.push(
+      Routes.positiveMomentForm,
+      extra: PositiveMomentFormArgs(
+        patientId: widget.args.childId,
+        patientName: widget.args.childName,
+        existingMoment: loaded.moment,
+      ),
+    );
   }
 
   void _showDeleteSheet(BuildContext context) {

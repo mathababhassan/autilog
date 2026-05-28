@@ -13,12 +13,36 @@ class PositiveMomentFormCubit extends Cubit<PositiveMomentFormState> {
   PositiveMomentFormCubit({
     required PositiveMomentRepository repository,
     required String childId,
+    PositiveMomentModel? existingMoment,
   })  : _repository = repository,
         _childId = childId,
-        super(PositiveMomentFormState.initial());
+        _existingMoment = existingMoment,
+        super(_buildInitialState(existingMoment));
 
   final PositiveMomentRepository _repository;
   final String _childId;
+  final PositiveMomentModel? _existingMoment;
+
+  bool get isEditing => _existingMoment != null;
+
+  static PositiveMomentFormState _buildInitialState(PositiveMomentModel? existing) {
+    if (existing == null) return PositiveMomentFormState.initial();
+    final time = TimeOfDay(
+      hour: existing.timeMinutes ~/ 60,
+      minute: existing.timeMinutes % 60,
+    );
+    return PositiveMomentFormState.initial().copyWith(
+      time: time,
+      antecedentDescription: existing.antecedentDescription,
+      setting: existing.setting,
+      behaviorDescription: existing.behaviorDescription,
+      behaviorTypes: List<String>.from(existing.behaviorTypes),
+      positiveBehaviorRating: existing.positiveBehaviorRating,
+      consequenceDescription: existing.consequenceDescription,
+      effectiveness: existing.effectiveness,
+      videoUrl: existing.videoUrl,
+    );
+  }
 
   void timeChanged(TimeOfDay time) => emit(state.copyWith(time: time));
 
@@ -50,14 +74,14 @@ class PositiveMomentFormCubit extends Cubit<PositiveMomentFormState> {
     emit(state.copyWith(status: PositiveMomentFormStatus.videoUploading));
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
-        if (currentUser == null) {
-          emit(state.copyWith(
-            status: PositiveMomentFormStatus.error,
-            errorMessage: 'Your session has expired. Please log in again.',
-          ));
-          return;
-        }
-final parentId = currentUser.uid;
+      if (currentUser == null) {
+        emit(state.copyWith(
+          status: PositiveMomentFormStatus.error,
+          errorMessage: 'Your session has expired. Please log in again.',
+        ));
+        return;
+      }
+      final parentId = currentUser.uid;
       final uploadFuture = _repository.uploadVideo(
         parentId: parentId,
         childId: _childId,
@@ -93,17 +117,25 @@ final parentId = currentUser.uid;
       return;
     }
 
+    if (isEditing) {
+      await _update();
+    } else {
+      await _create();
+    }
+  }
+
+  Future<void> _create() async {
     emit(state.copyWith(status: PositiveMomentFormStatus.saving));
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
-        if (currentUser == null) {
-          emit(state.copyWith(
-            status: PositiveMomentFormStatus.error,
-            errorMessage: 'Your session has expired. Please log in again.',
-          ));
-          return;
-        }
-        final parentId = currentUser.uid;
+      if (currentUser == null) {
+        emit(state.copyWith(
+          status: PositiveMomentFormStatus.error,
+          errorMessage: 'Your session has expired. Please log in again.',
+        ));
+        return;
+      }
+      final parentId = currentUser.uid;
       final moment = PositiveMomentModel(
         id: '',
         date: state.date,
@@ -129,6 +161,52 @@ final parentId = currentUser.uid;
       emit(state.copyWith(
         status: PositiveMomentFormStatus.success,
         savedMomentId: momentId,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        status: PositiveMomentFormStatus.error,
+        errorMessage: _friendlyError(e),
+      ));
+    }
+  }
+
+  Future<void> _update() async {
+    emit(state.copyWith(status: PositiveMomentFormStatus.saving));
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        emit(state.copyWith(
+          status: PositiveMomentFormStatus.error,
+          errorMessage: 'Your session has expired. Please log in again.',
+        ));
+        return;
+      }
+      final parentId = currentUser.uid;
+      final updated = PositiveMomentModel(
+        id: _existingMoment!.id,
+        date: _existingMoment.date,
+        timeMinutes: state.time.hour * 60 + state.time.minute,
+        antecedentDescription: state.antecedentDescription,
+        setting: state.setting!,
+        behaviorDescription: state.behaviorDescription,
+        behaviorTypes: state.behaviorTypes,
+        positiveBehaviorRating: state.positiveBehaviorRating!,
+        consequenceDescription: state.consequenceDescription,
+        effectiveness: state.effectiveness!,
+        videoUrl: state.videoUrl,
+        createdAt: _existingMoment.createdAt,
+        updatedAt: DateTime.now(),
+      );
+
+      await _repository.updatePositiveMoment(
+        parentId: parentId,
+        childId: _childId,
+        moment: updated,
+      );
+
+      emit(state.copyWith(
+        status: PositiveMomentFormStatus.success,
+        savedMomentId: _existingMoment.id,
       ));
     } catch (e) {
       emit(state.copyWith(

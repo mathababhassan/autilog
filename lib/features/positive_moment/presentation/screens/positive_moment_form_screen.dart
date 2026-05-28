@@ -16,6 +16,7 @@ import '../../positive_moment_route_args.dart';
 import 'positive_moment_detail_screen.dart';
 import '../widgets/log_form_app_bar.dart';
 import '../widgets/positive_moment_saved_dialog.dart';
+import '../../../../shared/models/positive_moment_model.dart';
 
 const _settings = [
   'Home',
@@ -38,11 +39,13 @@ const _behaviorTypes = [
 class PositiveMomentFormScreen extends StatelessWidget {
   final String patientId;
   final String patientName;
+  final PositiveMomentModel? existingMoment;
 
   const PositiveMomentFormScreen({
     super.key,
     required this.patientId,
     required this.patientName,
+    this.existingMoment,
   });
 
   @override
@@ -51,10 +54,12 @@ class PositiveMomentFormScreen extends StatelessWidget {
       create: (_) => PositiveMomentFormCubit(
         repository: PositiveMomentRepository(),
         childId: patientId,
+        existingMoment: existingMoment,
       ),
       child: _PositiveMomentFormView(
         patientId: patientId,
         patientName: patientName,
+        existingMoment: existingMoment,
       ),
     );
   }
@@ -63,10 +68,12 @@ class PositiveMomentFormScreen extends StatelessWidget {
 class _PositiveMomentFormView extends StatefulWidget {
   final String patientId;
   final String patientName;
+  final PositiveMomentModel? existingMoment;
 
   const _PositiveMomentFormView({
     required this.patientId,
     required this.patientName,
+    this.existingMoment,
   });
 
   @override
@@ -86,9 +93,15 @@ class _PositiveMomentFormViewState extends State<_PositiveMomentFormView> {
   @override
   void initState() {
     super.initState();
-    _antecedentCtrl = TextEditingController();
-    _behaviorCtrl = TextEditingController();
-    _consequenceCtrl = TextEditingController();
+    _antecedentCtrl = TextEditingController(
+      text: widget.existingMoment?.antecedentDescription ?? '',
+    );
+    _behaviorCtrl = TextEditingController(
+      text: widget.existingMoment?.behaviorDescription ?? '',
+    );
+    _consequenceCtrl = TextEditingController(
+      text: widget.existingMoment?.consequenceDescription ?? '',
+    );
     _scrollController = ScrollController();
   }
 
@@ -133,6 +146,29 @@ class _PositiveMomentFormViewState extends State<_PositiveMomentFormView> {
       return;
     }
     if (state.status == PositiveMomentFormStatus.success) {
+      final isEditing = context.read<PositiveMomentFormCubit>().isEditing;
+      if (isEditing) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text('Changes Saved'),
+            content: const Text('Your positive moment has been updated.'),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  context.pop();
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                child: const Text('Done', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
       showDialog(
         context: context,
         barrierDismissible: false,

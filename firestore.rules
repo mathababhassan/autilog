@@ -89,6 +89,15 @@ service cloud.firestore {
         allow read: if canReadChildData(uid, childId);
         allow write: if isAuth() && isOwner(uid);
 
+        match /dailySummaries/{summaryId} {
+          allow read: if canReadChildData(uid, childId);
+          allow write: if isAuth() && isOwner(uid);
+        }
+
+        match /aiInsights/{doc} {
+          allow read, write: if isAuth() && isOwner(uid);
+        }
+
         match /incidents/{incidentId} {
           allow read: if canReadChildData(uid, childId);
           allow write: if isAuth() && isOwner(uid);
@@ -103,6 +112,10 @@ service cloud.firestore {
             && request.resource.data.createdAt == resource.data.createdAt
             && request.resource.data.type == resource.data.type;
           allow delete: if isAuth() && isOwner(uid);
+        }
+
+        match /linkedTherapists/{therapistId} {
+          allow read: if canReadChildData(uid, childId);
         }
 
         // Denormalized activity feed — written by Cloud Functions only.

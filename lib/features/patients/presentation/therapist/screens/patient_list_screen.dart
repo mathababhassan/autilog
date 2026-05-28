@@ -10,6 +10,8 @@ import '../../../bloc/patient_list_bloc.dart';
 import '../../../bloc/patient_list_event.dart';
 import '../../../bloc/patient_list_state.dart';
 import '../../../data/pending_request_display.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../screens/patient_details_screen.dart';
 
 
 // ─── Screen ───────────────────────────────────────────────────
@@ -251,7 +253,13 @@ class _PatientListScreenState extends State<PatientListScreen> {
                   return _PatientCard(
                     patient: patient,
                     isActionInProgress: isActionInProgress,
-                    onViewDetails: () => _showRemoveSheet(context, patient),
+                    onViewDetails: () => context.push(
+                      Routes.patientDetails,
+                      extra: PatientDetailArgs(
+                        patient: patient,
+                        therapistId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                      ),
+                    ),
                   );
                 },
               ),

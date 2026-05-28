@@ -85,12 +85,20 @@ class ChildRegistrationBloc
       final parentId = authRepository.currentUser?.uid;
       if (parentId == null) throw Exception('No parent logged in');
 
-      await authRepository.addChild(
+      final childId = await authRepository.addChild(
         parentId: parentId,
         name: state.name.trim(),
         age: ageInt!,
         asdSeverity: state.asdSeverity,
       );
+
+      if (state.therapistEmail.trim().isNotEmpty) {
+        await authRepository.sendLinkRequest(
+          parentId: parentId,
+          childId: childId,
+          therapistEmail: state.therapistEmail.trim().toLowerCase(),
+        );
+      }
 
       emit(state.copyWith(status: FormzSubmissionStatus.success));
     } catch (e) {

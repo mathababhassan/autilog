@@ -2,21 +2,12 @@ const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
-const { onInit } = require("firebase-functions/v2/core");
 
-let db;
+admin.initializeApp();
+const db = admin.firestore();
 
-// Define secrets at the top level (outside any function)
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
-
-onInit(async () => {
-    if (!admin.apps.length) {
-        admin.initializeApp();
-    }
-    db = admin.firestore();
-    console.log("Firebase Admin initialized");
-});
 
 // ─── Gemini AI Insights ───────────────────────────────────────────────
 
@@ -26,15 +17,13 @@ exports.onDailySummaryCreated = onDocumentCreated(
     secrets: [GEMINI_API_KEY],
   },
   async (event) => {
-    // Import Gemini INSIDE the function (lazy load)
     const { GoogleGenerativeAI } = require("@google/generative-ai");
-    
+
     const snap = event.data;
     if (!snap) return;
 
     const { parentId, childId } = event.params;
-    
-    // Get daily summaries
+
     const summariesRef = db.collection(`parents/${parentId}/children/${childId}/dailySummaries`);
     const summariesSnap = await summariesRef
       .orderBy("date", "desc")
@@ -42,14 +31,13 @@ exports.onDailySummaryCreated = onDocumentCreated(
       .get();
 
     const daysLogged = summariesSnap.size;
-    const aiInsightsRef = db.doc(`parents/${parentId}/children/${childId}/aiInsights`);
+    const aiInsightsRef = db.doc(`parents/${parentId}/children/${childId}/aiInsights/current`);
 
     if (daysLogged < 7) {
       await aiInsightsRef.set({ isUnlocked: false, daysLogged }, { merge: true });
       return;
     }
 
-    // Get child info
     const childSnap = await db.doc(`parents/${parentId}/children/${childId}`).get();
     const childData = childSnap.data() || {};
     const childName = childData.name || "your child";
@@ -58,7 +46,6 @@ exports.onDailySummaryCreated = onDocumentCreated(
     const summaries = summariesSnap.docs.map((d) => d.data());
     const summariesJSON = JSON.stringify(summaries, null, 2);
 
-    // Get positive moments
     let positiveMomentsJSON = "[]";
     try {
       const momentsSnap = await db
@@ -77,7 +64,6 @@ exports.onDailySummaryCreated = onDocumentCreated(
       console.warn("Could not load positive moments:", err.message);
     }
 
-    // Get incidents
     let incidentsJSON = "[]";
     try {
       const incidentsSnap = await db
@@ -98,7 +84,7 @@ exports.onDailySummaryCreated = onDocumentCreated(
 
     try {
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
       const prompt = `You are a clinical behavioral analyst assistant for parents of children with autism.
 Child: ${childName}, Age: ${childAge}
@@ -142,10 +128,14 @@ Respond ONLY with this JSON (no markdown, no extra text):
       );
     } catch (error) {
       console.error("Gemini call failed:", error);
-      await aiInsightsRef.set(
-        { isUnlocked: false, error: "generation_failed" },
-        { merge: true }
-      );
+      // Don't overwrite isUnlocked if already true
+      const existing = await aiInsightsRef.get();
+      if (!existing.exists || existing.data()?.isUnlocked !== true) {
+        await aiInsightsRef.set(
+          { isUnlocked: false, error: "generation_failed" },
+          { merge: true }
+        );
+      }
     }
   }
 );
@@ -155,6 +145,8 @@ Respond ONLY with this JSON (no markdown, no extra text):
 exports.sendLinkRequest = onCall(
   { secrets: [GMAIL_APP_PASSWORD] },
   async (request) => {
+    const nodemailer = require("nodemailer");
+
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be signed in.");
     }
@@ -218,7 +210,6 @@ exports.sendLinkRequest = onCall(
         status: "pending",
       });
 
-    const nodemailer = require("nodemailer");
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -319,6 +310,29 @@ exports.rejectLinkRequest = onCall(async (request) => {
 
   return { success: true };
 });
+
+const { onDocumentDeleted } = require("firebase-functions/v2/firestore");
+
+exports.onDailySummaryDeleted = require("firebase-functions/v2/firestore").onDocumentDeleted(
+  {
+    document: "parents/{parentId}/children/{childId}/dailySummaries/{summaryId}",
+  },
+  async (event) => {
+    const { parentId, childId } = event.params;
+
+    const summariesSnap = await db
+      .collection(`parents/${parentId}/children/${childId}/dailySummaries`)
+      .get();
+
+    const daysLogged = summariesSnap.size;
+    const aiInsightsRef = db.doc(`parents/${parentId}/children/${childId}/aiInsights/current`);
+
+    await aiInsightsRef.set(
+      { daysLogged, isUnlocked: daysLogged >= 7 },
+      { merge: true }
+    );
+  }
+);
 
 // ─── Positive Moment Backend ─────────────────────────────────────────
 
