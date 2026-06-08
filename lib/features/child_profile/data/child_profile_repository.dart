@@ -24,14 +24,15 @@ class ChildProfileRepository {
 
     // An active link is recorded in parents/{parentId}/children/{childId}/
     // linkedTherapists/{therapistId} (written by the therapist's acceptLinkRequest
-    // flow). The doc id is the therapist id. A child may have more than one; the
-    // profile surfaces the first active link.
+    // flow). The doc id is the therapist id. A child may have more than one;
+    // order by linkedAt so the surfaced link is deterministic (most recent).
     final linkedSnap = await _firestore
         .collection('parents')
         .doc(parentId)
         .collection('children')
         .doc(childId)
         .collection('linkedTherapists')
+        .orderBy('linkedAt', descending: true)
         .limit(1)
         .get();
 
