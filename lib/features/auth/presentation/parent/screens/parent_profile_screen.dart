@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../../core/constants/routes.dart';
+import '../../../../child_profile/presentation/screens/child_profile_screen.dart';
 
 class ParentProfileScreen extends StatelessWidget {
   const ParentProfileScreen({super.key});
@@ -594,7 +595,17 @@ class _ChildCardState extends State<_ChildCard> {
   Widget build(BuildContext context) {
     final age = widget.data['age'] as int? ?? 0;
 
-    return Container(
+    return GestureDetector(
+      onTap: _isEditing
+          ? null
+          : () => context.push(
+                Routes.childProfile,
+                extra: ChildProfileArgs(
+                  parentId: widget.parentId,
+                  childId: widget.childId,
+                ),
+              ),
+      child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -753,6 +764,7 @@ class _ChildCardState extends State<_ChildCard> {
             ),
           ],
         ],
+      ),
       ),
     );
   }

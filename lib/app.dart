@@ -38,6 +38,10 @@ import 'features/ai_insights/presentation/screens/ai_insights_screen.dart';
 import 'features/log_history/presentation/screens/log_history_screen.dart';
 import 'features/auth/presentation/shared/login_screen.dart';
 import 'features/auth/presentation/shared/forgot_password_screen.dart';
+import 'features/child_profile/bloc/child_profile_bloc.dart';
+import 'features/child_profile/bloc/child_profile_event.dart';
+import 'features/child_profile/data/child_profile_repository.dart';
+import 'features/child_profile/presentation/screens/child_profile_screen.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -49,6 +53,7 @@ class App extends StatelessWidget {
         RepositoryProvider(create: (_) => AuthRepository()),
         RepositoryProvider(create: (_) => TherapistRepository()),
         RepositoryProvider(create: (_) => PatientRepository()),
+        RepositoryProvider(create: (_) => ChildProfileRepository()),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -164,6 +169,22 @@ class _AppViewState extends State<_AppView> {
         GoRoute(path: Routes.childRegistration, builder: (_, __) => const ChildRegistrationScreen()),
         GoRoute(path: Routes.parentHome, builder: (_, __) => const ParentHomeScreen()),
         GoRoute(path: Routes.parentProfile, builder: (_, __) => const ParentProfileScreen()),
+        GoRoute(
+          path: Routes.childProfile,
+          builder: (context, state) {
+            final args = state.extra as ChildProfileArgs?;
+            if (args == null) return const SizedBox.shrink();
+            return BlocProvider(
+              create: (_) => ChildProfileBloc(
+                repository: context.read<ChildProfileRepository>(),
+              )..add(ChildProfileStarted(
+                  parentId: args.parentId,
+                  childId: args.childId,
+                )),
+              child: ChildProfileScreen(args: args),
+            );
+          },
+        ),
         GoRoute(
           path: Routes.incidentForm,
           builder: (context, state) {
