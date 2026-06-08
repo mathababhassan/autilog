@@ -124,11 +124,32 @@ class ChildProfileRepository {
       throw Exception('A request is already pending for this child.');
     }
 
+    // Denormalize child/parent display info onto the request. While a request
+    // is pending the therapist cannot read the child or parent docs (rules
+    // only grant that once the link is accepted), so the pending-requests list
+    // would otherwise show "Unknown". The parent owns these docs and can read
+    // them here to stamp the values.
+    final childDoc = await _firestore
+        .collection('parents')
+        .doc(parentId)
+        .collection('children')
+        .doc(childId)
+        .get();
+    final childData = childDoc.data() ?? {};
+
+    final parentDoc =
+        await _firestore.collection('parents').doc(parentId).get();
+    final parentData = parentDoc.data() ?? {};
+
     await _firestore.collection('linkRequests').add({
       'parentId': parentId,
       'childId': childId,
       'therapistEmail': therapistEmail,
       'status': 'pending',
+      'childName': childData['name'] ?? '',
+      'parentName': parentData['name'] ?? '',
+      'severityLevel': ChildModel.parseSeverity(
+          childData['severityLevel'] ?? childData['asdSeverity']),
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
