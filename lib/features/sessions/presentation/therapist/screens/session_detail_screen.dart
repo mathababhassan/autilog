@@ -1,0 +1,530 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../../../core/theme/theme.dart';
+import '../../../../../shared/models/child_model.dart';
+import '../../../../../shared/models/session_model.dart';
+import '../../../../../shared/widgets/app_primary_button.dart';
+import '../../../../../shared/widgets/app_snackbar.dart';
+import '../../../bloc/session_detail_bloc.dart';
+import '../../../bloc/session_detail_event.dart';
+import '../../../bloc/session_detail_state.dart';
+import '../../../data/session_repository.dart';
+
+class SessionDetailScreen extends StatelessWidget {
+  const SessionDetailScreen({super.key, required this.sessionId});
+
+  final String sessionId;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => SessionDetailBloc(repository: SessionRepository())
+        ..add(SessionDetailStarted(sessionId: sessionId)),
+      child: _SessionDetailView(sessionId: sessionId),
+    );
+  }
+}
+
+class _SessionDetailView extends StatelessWidget {
+  const _SessionDetailView({required this.sessionId});
+
+  final String sessionId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.surfaceDefault,
+      appBar: AppBar(
+        backgroundColor: AppColors.surfaceDefault,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: const BackButton(color: AppColors.textMain),
+        title: Text('Session Details', style: AppTextStyles.heading1),
+      ),
+      body: BlocBuilder<SessionDetailBloc, SessionDetailState>(
+        builder: (context, state) {
+          if (state is SessionDetailLoading || state is SessionDetailInitial) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
+          }
+          if (state is SessionDetailError) {
+            return _ErrorView(
+              message: state.message,
+              onRetry: () => context
+                  .read<SessionDetailBloc>()
+                  .add(SessionDetailStarted(sessionId: sessionId)),
+            );
+          }
+          final loaded = state as SessionDetailLoaded;
+          return _LoadedBody(session: loaded.session, child: loaded.child);
+        },
+      ),
+    );
+  }
+}
+
+// ─── Error ─────────────────────────────────────────────────────────────────────
+
+class _ErrorView extends StatelessWidget {
+  const _ErrorView({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.gutter),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline,
+                size: 40, color: AppColors.textSubtle),
+            const SizedBox(height: AppSpacing.md),
+            Text(message,
+                style: AppTextStyles.body.copyWith(color: AppColors.textMain),
+                textAlign: TextAlign.center),
+            const SizedBox(height: AppSpacing.xl),
+            SizedBox(
+              width: 160,
+              child: AppPrimaryButton(label: 'Retry', onPressed: onRetry),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Loaded body ───────────────────────────────────────────────────────────────
+
+class _LoadedBody extends StatelessWidget {
+  const _LoadedBody({required this.session, required this.child});
+
+  final SessionModel session;
+  final ChildModel? child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screenMargin,
+        AppSpacing.xl,
+        AppSpacing.screenMargin,
+        AppSpacing.xl5,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _InfoCard(session: session, child: child),
+          const SizedBox(height: AppSpacing.xl),
+          _ModeActionCard(session: session),
+          const SizedBox(height: AppSpacing.xl),
+          _SectionLabel('Patient'),
+          const SizedBox(height: AppSpacing.sm),
+          _PatientCard(session: session, child: child),
+          const SizedBox(height: AppSpacing.xl),
+          _SectionLabel('Session Notes'),
+          const SizedBox(height: AppSpacing.sm),
+          _NotesCard(session: session),
+          const SizedBox(height: AppSpacing.xl3),
+          _SecondaryButton(
+            label: 'Reschedule',
+            color: AppColors.secondary,
+            onPressed: () => AppSnackbar.showError(
+                context, 'Reschedule is coming soon'),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _SecondaryButton(
+            label: 'Cancel Session',
+            color: AppColors.error,
+            icon: Icons.close,
+            onPressed: () =>
+                AppSnackbar.showError(context, 'Cancel is coming soon'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Info card ─────────────────────────────────────────────────────────────────
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({required this.session, required this.child});
+
+  final SessionModel session;
+  final ChildModel? child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceDefault,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        border: Border.all(color: AppColors.borderInactive),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _Avatar(name: session.childName, radius: 24),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(session.childName,
+                        style: AppTextStyles.subtitle
+                            .copyWith(fontWeight: FontWeight.w700)),
+                    if (child != null) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(_patientSummary(child!),
+                          style: AppTextStyles.caption
+                              .copyWith(color: AppColors.textDisabled)),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _StatusPill(status: session.status),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+            child: Divider(height: 1, color: AppColors.dividerLight),
+          ),
+          _DetailRow(label: 'Date', value: _formatDate(session.scheduledAt)),
+          _DetailRow(label: 'Time', value: session.formattedTimeRange),
+          _DetailRow(label: 'Duration', value: _formatDuration(session)),
+          _DetailRow(label: 'Mode', value: session.mode),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textDisabled)),
+          Text(value, style: AppTextStyles.body.copyWith(height: 1.0)),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, bg, fg) = switch (status) {
+      'completed' => ('Completed', AppColors.secondary20, AppColors.secondary),
+      'cancelled' => ('Cancelled', AppColors.error20, AppColors.error),
+      _ => ('Upcoming', AppColors.secondary20, AppColors.secondary),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm, vertical: AppSpacing.xs2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
+      ),
+      child: Text(label,
+          style: AppTextStyles.tag
+              .copyWith(color: fg, fontWeight: FontWeight.w700)),
+    );
+  }
+}
+
+// ─── Mode action card ──────────────────────────────────────────────────────────
+
+class _ModeActionCard extends StatelessWidget {
+  const _ModeActionCard({required this.session});
+
+  final SessionModel session;
+
+  @override
+  Widget build(BuildContext context) {
+    final isVirtual = session.mode == 'Virtual';
+    final icon = isVirtual ? Icons.videocam_outlined : Icons.location_on_outlined;
+    final title = isVirtual ? 'Video Call' : session.location;
+    final subtitle =
+        isVirtual ? 'Link opens in your meeting app' : 'In-person session';
+    final buttonLabel = isVirtual ? 'Join Meeting' : 'Get Directions';
+    final stubMessage =
+        isVirtual ? 'Joining the call is coming soon' : 'Directions are coming soon';
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.secondary20,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 22, color: AppColors.secondary),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: AppTextStyles.caption.copyWith(
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.w700)),
+                    const SizedBox(height: AppSpacing.xs2),
+                    Text(subtitle,
+                        style: AppTextStyles.tag
+                            .copyWith(color: AppColors.secondary80)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppPrimaryButton(
+            label: buttonLabel,
+            onPressed: () => AppSnackbar.showError(context, stubMessage),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Patient card ──────────────────────────────────────────────────────────────
+
+class _PatientCard extends StatelessWidget {
+  const _PatientCard({required this.session, required this.child});
+
+  final SessionModel session;
+  final ChildModel? child;
+
+  @override
+  Widget build(BuildContext context) {
+    return _TappableCard(
+      onTap: () =>
+          AppSnackbar.showError(context, 'Patient profile is coming soon'),
+      child: Row(
+        children: [
+          _Avatar(name: session.childName, radius: 20),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(session.childName,
+                    style: AppTextStyles.body
+                        .copyWith(fontWeight: FontWeight.w600, height: 1.2)),
+                if (child != null) ...[
+                  const SizedBox(height: AppSpacing.xs2),
+                  Text(_patientSummary(child!),
+                      style: AppTextStyles.tag
+                          .copyWith(color: AppColors.textDisabled)),
+                ],
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right, color: AppColors.iconDefault),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Notes card ────────────────────────────────────────────────────────────────
+
+class _NotesCard extends StatelessWidget {
+  const _NotesCard({required this.session});
+
+  final SessionModel session;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasNotes = session.notes != null && session.notes!.trim().isNotEmpty;
+    return _TappableCard(
+      onTap: () =>
+          AppSnackbar.showError(context, 'Session notes are coming soon'),
+      child: Row(
+        children: [
+          const Icon(Icons.description_outlined,
+              size: 20, color: AppColors.secondary),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              hasNotes ? session.notes!.trim() : 'Add session notes',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.body.copyWith(
+                  height: 1.2,
+                  color:
+                      hasNotes ? AppColors.textMain : AppColors.textPlaceholder),
+            ),
+          ),
+          const Icon(Icons.chevron_right, color: AppColors.iconDefault),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Shared bits ───────────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(text,
+        style:
+            AppTextStyles.subtitle.copyWith(fontWeight: FontWeight.w600));
+  }
+}
+
+class _TappableCard extends StatelessWidget {
+  const _TappableCard({required this.child, required this.onTap});
+
+  final Widget child;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceDefault,
+      borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+            border: Border.all(color: AppColors.borderInactive),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.name, required this.radius});
+
+  final String name;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.secondary20,
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : '?',
+        style: AppTextStyles.body
+            .copyWith(color: AppColors.secondary, fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+}
+
+class _SecondaryButton extends StatelessWidget {
+  const _SecondaryButton({
+    required this.label,
+    required this.color,
+    required this.onPressed,
+    this.icon,
+  });
+
+  final String label;
+  final Color color;
+  final VoidCallback onPressed;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(48),
+          side: BorderSide(color: color),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: AppSpacing.sm),
+            ],
+            Text(label,
+                style: AppTextStyles.body
+                    .copyWith(color: color, fontWeight: FontWeight.w700)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Formatting helpers ────────────────────────────────────────────────────────
+
+String _patientSummary(ChildModel child) {
+  return 'ASD L${child.severityLevel} · ${_ageInYears(child.dateOfBirth)} yrs';
+}
+
+int _ageInYears(DateTime dob) {
+  final now = DateTime.now();
+  var age = now.year - dob.year;
+  if (now.month < dob.month ||
+      (now.month == dob.month && now.day < dob.day)) {
+    age--;
+  }
+  return age;
+}
+
+String _formatDate(DateTime d) {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+  return '${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]} ${d.year}';
+}
+
+String _formatDuration(SessionModel session) {
+  final mins = session.endTime.difference(session.scheduledAt).inMinutes;
+  return '$mins min';
+}

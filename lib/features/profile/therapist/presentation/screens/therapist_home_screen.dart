@@ -568,7 +568,9 @@ class _SessionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: () => context.push(Routes.sessionDetail, extra: session.id),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
@@ -614,7 +616,7 @@ class _SessionCard extends StatelessWidget {
                     const Icon(Icons.location_on_outlined,
                         size: 13, color: AppColors.textPlaceholder),
                     const SizedBox(width: 4),
-                    Text(session.location,
+                    Text(session.mode,
                         style: AppTextStyles.caption
                             .copyWith(color: AppColors.textPlaceholder)),
                   ],
@@ -623,6 +625,7 @@ class _SessionCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

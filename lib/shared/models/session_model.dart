@@ -9,6 +9,7 @@ class SessionModel {
   final DateTime scheduledAt;
   final DateTime endTime;
   final String location; // 'Clinic', 'Online', 'Home'
+  final String mode;     // 'In-Person', 'Virtual'
   final String status;   // 'upcoming', 'completed', 'cancelled'
   final String? notes;
   final String? cancelReason;
@@ -22,6 +23,7 @@ class SessionModel {
     required this.scheduledAt,
     required this.endTime,
     required this.location,
+    required this.mode,
     required this.status,
     this.notes,
     this.cancelReason,
@@ -37,6 +39,9 @@ class SessionModel {
       scheduledAt: (map['scheduledAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       endTime: (map['endTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
       location: map['location'] as String? ?? 'Clinic',
+      // Backward-compat for docs written before `mode` existed: infer from location.
+      mode: map['mode'] as String? ??
+          (map['location'] == 'Online' ? 'Virtual' : 'In-Person'),
       status: map['status'] as String? ?? 'upcoming',
       notes: map['notes'] as String?,
       cancelReason: map['cancelReason'] as String?,
@@ -52,6 +57,7 @@ class SessionModel {
       'scheduledAt': Timestamp.fromDate(scheduledAt),
       'endTime': Timestamp.fromDate(endTime),
       'location': location,
+      'mode': mode,
       'status': status,
       if (notes != null) 'notes': notes,
       if (cancelReason != null) 'cancelReason': cancelReason,
@@ -74,6 +80,7 @@ class SessionModel {
       scheduledAt: scheduledAt ?? this.scheduledAt,
       endTime: endTime ?? this.endTime,
       location: location,
+      mode: mode,
       status: status ?? this.status,
       notes: notes ?? this.notes,
       cancelReason: cancelReason ?? this.cancelReason,
