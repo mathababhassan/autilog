@@ -10,6 +10,7 @@ class SessionModel {
   final DateTime endTime;
   final String location; // 'Clinic', 'Online', 'Home'
   final String mode;     // 'In-Person', 'Virtual'
+  final String type;     // 'Assessment', 'Behavioral Intervention', 'Follow-up', 'Parent Consultation'
   final String status;   // 'upcoming', 'completed', 'cancelled'
   final String? notes;
   final String? cancelReason;
@@ -24,6 +25,7 @@ class SessionModel {
     required this.endTime,
     required this.location,
     required this.mode,
+    required this.type,
     required this.status,
     this.notes,
     this.cancelReason,
@@ -42,6 +44,9 @@ class SessionModel {
       // Backward-compat for docs written before `mode` existed: infer from location.
       mode: map['mode'] as String? ??
           (map['location'] == 'Online' ? 'Virtual' : 'In-Person'),
+      // Backward-compat for docs written before `type` existed: default to the
+      // most common session type so the card's type line always renders.
+      type: map['type'] as String? ?? 'Behavioral Intervention',
       status: map['status'] as String? ?? 'upcoming',
       notes: map['notes'] as String?,
       cancelReason: map['cancelReason'] as String?,
@@ -58,6 +63,7 @@ class SessionModel {
       'endTime': Timestamp.fromDate(endTime),
       'location': location,
       'mode': mode,
+      'type': type,
       'status': status,
       if (notes != null) 'notes': notes,
       if (cancelReason != null) 'cancelReason': cancelReason,
@@ -81,6 +87,7 @@ class SessionModel {
       endTime: endTime ?? this.endTime,
       location: location,
       mode: mode,
+      type: type,
       status: status ?? this.status,
       notes: notes ?? this.notes,
       cancelReason: cancelReason ?? this.cancelReason,
@@ -106,6 +113,13 @@ class SessionModel {
 
   /// Convenience wrapper over [isJoinableAt] using the current time.
   bool get isJoinable => isJoinableAt(DateTime.now());
+
+  /// True when a still-`upcoming` session's scheduled end time has already
+  /// passed. Drives the "Needs review" treatment (the therapist must mark it
+  /// completed or cancel it). Display-only — `status` is never rewritten from
+  /// the clock, since a past session may be a no-show, not a completion.
+  bool get isPastDue =>
+      status == 'upcoming' && endTime.isBefore(DateTime.now());
 
   /// e.g. "9:00 AM - 11:00 AM"
   String get formattedTimeRange {

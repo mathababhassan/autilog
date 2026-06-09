@@ -807,6 +807,7 @@ class _TabBar extends StatelessWidget {
                 iconOutline: 'assets/icons/session_outline.svg',
                 iconFilled: 'assets/icons/session_filled.svg',
                 label: 'Sessions',
+                onTap: () => context.go(Routes.therapistSessions),
               ),
               _TabItem(
                 iconOutline: 'assets/icons/report_outline.svg',
