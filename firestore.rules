@@ -83,7 +83,11 @@ service cloud.firestore {
 
     // ── Parents & Children ───────────────────────────────────────────────────
     match /parents/{uid} {
-      allow read, write: if isAuth() && isOwner(uid);
+      // Owner has full access. Any therapist (exists in /therapists) may read
+      // the parent profile so they can display the parent name for linked patients.
+      allow read: if isAuth() && (isOwner(uid)
+        || exists(/databases/$(database)/documents/therapists/$(request.auth.uid)));
+      allow write: if isAuth() && isOwner(uid);
 
       match /children/{childId} {
         allow read: if canReadChildData(uid, childId);

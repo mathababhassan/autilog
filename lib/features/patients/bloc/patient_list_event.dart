@@ -20,14 +20,18 @@ class PendingRequestAccepted extends PatientListEvent {
     required this.requestId,
     required this.parentId,
     required this.childId,
+    this.parentName = '',
+    this.childName = '',
   });
 
   final String requestId;
   final String parentId;
   final String childId;
+  final String parentName;
+  final String childName;
 
   @override
-  List<Object?> get props => [requestId, parentId, childId];
+  List<Object?> get props => [requestId, parentId, childId, parentName, childName];
 }
 
 class PendingRequestRejected extends PatientListEvent {

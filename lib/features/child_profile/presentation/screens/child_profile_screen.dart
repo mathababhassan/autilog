@@ -3,7 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../../core/constants/routes.dart';
 import '../../../../core/theme/theme.dart';
+import '../../../../features/auth/presentation/parent/screens/child_edit_screen.dart';
 import '../../../../shared/models/child_model.dart';
 import '../../../../shared/widgets/app_confirmation_dialog.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
@@ -67,7 +70,30 @@ class ChildProfileScreen extends StatelessWidget {
           body: SafeArea(
             child: Column(
               children: [
-                _NavBar(title: _childName(state)),
+                _NavBar(
+            title: _childName(state),
+            onEdit: state is ChildProfileLoaded
+                ? () {
+                    final loaded = state;
+                    final link = loaded.linkStatus;
+                    context.push(
+                      Routes.childEdit,
+                      extra: ChildEditArgs(
+                        childId: args.childId,
+                        parentId: args.parentId,
+                        data: _childToMap(loaded.child),
+                        linkedTherapistId: link is ActiveLink
+                            ? link.therapistId
+                            : null,
+                        linkedTherapistName: link is ActiveLink
+                            ? link.therapistName
+                            : null,
+                        linkedTherapistEmail: null,
+                      ),
+                    );
+                  }
+                : null,
+          ),
                 Expanded(child: _buildBody(context, state)),
               ],
             ),
@@ -79,6 +105,16 @@ class ChildProfileScreen extends StatelessWidget {
 
   String _childName(ChildProfileState state) =>
       state is ChildProfileLoaded ? state.child.name : 'Child Profile';
+
+  /// Convert ChildModel back to the raw map ChildEditScreen expects.
+  Map<String, dynamic> _childToMap(ChildModel child) {
+    return {
+      'name': child.name,
+      'gender': '',           // ChildModel doesn't store gender; EditScreen handles gracefully
+      'asdSeverity': 'Level ${child.severityLevel}',
+      'dob': Timestamp.fromDate(child.dateOfBirth),
+    };
+  }
 
   Widget _buildBody(BuildContext context, ChildProfileState state) {
     if (state is ChildProfileInitial || state is ChildProfileLoading) {
@@ -296,8 +332,9 @@ class ChildProfileScreen extends StatelessWidget {
 // ─── Nav bar ──────────────────────────────────────────────────────────────────
 
 class _NavBar extends StatelessWidget {
-  const _NavBar({required this.title});
+  const _NavBar({required this.title, this.onEdit});
   final String title;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -336,7 +373,18 @@ class _NavBar extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 24),
+          // Edit button (same width as back icon to keep title centred)
+          SizedBox(
+            width: 24,
+            child: onEdit != null
+                ? GestureDetector(
+                    onTap: onEdit,
+                    behavior: HitTestBehavior.opaque,
+                    child: const Icon(Icons.edit_outlined,
+                        size: 20, color: AppColors.primary),
+                  )
+                : const SizedBox.shrink(),
+          ),
         ],
       ),
     );

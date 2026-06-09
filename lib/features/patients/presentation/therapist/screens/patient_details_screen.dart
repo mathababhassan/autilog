@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -17,10 +18,12 @@ import 'patient_details_screen.dart';
 class PatientDetailArgs {
   final ChildModel patient;
   final String therapistId;
+  final String parentName;
 
   const PatientDetailArgs({
     required this.patient,
     required this.therapistId,
+    this.parentName = '',
   });
 }
 
@@ -38,23 +41,84 @@ class PatientDetailsScreen extends StatefulWidget {
 class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   bool _removing = false;
   Map<String, dynamic>? _parentData;
+  String _parentName = '';
   List<Map<String, dynamic>> _recentLogs = [];
   bool _loadingLogs = true;
 
   @override
   void initState() {
     super.initState();
+    // Use pre-passed parent name immediately (no flicker)
+    _parentName = widget.args.parentName;
     _fetchData();
   }
 
   Future<void> _fetchData() async {
     try {
-      // Fetch parent data
-      final parentDoc = await FirebaseFirestore.instance
-          .collection('parents')
-          .doc(widget.args.patient.parentId)
-          .get();
-      _parentData = parentDoc.data();
+      final therapistId = widget.args.therapistId;
+      final patient    = widget.args.patient;
+
+      // ── Parent name: 3-tier lookup ──────────────────────────────────────────
+
+      // 1. patients doc (has parentName for links accepted after the latest update)
+      try {
+        final patientDoc = await FirebaseFirestore.instance
+            .collection('therapists')
+            .doc(therapistId)
+            .collection('patients')
+            .doc(patient.childId)
+            .get();
+        _parentName = patientDoc.data()?['parentName'] as String? ?? '';
+      } catch (_) {}
+
+      // 2. linkRequests — filter by therapistEmail (new docs) or therapistId (old docs)
+      if (_parentName.isEmpty) {
+        try {
+          final therapistEmail =
+              FirebaseAuth.instance.currentUser?.email ?? '';
+          final linkSnap = await FirebaseFirestore.instance
+              .collection('linkRequests')
+              .where('childId', isEqualTo: patient.childId)
+              .where('therapistEmail', isEqualTo: therapistEmail)
+              .limit(1)
+              .get();
+          if (linkSnap.docs.isNotEmpty) {
+            _parentName =
+                linkSnap.docs.first.data()['parentName'] as String? ?? '';
+          }
+        } catch (_) {}
+      }
+
+      // 2b. Fallback: old linkRequests used therapistId field instead of therapistEmail
+      if (_parentName.isEmpty) {
+        try {
+          final linkSnap = await FirebaseFirestore.instance
+              .collection('linkRequests')
+              .where('childId', isEqualTo: patient.childId)
+              .where('therapistId', isEqualTo: therapistId)
+              .limit(1)
+              .get();
+          if (linkSnap.docs.isNotEmpty) {
+            _parentName =
+                linkSnap.docs.first.data()['parentName'] as String? ?? '';
+          }
+        } catch (_) {}
+      }
+
+      // 3. Read parent doc directly — therapists are allowed per security rules
+      if (_parentName.isEmpty && patient.parentId.isNotEmpty) {
+        try {
+          final parentDoc = await FirebaseFirestore.instance
+              .collection('parents')
+              .doc(patient.parentId)
+              .get();
+          _parentData = parentDoc.data();
+          _parentName = _parentData?['name'] as String? ?? '';
+        } catch (_) {}
+      }
+
+      // Update UI as soon as the name is known
+      if (mounted && _parentName.isNotEmpty) setState(() {});
 
       // Fetch recent logs — daily summaries
       final summaries = await FirebaseFirestore.instance
@@ -105,7 +169,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
         _loadingLogs = false;
       });
     } catch (_) {
-      setState(() => _loadingLogs = false);
+      setState(() {
+        _loadingLogs = false;
+      });
     }
   }
 
@@ -156,7 +222,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final patient = widget.args.patient;
-    final parentName = _parentData?['name'] as String? ?? 'Unknown Parent';
+    final parentName = _parentName.isNotEmpty ? _parentName : 'Unknown Parent';
 
     return Scaffold(
       backgroundColor: AppColors.surfaceDefault,
