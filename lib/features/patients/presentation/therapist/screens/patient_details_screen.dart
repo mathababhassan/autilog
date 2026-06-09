@@ -228,6 +228,8 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       backgroundColor: AppColors.surfaceDefault,
       appBar: AppBar(
         backgroundColor: AppColors.surfaceDefault,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, size: 18, color: AppColors.textMain),
@@ -451,8 +453,8 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
             children: [
               _TabItem(icon: Icons.home_outlined, label: 'Home', onTap: () => context.go(Routes.therapistHome)),
               _TabItem(icon: Icons.people_outline, label: 'Patients', active: true, onTap: () => context.go(Routes.therapistPatients)),
-              const _TabItem(icon: Icons.calendar_month_outlined, label: 'Sessions'),
-              const _TabItem(icon: Icons.bar_chart_outlined, label: 'Reports'),
+              _TabItem(icon: Icons.calendar_month_outlined, label: 'Sessions', onTap: () => context.go(Routes.therapistSessions),),
+              _TabItem(icon: Icons.bar_chart_outlined, label: 'Reports', onTap: () => context.go(Routes.therapistReports),),
             ],
           ),
         ),

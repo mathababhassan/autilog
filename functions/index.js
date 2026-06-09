@@ -212,6 +212,59 @@ Respond ONLY with this JSON (no markdown, no extra text):
   }
 );
 
+// ─── Reports — AI Practice Summary (callable) ─────────────────────────
+
+exports.getReportSummary = onCall(
+  { secrets: [GROQ_API_KEY] },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Must be signed in.");
+    }
+
+    const { stats } = request.data || {};
+    if (!stats) {
+      throw new HttpsError("invalid-argument", "stats is required.");
+    }
+
+    const prompt = `You are a clinical assistant summarizing a therapist's caseload for the selected period.
+Aggregated data across all their patients:
+${JSON.stringify(stats, null, 2)}
+
+Respond ONLY with this JSON (no markdown, no extra text):
+{
+  "summary": "2-3 sentence plain-language overview of trends across all patients this period, referencing the actual numbers",
+  "focusArea": "1 sentence suggesting where the therapist should focus attention this period"
+}`;
+
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${GROQ_API_KEY.value()}`,
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.4,
+        }),
+      });
+
+      const groqData = await response.json();
+      const text = groqData.choices[0].message.content.trim();
+      const insights = JSON.parse(text);
+
+      return {
+        summary: insights.summary,
+        focusArea: insights.focusArea,
+      };
+    } catch (error) {
+      console.error("Groq report summary failed:", error);
+      throw new HttpsError("internal", "Failed to generate summary.");
+    }
+  }
+);
+
 // ─── Trigger 3: Positive Moment Created (AI only) ─────────────────────
 // Updates: positiveMomentsHighlight, strategyTip1, strategyTip2, progressDirection
 

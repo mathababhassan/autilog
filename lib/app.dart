@@ -51,6 +51,7 @@ import 'shared/models/session_model.dart';
 import 'features/auth/presentation/parent/screens/parent_edit_profile_screen.dart';
 import 'features/auth/presentation/parent/screens/child_edit_screen.dart';
 import 'features/patients/presentation/therapist/screens/log_review_screen.dart';
+import 'features/profile/therapist/presentation/screens/therapist_reports_screen.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -188,6 +189,10 @@ class _AppViewState extends State<_AppView> {
             final args = state.extra as LogReviewArgs;
             return LogReviewScreen(args: args);
           },
+        ),
+        GoRoute(
+          path: Routes.therapistReports,
+          builder: (_, __) => const TherapistReportsScreen(),
         ),
         GoRoute(path: Routes.registerParent, builder: (_, __) => const ParentRegistrationScreen()),
         GoRoute(path: Routes.childOnboarding, builder: (_, __) => const ChildOnboardingScreen()),
