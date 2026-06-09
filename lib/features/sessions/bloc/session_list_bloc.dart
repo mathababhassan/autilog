@@ -39,7 +39,7 @@ class SessionListBloc extends Bloc<SessionListEvent, SessionListState> {
       ]);
     
       final sessions = results[0] as List<SessionModel>;
-      final patients = results[1]; // The type depends on what fetchAcceptedPatients returns
+      final patients = results[1] as List<ChildModel>;
     
       emit(SessionListLoaded(
         allSessions: sessions,
