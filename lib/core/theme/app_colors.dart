@@ -34,6 +34,7 @@ abstract final class AppColors {
 
   // Semantic
   static const Color success = Color(0xFF2D9D78);
+  static const Color success20 = Color(0xFFD9F0E7);
   static const Color warning = Color(0xFFFFD569);
   static const Color error = Color(0xFFDD3636);
 

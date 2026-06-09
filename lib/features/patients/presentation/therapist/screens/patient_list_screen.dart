@@ -949,10 +949,11 @@ class _TabBar extends StatelessWidget {
                 label: 'Patients',
                 active: true,
               ),
-              const _TabItem(
+              _TabItem(
                 iconOutline: 'assets/icons/session_outline.svg',
                 iconFilled: 'assets/icons/session_filled.svg',
                 label: 'Sessions',
+                onTap: () => context.go(Routes.therapistSessions),
               ),
               const _TabItem(
                 iconOutline: 'assets/icons/report_outline.svg',

@@ -13,6 +13,7 @@ class SessionDetailBloc extends Bloc<SessionDetailEvent, SessionDetailState> {
         super(const SessionDetailInitial()) {
     on<SessionDetailStarted>(_onStarted);
     on<SessionJoinRequested>(_onJoinRequested);
+    on<SessionDetailMarkCompleted>(_onMarkCompleted);
   }
 
   final SessionRepository repository;
@@ -51,15 +52,11 @@ class SessionDetailBloc extends Bloc<SessionDetailEvent, SessionDetailState> {
     Emitter<SessionDetailState> emit,
   ) async {
     final current = state;
-    // Join is only meaningful once the session is loaded.
     if (current is! SessionDetailLoaded) return;
 
     emit(current.copyWith(joinStatus: JoinStatus.loading));
     try {
-      final result =
-          await jaasRepository.fetchJoinToken(current.session.id);
-      // The screen may have been popped (bloc closed) while the request was
-      // in flight — don't emit into a disposed bloc.
+      final result = await jaasRepository.fetchJoinToken(current.session.id);
       if (emit.isDone) return;
       emit(current.copyWith(
         joinStatus: JoinStatus.success,
@@ -70,6 +67,31 @@ class SessionDetailBloc extends Bloc<SessionDetailEvent, SessionDetailState> {
       emit(current.copyWith(
         joinStatus: JoinStatus.failure,
         joinError: 'Could not start the call. Please try again.',
+      ));
+    }
+  }
+
+  Future<void> _onMarkCompleted(
+    SessionDetailMarkCompleted event,
+    Emitter<SessionDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    try {
+      await repository.markSessionCompleted(event.sessionId);
+      final session = await repository.fetchSessionById(event.sessionId);
+      emit(SessionDetailLoaded(
+        session: session,
+        child: current.child,
+        actionMessage: 'Session marked as completed.',
+      ));
+    } catch (_) {
+      emit(SessionDetailLoaded(
+        session: current.session,
+        child: current.child,
+        actionMessage: 'Could not update the session. Please try again.',
+        actionIsError: true,
       ));
     }
   }
