@@ -636,19 +636,23 @@ class _StatusPill extends StatelessWidget {
         bg = AppColors.success20;
         fg = AppColors.success;
         label = 'Completed';
+        break;
       case 'cancelled':
         bg = AppColors.error20;
         fg = AppColors.error;
         label = 'Cancelled';
+        break;
       case 'needs_review':
         // Neutral grey — a nudge to resolve, not a success/error outcome.
         bg = AppColors.inputFill;
         fg = AppColors.textDisabled;
         label = 'Needs review';
+        break;
       default:
         bg = AppColors.secondary20;
         fg = AppColors.secondary;
         label = 'Upcoming';
+        break;
     }
 
     return Container(
