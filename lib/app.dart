@@ -44,6 +44,10 @@ import 'features/child_profile/bloc/child_profile_event.dart';
 import 'features/child_profile/data/child_profile_repository.dart';
 import 'features/child_profile/presentation/screens/child_profile_screen.dart';
 import 'features/sessions/presentation/parent/screens/parent_sessions_screen.dart';
+import 'features/sessions/presentation/therapist/screens/session_notes_form_screen.dart';
+import 'features/sessions/presentation/therapist/screens/session_notes_edit_screen.dart';
+import 'shared/models/session_model.dart';
+
 class App extends StatelessWidget {
   const App({super.key});
 
@@ -269,6 +273,22 @@ class _AppViewState extends State<_AppView> {
     );
   },
 ),
+        GoRoute(
+          path: Routes.sessionNotesAdd,
+          builder: (context, state) {
+            final session = state.extra as SessionModel?;
+            if (session == null) return const SizedBox.shrink();
+            return SessionNotesFormScreen(session: session);
+          },
+        ),
+        GoRoute(
+          path: Routes.sessionNotesEdit,
+          builder: (context, state) {
+            final session = state.extra as SessionModel?;
+            if (session == null) return const SizedBox.shrink();
+            return SessionNotesEditScreen(session: session);
+          },
+        ),
        GoRoute(
         path: Routes.positiveMomentForm,
         builder: (context, state) {

@@ -108,4 +108,20 @@ class SessionRepository {
       'notes': notes,
     });
   }
+
+  // ── T-29 / T-30: Session Notes ──────────────────────────────────────────────
+
+  Future<void> saveSessionNotes({
+    required String sessionId,
+    String? progress,
+    String? privateNotes,
+    String? parentNotes,
+  }) async {
+    await _firestore.collection('sessions').doc(sessionId).update({
+      if (progress != null) 'progress': progress,
+      if (privateNotes != null) 'privateNotes': privateNotes,
+      if (parentNotes != null) 'notes': parentNotes,
+      'notesLastEditedAt': FieldValue.serverTimestamp(),
+    });
+  }
 }
