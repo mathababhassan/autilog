@@ -180,19 +180,18 @@ class _LoadedBody extends StatelessWidget {
               const _NeedsReviewHint(),
               const SizedBox(height: AppSpacing.md),
             ],
+            _MarkCompletedButton(session: session),
+            const SizedBox(height: AppSpacing.sm),
             _SecondaryButton(
               label: 'Reschedule',
               color: AppColors.secondary,
-              onPressed: () => AppSnackbar.showError(
-                  context, 'Reschedule is coming soon'),
+              onPressed: () =>
+                  AppSnackbar.showError(context, 'Reschedule is coming soon'),
             ),
-            const SizedBox(height: AppSpacing.md),
-            _MarkCompletedButton(session: session),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.sm),
             _SecondaryButton(
-              label: 'Cancel Session',
+              label: 'Cancel',
               color: AppColors.error,
-              icon: Icons.close,
               onPressed: () =>
                   AppSnackbar.showError(context, 'Cancel is coming soon'),
             ),
@@ -257,30 +256,25 @@ class _MarkCompletedButton extends StatelessWidget {
             message:
                 "This moves ${session.childName}'s session to your past sessions.",
             confirmLabel: 'Mark Completed',
-            confirmColor: AppColors.success,
+            confirmColor: AppColors.primary,
           );
           if (confirmed) {
             bloc.add(SessionDetailMarkCompleted(sessionId: session.id));
           }
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.success,
+          backgroundColor: AppColors.primary,
           foregroundColor: AppColors.textWhite,
+          elevation: 0,
+          shadowColor: Colors.transparent,
           minimumSize: const Size.fromHeight(48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.check_circle_outline, size: 18),
-            const SizedBox(width: AppSpacing.sm),
-            Text('Mark as Completed',
-                style: AppTextStyles.body.copyWith(
-                    fontWeight: FontWeight.w700, color: AppColors.textWhite)),
-          ],
-        ),
+        child: Text('Complete',
+            style: AppTextStyles.body.copyWith(
+                fontWeight: FontWeight.w700, color: AppColors.textWhite)),
       ),
     );
   }
@@ -625,13 +619,11 @@ class _SecondaryButton extends StatelessWidget {
     required this.label,
     required this.color,
     required this.onPressed,
-    this.icon,
   });
 
   final String label;
   final Color color;
   final VoidCallback onPressed;
-  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -646,18 +638,9 @@ class _SecondaryButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: AppSpacing.sm),
-            ],
-            Text(label,
-                style: AppTextStyles.body
-                    .copyWith(color: color, fontWeight: FontWeight.w700)),
-          ],
-        ),
+        child: Text(label,
+            style: AppTextStyles.body
+                .copyWith(color: color, fontWeight: FontWeight.w700)),
       ),
     );
   }

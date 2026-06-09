@@ -175,8 +175,15 @@ class _LoadedContent extends StatelessWidget {
                   for (final session in upcoming) ...[
                     _UpcomingSessionCard(
                       session: session,
-                      onTap: () => context.push(Routes.sessionDetail,
-                          extra: session.id),
+                      onTap: () async {
+                        await context.push(Routes.sessionDetail,
+                            extra: session.id);
+                        if (context.mounted) {
+                          context
+                              .read<SessionListBloc>()
+                              .add(const SessionListRefreshRequested());
+                        }
+                      },
                       onMore: () => _showSessionActions(context, session),
                     ),
                     const SizedBox(height: AppSpacing.sm),
@@ -200,8 +207,15 @@ class _LoadedContent extends StatelessWidget {
                   for (final session in past) ...[
                     _PastSessionCard(
                       session: session,
-                      onTap: () => context.push(Routes.sessionDetail,
-                          extra: session.id),
+                      onTap: () async {
+                        await context.push(Routes.sessionDetail,
+                            extra: session.id);
+                        if (context.mounted) {
+                          context
+                              .read<SessionListBloc>()
+                              .add(const SessionListRefreshRequested());
+                        }
+                      },
                     ),
                     const SizedBox(height: AppSpacing.sm),
                   ],
@@ -779,9 +793,14 @@ void _showSessionActions(BuildContext context, SessionModel session) {
                 size: 20, color: AppColors.secondary),
             label: 'View Details',
             color: AppColors.secondary,
-            onTap: () {
+            onTap: () async {
               Navigator.of(sheetContext).pop();
-              context.push(Routes.sessionDetail, extra: session.id);
+              await context.push(Routes.sessionDetail, extra: session.id);
+              if (context.mounted) {
+                context
+                    .read<SessionListBloc>()
+                    .add(const SessionListRefreshRequested());
+              }
             },
           ),
           _ActionRow(

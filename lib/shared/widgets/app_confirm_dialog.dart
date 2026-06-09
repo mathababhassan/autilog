@@ -25,18 +25,30 @@ Future<bool> showAppConfirmDialog({
       ),
       title: Text(title, style: AppTextStyles.heading2),
       content: Text(message, style: AppTextStyles.body),
+      actionsAlignment: MainAxisAlignment.center,
+      actionsOverflowAlignment: OverflowBarAlignment.center,
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Cancel'),
-        ),
         ElevatedButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
           style: ElevatedButton.styleFrom(
             backgroundColor: confirmColor,
             foregroundColor: AppColors.textWhite,
+            elevation: 0,
+            shadowColor: Colors.transparent,
+            minimumSize: const Size(160, 44),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
+            ),
           ),
-          child: Text(confirmLabel),
+          child: Text(confirmLabel,
+              style: AppTextStyles.body.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textWhite)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: Text('Cancel',
+              style: AppTextStyles.body.copyWith(color: AppColors.textSubtle)),
         ),
       ],
     ),
