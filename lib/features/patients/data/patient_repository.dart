@@ -20,27 +20,37 @@ class PatientRepository {
     final parentId = data['parentId'] as String? ?? '';
     final childId = data['childId'] as String? ?? '';
 
-    int severityLevel = 1;
-    String childName = 'Unknown Child';
-    String parentName = 'Unknown Parent';
+    // Prefer values denormalized onto the request by the parent — while the
+    // request is pending, rules block the therapist from reading the child or
+    // parent docs, so the direct lookups below only succeed post-link.
+    int severityLevel = (data['severityLevel'] as num?)?.toInt() ?? 0;
+    String childName = data['childName'] as String? ?? '';
+    String parentName = data['parentName'] as String? ?? '';
 
-    try {
-      final childDoc = await _firestore
-          .collection('parents')
-          .doc(parentId)
-          .collection('children')
-          .doc(childId)
-          .get();
-      final childData = childDoc.data();
-      childName = childData?['name'] as String? ?? 'Unknown Child';
-      severityLevel = ChildModel.parseSeverity(
-          childData?['severityLevel'] ?? childData?['asdSeverity']);
-    } catch (_) {}
+    if (childName.isEmpty) {
+      try {
+        final childDoc = await _firestore
+            .collection('parents')
+            .doc(parentId)
+            .collection('children')
+            .doc(childId)
+            .get();
+        final childData = childDoc.data();
+        childName = childData?['name'] as String? ?? '';
+        severityLevel = ChildModel.parseSeverity(
+            childData?['severityLevel'] ?? childData?['asdSeverity']);
+      } catch (_) {}
+    }
 
-    try {
-      final parentDoc = await _firestore.collection('parents').doc(parentId).get();
-      parentName = parentDoc.data()?['name'] as String? ?? 'Unknown Parent';
-    } catch (_) {}
+    if (parentName.isEmpty) {
+      try {
+        final parentDoc = await _firestore.collection('parents').doc(parentId).get();
+        parentName = parentDoc.data()?['name'] as String? ?? '';
+      } catch (_) {}
+    }
+
+    if (childName.isEmpty) childName = 'Unknown Child';
+    if (parentName.isEmpty) parentName = 'Unknown Parent';
 
     return PendingRequestDisplay(
       requestId: doc.id,
