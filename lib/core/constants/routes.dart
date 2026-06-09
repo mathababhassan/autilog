@@ -13,6 +13,7 @@ abstract final class Routes {
   static const String patientDetails = '/therapist/patients/details';
   static const String therapistSessions = '/therapist/sessions';
   static const String sessionDetail = '/therapist/session-detail';
+  static const String scheduleSession = '/therapist/schedule-session';
 
   // Parent
   static const String registerParent = '/auth/register/parent';

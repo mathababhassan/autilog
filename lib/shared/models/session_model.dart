@@ -12,6 +12,9 @@ class SessionModel {
   final String mode;     // 'In-Person', 'Virtual'
   final String type;     // 'Assessment', 'Behavioral Intervention', 'Follow-up', 'Parent Consultation'
   final String status;   // 'upcoming', 'completed', 'cancelled'
+  final int durationMinutes;
+  final String? preSessionParentNotes;
+  final String? preSessionPrivateNotes;
   final String? notes;
   final String? cancelReason;
 
@@ -27,6 +30,9 @@ class SessionModel {
     required this.mode,
     required this.type,
     required this.status,
+    required this.durationMinutes,
+    this.preSessionParentNotes,
+    this.preSessionPrivateNotes,
     this.notes,
     this.cancelReason,
   });
@@ -48,6 +54,16 @@ class SessionModel {
       // most common session type so the card's type line always renders.
       type: map['type'] as String? ?? 'Behavioral Intervention',
       status: map['status'] as String? ?? 'upcoming',
+      // Backward-compat: old docs have no durationMinutes; derive from timestamps.
+      durationMinutes: map['durationMinutes'] as int? ??
+          ((map['endTime'] as dynamic)?.toDate() as DateTime? ?? DateTime.now())
+              .difference(
+                (map['scheduledAt'] as dynamic)?.toDate() as DateTime? ?? DateTime.now(),
+              )
+              .inMinutes
+              .abs(),
+      preSessionParentNotes: map['preSessionParentNotes'] as String?,
+      preSessionPrivateNotes: map['preSessionPrivateNotes'] as String?,
       notes: map['notes'] as String?,
       cancelReason: map['cancelReason'] as String?,
     );
@@ -65,6 +81,9 @@ class SessionModel {
       'mode': mode,
       'type': type,
       'status': status,
+      'durationMinutes': durationMinutes,
+      if (preSessionParentNotes != null) 'preSessionParentNotes': preSessionParentNotes,
+      if (preSessionPrivateNotes != null) 'preSessionPrivateNotes': preSessionPrivateNotes,
       if (notes != null) 'notes': notes,
       if (cancelReason != null) 'cancelReason': cancelReason,
     };
@@ -74,6 +93,9 @@ class SessionModel {
     String? status,
     DateTime? scheduledAt,
     DateTime? endTime,
+    int? durationMinutes,
+    String? preSessionParentNotes,
+    String? preSessionPrivateNotes,
     String? notes,
     String? cancelReason,
   }) {
@@ -89,6 +111,9 @@ class SessionModel {
       mode: mode,
       type: type,
       status: status ?? this.status,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      preSessionParentNotes: preSessionParentNotes ?? this.preSessionParentNotes,
+      preSessionPrivateNotes: preSessionPrivateNotes ?? this.preSessionPrivateNotes,
       notes: notes ?? this.notes,
       cancelReason: cancelReason ?? this.cancelReason,
     );
