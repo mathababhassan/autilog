@@ -56,7 +56,7 @@ class _TherapistHomeScreenState extends State<TherapistHomeScreen> {
                 : '';
             _homeCubit.load(
               therapistId: uid,
-              patients: patientState.activePatients,
+              patients: patientState.activePatients.map((e) => e.$1).toList(),
             );
           }
         },
@@ -72,7 +72,7 @@ class _TherapistHomeScreenState extends State<TherapistHomeScreen> {
                       _HomeHeader(
                         onAvatarTap: () => showTherapistProfileSheet(context),
                       ),
-                      _HomeBody(),
+_HomeBody(),
                     ],
                   ),
                 ),

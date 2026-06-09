@@ -47,6 +47,8 @@ import 'features/sessions/presentation/parent/screens/parent_sessions_screen.dar
 import 'features/sessions/presentation/therapist/screens/session_notes_form_screen.dart';
 import 'features/sessions/presentation/therapist/screens/session_notes_edit_screen.dart';
 import 'shared/models/session_model.dart';
+import 'features/auth/presentation/parent/screens/parent_edit_profile_screen.dart';
+import 'features/auth/presentation/parent/screens/child_edit_screen.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -273,6 +275,26 @@ class _AppViewState extends State<_AppView> {
     );
   },
 ),
+        GoRoute(
+          path: Routes.parentProfileEdit,
+          builder: (context, state) {
+            final args = state.extra as Map<String, dynamic>? ?? {};
+            return ParentEditProfileScreen(
+              name: args['name'] as String? ?? '',
+              phone: args['phone'] as String? ?? '',
+              gender: args['gender'] as String? ?? '',
+              email: args['email'] as String? ?? '',
+            );
+          },
+        ),
+        GoRoute(
+          path: Routes.childEdit,
+          builder: (context, state) {
+            final args = state.extra as ChildEditArgs?;
+            if (args == null) return const SizedBox.shrink();
+            return ChildEditScreen(args: args);
+          },
+        ),
         GoRoute(
           path: Routes.sessionNotesAdd,
           builder: (context, state) {

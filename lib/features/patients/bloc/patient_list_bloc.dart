@@ -59,6 +59,8 @@ class PatientListBloc extends Bloc<PatientListEvent, PatientListState> {
         therapistId: uid,
         parentId: event.parentId,
         childId: event.childId,
+        knownParentName: event.parentName,
+        knownChildName: event.childName,
       );
 
       final pending = await _patientRepository.fetchPendingRequests(email);

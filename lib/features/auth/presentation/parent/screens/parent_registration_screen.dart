@@ -328,7 +328,7 @@ onChanged: (_) => bloc.add(const ParentRegistrationTermsToggled()),
                 ),
                 const SizedBox(height: 20),
                 GestureDetector(
-                  onTap: () => context.pop(),
+                  onTap: () => context.go(Routes.roleSelection),
                   child: const Icon(Icons.arrow_back, color: Colors.white),
                 ),
                 const SizedBox(height: 12),

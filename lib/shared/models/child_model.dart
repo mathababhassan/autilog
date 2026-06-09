@@ -22,7 +22,7 @@ class ChildModel {
       childId: childId,
       parentId: map['parentId'] ?? '',
       name: map['name'] ?? '',
-      dateOfBirth: map['dateOfBirth']?.toDate() ?? DateTime.now(),
+      dateOfBirth: (map['dateOfBirth'] ?? map['dob'])?.toDate() ?? DateTime.now(),
       diagnosisType: map['diagnosisType'] ?? '',
       severityLevel: parseSeverity(map['severityLevel'] ?? map['asdSeverity']),
       linkedTherapistId: map['linkedTherapistId'],
@@ -42,7 +42,7 @@ class ChildModel {
     return {
       'parentId': parentId,
       'name': name,
-      'dateOfBirth': dateOfBirth,
+      'dob': dateOfBirth,
       'diagnosisType': diagnosisType,
       'severityLevel': severityLevel,
       'linkedTherapistId': linkedTherapistId,

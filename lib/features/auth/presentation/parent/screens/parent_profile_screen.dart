@@ -1,50 +1,46 @@
-import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../../../core/constants/routes.dart';
+import '../../../../../core/theme/theme.dart';
 import '../../../../child_profile/presentation/screens/child_profile_screen.dart';
+import 'child_edit_screen.dart';
 
 class ParentProfileScreen extends StatelessWidget {
   const ParentProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
+      backgroundColor: AppColors.surfaceDefault,
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
             .collection('parents')
             .doc(uid)
             .snapshots(),
-        builder: (context, parentSnap) {
-          final parentData = parentSnap.hasData && parentSnap.data!.exists
-              ? parentSnap.data!.data() as Map<String, dynamic>
+        builder: (context, snap) {
+          final data = snap.hasData && snap.data!.exists
+              ? snap.data!.data() as Map<String, dynamic>
               : <String, dynamic>{};
 
-          final name = parentData['name'] as String? ?? 'Parent';
-          final gender = parentData['gender'] as String? ?? '';
-          final email =
-              FirebaseAuth.instance.currentUser?.email ?? '';
-          final photoPath =
-              parentData['profilePhotoPath'] as String? ?? '';
+          final name = data['name'] as String? ?? 'Parent';
+          final gender = data['gender'] as String? ?? '';
+          final phone = data['phone'] as String? ?? '';
+          final email = FirebaseAuth.instance.currentUser?.email ?? '';
 
           return CustomScrollView(
             slivers: [
-              // ── Header ───────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: _ProfileHeader(
+                  uid: uid,
                   name: name,
                   email: email,
                   gender: gender,
-                  photoPath: photoPath,
-                  uid: uid ?? '',
+                  phone: phone,
                 ),
               ),
 
@@ -55,33 +51,28 @@ class ParentProfileScreen extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Children',
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87),
-                      ),
+                      Text('Children',
+                          style: AppTextStyles.subtitle.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textMain)),
                       GestureDetector(
                         onTap: () => context.push(Routes.childRegistration),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF8A00),
+                            color: AppColors.primary,
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: const Row(
+                          child: Row(
                             children: [
-                              Icon(Icons.add, color: Colors.white, size: 16),
-                              SizedBox(width: 4),
-                              Text(
-                                'Add Child',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13),
-                              ),
+                              const Icon(Icons.add,
+                                  color: Colors.white, size: 16),
+                              const SizedBox(width: 4),
+                              Text('Add Child',
+                                  style: AppTextStyles.caption.copyWith(
+                                      color: AppColors.textWhite,
+                                      fontWeight: FontWeight.w700)),
                             ],
                           ),
                         ),
@@ -108,15 +99,15 @@ class ParentProfileScreen extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.surfaceDefault,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.black12),
+                            border: Border.all(
+                                color: AppColors.borderInactive),
                           ),
-                          child: const Center(
-                            child: Text(
-                              'No children added yet.',
-                              style: TextStyle(color: Colors.black45),
-                            ),
+                          child: Center(
+                            child: Text('No children added yet.',
+                                style: AppTextStyles.body.copyWith(
+                                    color: AppColors.textSubtle)),
                           ),
                         ),
                       ),
@@ -131,10 +122,11 @@ class ParentProfileScreen extends StatelessWidget {
                             as Map<String, dynamic>;
                         final childId = children[index].id;
                         return Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                          padding:
+                              const EdgeInsets.fromLTRB(24, 0, 24, 12),
                           child: _ChildCard(
                             childId: childId,
-                            parentId: uid ?? '',
+                            parentId: uid,
                             data: child,
                           ),
                         );
@@ -145,32 +137,28 @@ class ParentProfileScreen extends StatelessWidget {
                 },
               ),
 
-              // ── Account Actions ───────────────────────────────────────
+              // ── Account Section ───────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Account',
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87),
-                      ),
+                      Text('Account',
+                          style: AppTextStyles.subtitle.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textMain)),
                       const SizedBox(height: 12),
                       _AccountTile(
                         icon: Icons.lock_outline,
                         label: 'Change Password',
-                        onTap: () =>
-                            _showChangePasswordDialog(context),
+                        onTap: () => _showChangePasswordDialog(context),
                       ),
                       const SizedBox(height: 10),
                       _AccountTile(
                         icon: Icons.logout_rounded,
                         label: 'Log Out',
-                        color: Colors.red,
+                        color: AppColors.error,
                         onTap: () => _confirmLogout(context),
                       ),
                     ],
@@ -180,8 +168,7 @@ class ParentProfileScreen extends StatelessWidget {
 
               SliverToBoxAdapter(
                 child: SizedBox(
-                  height: MediaQuery.of(context).padding.bottom + 32,
-                ),
+                    height: MediaQuery.of(context).padding.bottom + 32),
               ),
             ],
           );
@@ -190,16 +177,16 @@ class ParentProfileScreen extends StatelessWidget {
     );
   }
 
-  // ── Change password dialog ───────────────────────────────────────────────
-
   void _showChangePasswordDialog(BuildContext context) {
     final controller = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Change Password'),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        title: Text('Change Password',
+            style: AppTextStyles.subtitle
+                .copyWith(fontWeight: FontWeight.w700)),
         content: TextField(
           controller: controller,
           obscureText: true,
@@ -210,15 +197,16 @@ class ParentProfileScreen extends StatelessWidget {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide:
-                  const BorderSide(color: Color(0xFFFF8A00), width: 2),
+                  const BorderSide(color: AppColors.primary, width: 2),
             ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel',
-                style: TextStyle(color: Colors.black45)),
+            child: Text('Cancel',
+                style: AppTextStyles.body
+                    .copyWith(color: AppColors.textSubtle)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -237,33 +225,36 @@ class ParentProfileScreen extends StatelessWidget {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF8A00),
+              backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Update',
-                style: TextStyle(color: Colors.white)),
+            child: Text('Update',
+                style: AppTextStyles.body
+                    .copyWith(color: AppColors.textWhite)),
           ),
         ],
       ),
     );
   }
 
-  // ── Logout confirmation ──────────────────────────────────────────────────
-
   void _confirmLogout(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Log Out'),
-        content: const Text('Are you sure you want to log out?'),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        title: Text('Log Out',
+            style: AppTextStyles.subtitle
+                .copyWith(fontWeight: FontWeight.w700)),
+        content: Text('Are you sure you want to log out?',
+            style: AppTextStyles.body),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel',
-                style: TextStyle(color: Colors.black45)),
+            child: Text('Cancel',
+                style: AppTextStyles.body
+                    .copyWith(color: AppColors.textSubtle)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -272,12 +263,13 @@ class ParentProfileScreen extends StatelessWidget {
               if (context.mounted) context.go(Routes.login);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Log Out',
-                style: TextStyle(color: Colors.white)),
+            child: Text('Log Out',
+                style: AppTextStyles.body
+                    .copyWith(color: AppColors.textWhite)),
           ),
         ],
       ),
@@ -285,80 +277,37 @@ class ParentProfileScreen extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Profile Header
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Profile Header ───────────────────────────────────────────────────────────
 
-class _ProfileHeader extends StatefulWidget {
-  final String name;
-  final String email;
-  final String gender;
-  final String photoPath;
-  final String uid;
-
+class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({
+    required this.uid,
     required this.name,
     required this.email,
     required this.gender,
-    required this.photoPath,
-    required this.uid,
+    required this.phone,
   });
 
-  @override
-  State<_ProfileHeader> createState() => _ProfileHeaderState();
-}
-
-class _ProfileHeaderState extends State<_ProfileHeader> {
-  bool _isEditing = false;
-  late final TextEditingController _nameController;
-  String? _selectedGender;
-  String? _newPhotoPath;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.name);
-    _selectedGender = widget.gender;
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickPhoto() async {
-    final picker = ImagePicker();
-    final picked =
-        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked != null) setState(() => _newPhotoPath = picked.path);
-  }
-
-  Future<void> _saveChanges() async {
-  final uid = FirebaseAuth.instance.currentUser!.uid; // 👈 actual auth UID
-
-  await FirebaseFirestore.instance
-      .collection('parents')
-      .doc(uid) // 👈 must match request.auth.uid
-      .update({
-    'name': _nameController.text.trim(),
-    'gender': _selectedGender,
-    if (_newPhotoPath != null) 'profilePhotoPath': _newPhotoPath,
-  });
-
-  setState(() => _isEditing = false);
-}
+  final String uid;
+  final String name;
+  final String email;
+  final String gender;
+  final String phone;
 
   @override
   Widget build(BuildContext context) {
-    final photo = _newPhotoPath ?? widget.photoPath;
+    final initials = name.trim().split(' ')
+        .where((p) => p.isNotEmpty)
+        .map((p) => p[0].toUpperCase())
+        .take(2)
+        .join();
 
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
           24, MediaQuery.of(context).padding.top + 16, 24, 28),
       decoration: const BoxDecoration(
-        color: Color(0xFFFF8A00),
+        color: AppColors.primary,
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(36),
           bottomRight: Radius.circular(36),
@@ -366,42 +315,41 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
       ),
       child: Column(
         children: [
-          // ── Top row: back + title + edit ──────────────────────────────
+          // ── Top bar ───────────────────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               GestureDetector(
                 onTap: () => context.pop(),
-                child: const Icon(Icons.arrow_back, color: Colors.white),
+                child: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: Colors.white, size: 20),
               ),
-              const Text(
-                'My Profile',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold),
-              ),
+              Text('My Profile',
+                  style: AppTextStyles.subtitle.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textWhite)),
               GestureDetector(
-                onTap: () {
-                  if (_isEditing) {
-                    _saveChanges();
-                  } else {
-                    setState(() => _isEditing = true);
-                  }
-                },
+                onTap: () => context.push(
+                  Routes.parentProfileEdit,
+                  extra: {
+                    'name': name,
+                    'phone': phone,
+                    'gender': gender,
+                    'email': email,
+                  },
+                ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.25),
+                    color: Colors.white.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    _isEditing ? 'Save' : 'Edit',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13),
+                    'Edit',
+                    style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textWhite,
+                        fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -409,383 +357,377 @@ class _ProfileHeaderState extends State<_ProfileHeader> {
           ),
           const SizedBox(height: 24),
 
-          // ── Avatar ────────────────────────────────────────────────────
-          GestureDetector(
-            onTap: _isEditing ? _pickPhoto : null,
-            child: Stack(
-              children: [
-                CircleAvatar(
-                  radius: 48,
-                  backgroundColor: Colors.white.withOpacity(0.3),
-                  backgroundImage:
-                      photo.isNotEmpty ? FileImage(File(photo)) : null,
-                  child: photo.isEmpty
-                      ? const Icon(Icons.person,
-                          size: 48, color: Colors.white)
-                      : null,
-                ),
-                if (_isEditing)
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.camera_alt,
-                          size: 16, color: Color(0xFFFF8A00)),
-                    ),
-                  ),
-              ],
-            ),
+          // ── Avatar ────────────────────────────────────────────────
+          CircleAvatar(
+            radius: 40,
+            backgroundColor: Colors.white.withValues(alpha: 0.3),
+            child: initials.isNotEmpty
+                ? Text(initials,
+                    style: AppTextStyles.heading1
+                        .copyWith(color: AppColors.textWhite))
+                : const Icon(Icons.person, size: 40, color: Colors.white),
           ),
           const SizedBox(height: 16),
 
-          // ── Name ──────────────────────────────────────────────────────
-          if (_isEditing)
-            TextField(
-              controller: _nameController,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  color: Color.fromARGB(255, 49, 175, 24),
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold),
-              decoration: InputDecoration(
-                hintText: 'Your name',
-                hintStyle: TextStyle(color: const Color.fromARGB(255, 17, 136, 13).withOpacity(0.6)),
-                enabledBorder: const UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white54),
-                ),
-                focusedBorder: const UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white),
-                ),
+          Text(name,
+              style: AppTextStyles.subtitle.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textWhite)),
+
+          const SizedBox(height: 8),
+          Text(email,
+              style: AppTextStyles.caption.copyWith(
+                  color: Colors.white.withValues(alpha: 0.85))),
+          const SizedBox(height: 16),
+
+          // ── Phone ─────────────────────────────────────────────────
+          if (phone.isNotEmpty) ...[
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(20),
               ),
-            )
-          else
-            Text(
-              widget.name,
-              style: const TextStyle(
-                  color: Color.fromARGB(255, 49, 173, 55),
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.phone_outlined,
+                      color: Colors.white, size: 14),
+                  const SizedBox(width: 6),
+                  Text(phone,
+                      style: AppTextStyles.caption
+                          .copyWith(color: AppColors.textWhite)),
+                ],
+              ),
             ),
-
-          const SizedBox(height: 4),
-          Text(
-            widget.email,
-            style: TextStyle(
-                color: Colors.white.withOpacity(0.85), fontSize: 14),
-          ),
-          const SizedBox(height: 12),
-
-          // ── Gender (edit mode) ────────────────────────────────────────
-          if (_isEditing) ...[
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: ['Male', 'Female', 'Prefer not to say'].map((g) {
-                final selected = _selectedGender == g.toLowerCase() ||
-                    _selectedGender == g;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedGender = g),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? Colors.white
-                          : Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      g,
-                      style: TextStyle(
-                        color: selected
-                            ? const Color(0xFFFF8A00)
-                            : Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ] else ...[
-            if (widget.gender.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  widget.gender,
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 13),
-                ),
-              ),
           ],
+
+          // ── Gender badge ──────────────────────────────────────────
+          if (gender.isNotEmpty)
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(gender,
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.textWhite)),
+            ),
         ],
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Child Card
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Child Card ───────────────────────────────────────────────────────────────
 
 class _ChildCard extends StatefulWidget {
-  final String childId;
-  final String parentId;
-  final Map<String, dynamic> data;
-
   const _ChildCard({
     required this.childId,
     required this.parentId,
     required this.data,
   });
 
+  final String childId;
+  final String parentId;
+  final Map<String, dynamic> data;
+
   @override
   State<_ChildCard> createState() => _ChildCardState();
 }
 
 class _ChildCardState extends State<_ChildCard> {
-  bool _isEditing = false;
-  late final TextEditingController _nameController;
-  String? _selectedSeverity;
-
-  static const _severityOptions = ['Level 1', 'Level 2', 'Level 3'];
+  // Linked therapist (loaded once)
+  String? _linkedTherapistId;
+  String? _linkedTherapistName;
+  String? _linkedTherapistEmail;
 
   @override
   void initState() {
     super.initState();
-    _nameController =
-        TextEditingController(text: widget.data['name'] as String? ?? '');
-    _selectedSeverity =
-        widget.data['asdSeverity'] as String? ?? 'Level 1';
+    _loadLinkedTherapist();
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
+  Future<void> _loadLinkedTherapist() async {
+    try {
+      // ── Step 1: linkedTherapists subcollection (written when therapist accepts) ──
+      final linkedSnap = await FirebaseFirestore.instance
+          .collection('parents')
+          .doc(widget.parentId)
+          .collection('children')
+          .doc(widget.childId)
+          .collection('linkedTherapists')
+          .orderBy('linkedAt', descending: true)
+          .limit(1)
+          .get();
+
+      if (linkedSnap.docs.isNotEmpty) {
+        final doc = linkedSnap.docs.first;
+        final therapistId = doc.id;
+        final docData = doc.data();
+
+        // Prefer denormalized fields stored in the subcollection doc itself
+        String name  = docData['therapistName'] as String? ?? docData['name'] as String? ?? '';
+        String email = docData['therapistEmail'] as String? ?? docData['email'] as String? ?? '';
+
+        // Fallback: try to read the therapists collection (may be denied by rules)
+        if (name.isEmpty || email.isEmpty) {
+          try {
+            final tDoc = await FirebaseFirestore.instance
+                .collection('therapists')
+                .doc(therapistId)
+                .get();
+            if (tDoc.exists) {
+              if (name.isEmpty)  name  = tDoc.data()?['name']  as String? ?? '';
+              if (email.isEmpty) email = tDoc.data()?['email'] as String? ?? '';
+            }
+          } catch (_) {}
+        }
+
+        if (mounted) {
+          setState(() {
+            _linkedTherapistId    = therapistId;
+            _linkedTherapistName  = name;
+            _linkedTherapistEmail = email;
+          });
+        }
+        return;
+      }
+
+      // ── Step 2: fallback — linkRequests with status == 'accepted' ──
+      final snap = await FirebaseFirestore.instance
+          .collection('linkRequests')
+          .where('childId', isEqualTo: widget.childId)
+          .where('status', isEqualTo: 'accepted')
+          .limit(1)
+          .get();
+
+      if (snap.docs.isEmpty) return;
+
+      final doc = snap.docs.first.data();
+      final therapistEmail = doc['therapistEmail'] as String?;
+      final therapistId = doc['therapistId'] as String?;
+
+      if (therapistEmail == null && therapistId == null) return;
+
+      String? name;
+      String? email = therapistEmail;
+
+      if (therapistId != null) {
+        final tDoc = await FirebaseFirestore.instance
+            .collection('therapists')
+            .doc(therapistId)
+            .get();
+        if (tDoc.exists) {
+          final tData = tDoc.data() as Map<String, dynamic>;
+          name = tData['name'] as String?;
+          email ??= tData['email'] as String?;
+        }
+      } else if (therapistEmail != null) {
+        final tSnap = await FirebaseFirestore.instance
+            .collection('therapists')
+            .where('email', isEqualTo: therapistEmail)
+            .limit(1)
+            .get();
+        if (tSnap.docs.isNotEmpty) {
+          name = tSnap.docs.first.data()['name'] as String?;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _linkedTherapistId = therapistId ?? therapistEmail;
+          _linkedTherapistName = name ?? '';
+          _linkedTherapistEmail = email ?? '';
+        });
+      }
+    } catch (_) {}
   }
 
-  Future<void> _saveChild() async {
-  final uid = FirebaseAuth.instance.currentUser!.uid; // 👈 actual auth UID
-
-  await FirebaseFirestore.instance
-      .collection('parents')
-      .doc(uid) // 👈 must match request.auth.uid
-      .collection('children')
-      .doc(widget.childId)
-      .update({
-    'name': _nameController.text.trim(),
-    'asdSeverity': _selectedSeverity,
-  });
-}
+  int _calcAge(DateTime dob) {
+    final now = DateTime.now();
+    int age = now.year - dob.year;
+    if (now.month < dob.month ||
+        (now.month == dob.month && now.day < dob.day)) {
+      age--;
+    }
+    return age;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final age = widget.data['age'] as int? ?? 0;
+    final dobTs = widget.data['dob'];
+    final dob = dobTs is Timestamp ? dobTs.toDate() : null;
+    final age = dob != null
+        ? _calcAge(dob)
+        : widget.data['age'] as int? ?? 0;
 
     return GestureDetector(
-      onTap: _isEditing
-          ? null
-          : () => context.push(
-                Routes.childProfile,
-                extra: ChildProfileArgs(
-                  parentId: widget.parentId,
-                  childId: widget.childId,
-                ),
-              ),
-      child: Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+      onTap: () => context.push(
+        Routes.childProfile,
+        extra: ChildProfileArgs(
+          parentId: widget.parentId,
+          childId: widget.childId,
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Card header ───────────────────────────────────────────────
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor:
-                    const Color(0xFFFF8A00).withOpacity(0.15),
-                child: const Icon(Icons.child_care,
-                    color: Color(0xFFFF8A00), size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _isEditing
-                    ? TextField(
-                        controller: _nameController,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 8),
-                          enabledBorder: const UnderlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Color(0xFFFF8A00)),
-                          ),
-                          focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(
-                                color: Color(0xFFFF8A00), width: 2),
-                          ),
-                        ),
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.data['name'] as String? ?? '',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: Colors.black87),
-                          ),
-                          Text(
-                            'Age $age',
-                            style: const TextStyle(
-                                fontSize: 13, color: Colors.black45),
-                          ),
-                        ],
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceDefault,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderInactive),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header row ────────────────────────────────────────────
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor:
+                      AppColors.primary.withValues(alpha: 0.15),
+                  child: const Icon(Icons.child_care,
+                      color: AppColors.primary, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.data['name'] as String? ?? '',
+                        style: AppTextStyles.subtitle.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textMain),
                       ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  if (_isEditing) {
-                    _saveChild();
-                  } else {
-                    setState(() => _isEditing = true);
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _isEditing
-                        ? const Color(0xFFFF8A00)
-                        : const Color(0xFFFF8A00).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
+                      Text('Age $age',
+                          style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textSubtle)),
+                    ],
                   ),
-                  child: Text(
-                    _isEditing ? 'Save' : 'Edit',
-                    style: TextStyle(
-                      color: _isEditing
-                          ? Colors.white
-                          : const Color(0xFFFF8A00),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                ),
+                GestureDetector(
+                  onTap: () => context.push(
+                    Routes.childEdit,
+                    extra: ChildEditArgs(
+                      childId: widget.childId,
+                      parentId: widget.parentId,
+                      data: widget.data,
+                      linkedTherapistId: _linkedTherapistId,
+                      linkedTherapistName: _linkedTherapistName,
+                      linkedTherapistEmail: _linkedTherapistEmail,
                     ),
                   ),
-                ),
-              ),
-            ],
-          ),
-
-          // ── Severity row ──────────────────────────────────────────────
-          const SizedBox(height: 12),
-          if (_isEditing) ...[
-            const Text('Diagnosis Level',
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black54)),
-            const SizedBox(height: 8),
-            Row(
-              children: _severityOptions.map((level) {
-                final selected = _selectedSeverity == level;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedSeverity = level),
                   child: Container(
-                    margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: selected
-                          ? const Color(0xFFFF8A00)
-                          : const Color(0xFFFF8A00).withOpacity(0.1),
+                      color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      level,
-                      style: TextStyle(
-                        color: selected
-                            ? Colors.white
-                            : const Color(0xFFFF8A00),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                      'Edit',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ] else ...[
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color:
-                        const Color(0xFFFF8A00).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    widget.data['asdSeverity'] as String? ?? '',
-                    style: const TextStyle(
-                        color: Color(0xFFFF8A00),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12),
                   ),
                 ),
               ],
             ),
+
+            // ── View mode badges ──────────────────────────────────────
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if ((widget.data['asdSeverity'] as String? ?? '').isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      widget.data['asdSeverity'] as String? ?? '',
+                      style: AppTextStyles.caption.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                if ((widget.data['gender'] as String? ?? '').isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      widget.data['gender'] as String? ?? '',
+                      style: AppTextStyles.caption.copyWith(
+                          color: AppColors.secondary,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            // Linked therapist row
+            if (_linkedTherapistId != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.verified_user_outlined,
+                        color: AppColors.secondary, size: 14),
+                    const SizedBox(width: 6),
+                    Text(
+                      (_linkedTherapistName?.isNotEmpty == true)
+                          ? _linkedTherapistName!
+                          : (_linkedTherapistEmail ?? ''),
+                      style: AppTextStyles.caption.copyWith(
+                          color: AppColors.secondary,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
           ],
-        ],
-      ),
+        ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Account Tile
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Account Tile ─────────────────────────────────────────────────────────────
 
 class _AccountTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final Color color;
-
   const _AccountTile({
     required this.icon,
     required this.label,
     required this.onTap,
-    this.color = Colors.black87,
+    this.color = AppColors.textMain,
   });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -795,23 +737,20 @@ class _AccountTile extends StatelessWidget {
         padding:
             const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surfaceDefault,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.black12),
+          border: Border.all(color: AppColors.borderInactive),
         ),
         child: Row(
           children: [
             Icon(icon, color: color, size: 22),
             const SizedBox(width: 14),
-            Text(
-              label,
-              style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: color),
-            ),
+            Text(label,
+                style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w600, color: color)),
             const Spacer(),
-            Icon(Icons.chevron_right, color: color.withOpacity(0.4)),
+            Icon(Icons.chevron_right,
+                color: color.withValues(alpha: 0.4)),
           ],
         ),
       ),
