@@ -1,2 +1,8 @@
 node_modules/
 *.local
+
+# Secrets — never commit credentials
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+*.pk
+*.pem

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../core/theme/theme.dart';
 import '../../../../../shared/models/child_model.dart';
@@ -42,7 +43,24 @@ class _SessionDetailView extends StatelessWidget {
         leading: const BackButton(color: AppColors.textMain),
         title: Text('Session Details', style: AppTextStyles.heading1),
       ),
-      body: BlocBuilder<SessionDetailBloc, SessionDetailState>(
+      body: BlocConsumer<SessionDetailBloc, SessionDetailState>(
+        // Only react when the join sub-status changes, so unrelated rebuilds
+        // don't re-launch the call or re-show the error.
+        listenWhen: (prev, curr) =>
+            curr is SessionDetailLoaded &&
+            (prev is! SessionDetailLoaded ||
+                prev.joinStatus != curr.joinStatus),
+        listener: (context, state) {
+          if (state is! SessionDetailLoaded) return;
+          if (state.joinStatus == JoinStatus.success && state.joinUrl != null) {
+            _launchCall(context, state.joinUrl!);
+          } else if (state.joinStatus == JoinStatus.failure) {
+            AppSnackbar.showError(
+              context,
+              state.joinError ?? 'Could not start the call. Please try again.',
+            );
+          }
+        },
         builder: (context, state) {
           if (state is SessionDetailLoading || state is SessionDetailInitial) {
             return const Center(
@@ -58,7 +76,11 @@ class _SessionDetailView extends StatelessWidget {
             );
           }
           final loaded = state as SessionDetailLoaded;
-          return _LoadedBody(session: loaded.session, child: loaded.child);
+          return _LoadedBody(
+            session: loaded.session,
+            child: loaded.child,
+            joinStatus: loaded.joinStatus,
+          );
         },
       ),
     );
@@ -102,10 +124,15 @@ class _ErrorView extends StatelessWidget {
 // ─── Loaded body ───────────────────────────────────────────────────────────────
 
 class _LoadedBody extends StatelessWidget {
-  const _LoadedBody({required this.session, required this.child});
+  const _LoadedBody({
+    required this.session,
+    required this.child,
+    required this.joinStatus,
+  });
 
   final SessionModel session;
   final ChildModel? child;
+  final JoinStatus joinStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +148,7 @@ class _LoadedBody extends StatelessWidget {
         children: [
           _InfoCard(session: session, child: child),
           const SizedBox(height: AppSpacing.xl),
-          _ModeActionCard(session: session),
+          _ModeActionCard(session: session, joinStatus: joinStatus),
           const SizedBox(height: AppSpacing.xl),
           _SectionLabel('Patient'),
           const SizedBox(height: AppSpacing.sm),
@@ -262,20 +289,33 @@ class _StatusPill extends StatelessWidget {
 // ─── Mode action card ──────────────────────────────────────────────────────────
 
 class _ModeActionCard extends StatelessWidget {
-  const _ModeActionCard({required this.session});
+  const _ModeActionCard({required this.session, required this.joinStatus});
 
   final SessionModel session;
+  final JoinStatus joinStatus;
 
   @override
   Widget build(BuildContext context) {
     final isVirtual = session.mode == 'Virtual';
     final icon = isVirtual ? Icons.videocam_outlined : Icons.location_on_outlined;
     final title = isVirtual ? 'Video Call' : session.location;
-    final subtitle =
-        isVirtual ? 'Link opens in your meeting app' : 'In-person session';
+
+    // Virtual: gate the Join button on the time window; In-person: still stubbed.
+    final isJoinable = isVirtual && session.isJoinable;
+    final subtitle = isVirtual
+        ? (isJoinable
+            ? 'Link opens in your meeting app'
+            : _virtualSubtitle(session))
+        : 'In-person session';
     final buttonLabel = isVirtual ? 'Join Meeting' : 'Get Directions';
-    final stubMessage =
-        isVirtual ? 'Joining the call is coming soon' : 'Directions are coming soon';
+
+    void onButtonPressed() {
+      if (isVirtual) {
+        context.read<SessionDetailBloc>().add(const SessionJoinRequested());
+      } else {
+        AppSnackbar.showError(context, 'Directions are coming soon');
+      }
+    }
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -310,12 +350,26 @@ class _ModeActionCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           AppPrimaryButton(
             label: buttonLabel,
-            onPressed: () => AppSnackbar.showError(context, stubMessage),
+            isLoading: joinStatus == JoinStatus.loading,
+            // Virtual button disables outside the join window; in-person stays
+            // tappable (stub). `null` renders the disabled grey state.
+            onPressed: (isVirtual && !isJoinable) ? null : onButtonPressed,
           ),
         ],
       ),
     );
   }
+}
+
+/// Explains why a Virtual session can't be joined yet (button disabled).
+String _virtualSubtitle(SessionModel session) {
+  if (session.status == 'cancelled') return 'This session was cancelled';
+  final now = DateTime.now();
+  final lead = SessionModel.joinLeadTime;
+  if (now.isBefore(session.scheduledAt.subtract(lead))) {
+    return 'Join opens ${lead.inMinutes} min before the start time';
+  }
+  return 'This session has ended';
 }
 
 // ─── Patient card ──────────────────────────────────────────────────────────────
@@ -496,6 +550,17 @@ class _SecondaryButton extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ─── Side effects ──────────────────────────────────────────────────────────────
+
+/// Opens the JaaS call URL in the device's browser / meeting app. Surfaces a
+/// friendly error if no app can handle it.
+Future<void> _launchCall(BuildContext context, Uri url) async {
+  final launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+  if (!launched && context.mounted) {
+    AppSnackbar.showError(context, 'Could not open the call. Please try again.');
   }
 }
 

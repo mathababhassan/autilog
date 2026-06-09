@@ -8,6 +8,14 @@ const db = admin.firestore();
 
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
+// JaaS (8x8) RS256 private key for signing meeting JWTs. Set via:
+//   firebase functions:secrets:set JAAS_PRIVATE_KEY
+const JAAS_PRIVATE_KEY = defineSecret("JAAS_PRIVATE_KEY");
+
+// JaaS app identifiers — NOT secret (they appear in the join URL / JWT header).
+const JAAS_APP_ID = "vpaas-magic-cookie-ee35ab3fd28f4bceaa1f898c313e6c8a";
+const JAAS_KID =
+  "vpaas-magic-cookie-ee35ab3fd28f4bceaa1f898c313e6c8a/7bc83c";
 
 // ─── Gemini AI Insights ───────────────────────────────────────────────
 
@@ -310,6 +318,108 @@ exports.rejectLinkRequest = onCall(async (request) => {
 
   return { success: true };
 });
+
+// ─── Virtual Session — JaaS Join Token ────────────────────────────────
+
+exports.getJaasToken = onCall(
+  { secrets: [JAAS_PRIVATE_KEY] },
+  async (request) => {
+    const jwt = require("jsonwebtoken");
+
+    // 1. Must be signed in.
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "You must be signed in to join a call.");
+    }
+
+    // 2. sessionId is required and must point at a real session.
+    const { sessionId } = request.data || {};
+    if (!sessionId || typeof sessionId !== "string") {
+      throw new HttpsError("invalid-argument", "A sessionId is required.");
+    }
+
+    const sessionSnap = await db.doc(`sessions/${sessionId}`).get();
+    if (!sessionSnap.exists) {
+      throw new HttpsError("not-found", "Session not found.");
+    }
+    const session = sessionSnap.data();
+
+    // --- YOUR NEW VALIDATION CHECKS ---
+    // Check if session is virtual mode
+    if (session.mode !== 'virtual') {
+      throw new HttpsError(
+        "failed-precondition", 
+        "Only virtual sessions can be joined via video call."
+      );
+    }
+
+    // Check if session is cancelled
+    if (session.status === 'cancelled') {
+      throw new HttpsError(
+        "failed-precondition", 
+        "This session has been cancelled."
+      );
+    }
+
+    // Check if within join window (15 minutes before to 15 minutes after start time)
+    const now = new Date();
+    // Handle both Firestore Timestamp and string date formats
+    let sessionStart;
+    if (session.startTime && typeof session.startTime.toDate === 'function') {
+      sessionStart = session.startTime.toDate(); // Firestore Timestamp
+    } else if (session.startTime) {
+      sessionStart = new Date(session.startTime); // String or ISO date
+    } else {
+      throw new HttpsError("failed-precondition", "Session has no start time.");
+    }
+    
+    const timeDiffMinutes = (now - sessionStart) / (1000 * 60);
+    if (timeDiffMinutes < -15 || timeDiffMinutes > 15) {
+      throw new HttpsError(
+        "failed-precondition", 
+        "Video call is only available 15 minutes before and after session start time."
+      );
+    }
+    // --- END OF VALIDATION CHECKS ---
+
+    // 3. Only the session's therapist may mint a moderator token.
+    const uid = request.auth.uid;
+    if (session.therapistId !== uid) {
+      throw new HttpsError(
+        "permission-denied",
+        "You are not the therapist for this session."
+      );
+    }
+
+    // 4. Mint a short-lived RS256 JaaS JWT.
+    const authToken = request.auth.token || {};
+    const room = `autilog-${sessionId}`;
+
+    const payload = {
+      aud: "jitsi",
+      iss: "chat",
+      sub: JAAS_APP_ID,
+      room,
+      context: {
+        user: {
+          id: uid,
+          name: authToken.name || "Therapist",
+          email: authToken.email || "",
+          avatar: authToken.picture || "",
+          moderator: true,
+        },
+      },
+    };
+
+    const token = jwt.sign(payload, JAAS_PRIVATE_KEY.value(), {
+      algorithm: "RS256",
+      keyid: JAAS_KID,
+      expiresIn: "2h",
+      notBefore: "-10s",
+    });
+
+    return { token, room, appId: JAAS_APP_ID };
+  }
+);
 
 const { onDocumentDeleted } = require("firebase-functions/v2/firestore");
 
