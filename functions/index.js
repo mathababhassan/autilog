@@ -1,32 +1,26 @@
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentDeleted } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
-const db = admin.firestore();
+const db = admin.firestore ? admin.firestore() : admin.app().firestore();
 
-const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+const GROQ_API_KEY = defineSecret("GROQ_API_KEY");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
-// JaaS (8x8) RS256 private key for signing meeting JWTs. Set via:
-//   firebase functions:secrets:set JAAS_PRIVATE_KEY
 const JAAS_PRIVATE_KEY = defineSecret("JAAS_PRIVATE_KEY");
 
-// JaaS app identifiers — NOT secret (they appear in the join URL / JWT header).
 const JAAS_APP_ID = "vpaas-magic-cookie-ee35ab3fd28f4bceaa1f898c313e6c8a";
-const JAAS_KID =
-  "vpaas-magic-cookie-ee35ab3fd28f4bceaa1f898c313e6c8a/7bc83c";
+const JAAS_KID = "vpaas-magic-cookie-ee35ab3fd28f4bceaa1f898c313e6c8a/7bc83c";
 
-// ─── Gemini AI Insights ───────────────────────────────────────────────
+// ─── Groq AI Insights ─────────────────────────────────────────────────
 
 exports.onDailySummaryCreated = onDocumentCreated(
   {
     document: "parents/{parentId}/children/{childId}/dailySummaries/{summaryId}",
-    secrets: [GEMINI_API_KEY],
+    secrets: [GROQ_API_KEY],
   },
   async (event) => {
-    const { GoogleGenerativeAI } = require("@google/generative-ai");
-
     const snap = event.data;
     if (!snap) return;
 
@@ -90,11 +84,7 @@ exports.onDailySummaryCreated = onDocumentCreated(
       console.warn("Could not load incidents:", err.message);
     }
 
-    try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-      const prompt = `You are a clinical behavioral analyst assistant for parents of children with autism.
+    const prompt = `You are a clinical behavioral analyst assistant for parents of children with autism.
 Child: ${childName}, Age: ${childAge}
 
 Based on the last 7 daily summaries (sleep, mood, meals, routine):
@@ -115,8 +105,22 @@ Respond ONLY with this JSON (no markdown, no extra text):
   "incidentPattern": "1 sentence about incident patterns if any"
 }`;
 
-      const result = await model.generateContent(prompt);
-      const text = result.response.text().trim();
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${GROQ_API_KEY.value()}`,
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.4,
+        }),
+      });
+
+      const groqData = await response.json();
+      const text = groqData.choices[0].message.content.trim();
       const insights = JSON.parse(text);
 
       await aiInsightsRef.set(
@@ -135,8 +139,7 @@ Respond ONLY with this JSON (no markdown, no extra text):
         { merge: true }
       );
     } catch (error) {
-      console.error("Gemini call failed:", error);
-      // Don't overwrite isUnlocked if already true
+      console.error("Groq call failed:", error);
       const existing = await aiInsightsRef.get();
       if (!existing.exists || existing.data()?.isUnlocked !== true) {
         await aiInsightsRef.set(
@@ -326,12 +329,10 @@ exports.getJaasToken = onCall(
   async (request) => {
     const jwt = require("jsonwebtoken");
 
-    // 1. Must be signed in.
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "You must be signed in to join a call.");
     }
 
-    // 2. sessionId is required and must point at a real session.
     const { sessionId } = request.data || {};
     if (!sessionId || typeof sessionId !== "string") {
       throw new HttpsError("invalid-argument", "A sessionId is required.");
@@ -343,54 +344,34 @@ exports.getJaasToken = onCall(
     }
     const session = sessionSnap.data();
 
-    // --- YOUR NEW VALIDATION CHECKS ---
-    // Check if session is virtual mode
     if (session.mode !== 'virtual') {
-      throw new HttpsError(
-        "failed-precondition", 
-        "Only virtual sessions can be joined via video call."
-      );
+      throw new HttpsError("failed-precondition", "Only virtual sessions can be joined via video call.");
     }
 
-    // Check if session is cancelled
     if (session.status === 'cancelled') {
-      throw new HttpsError(
-        "failed-precondition", 
-        "This session has been cancelled."
-      );
+      throw new HttpsError("failed-precondition", "This session has been cancelled.");
     }
 
-    // Check if within join window (15 minutes before to 15 minutes after start time)
     const now = new Date();
-    // Handle both Firestore Timestamp and string date formats
     let sessionStart;
     if (session.startTime && typeof session.startTime.toDate === 'function') {
-      sessionStart = session.startTime.toDate(); // Firestore Timestamp
+      sessionStart = session.startTime.toDate();
     } else if (session.startTime) {
-      sessionStart = new Date(session.startTime); // String or ISO date
+      sessionStart = new Date(session.startTime);
     } else {
       throw new HttpsError("failed-precondition", "Session has no start time.");
     }
-    
+
     const timeDiffMinutes = (now - sessionStart) / (1000 * 60);
     if (timeDiffMinutes < -15 || timeDiffMinutes > 15) {
-      throw new HttpsError(
-        "failed-precondition", 
-        "Video call is only available 15 minutes before and after session start time."
-      );
+      throw new HttpsError("failed-precondition", "Video call is only available 15 minutes before and after session start time.");
     }
-    // --- END OF VALIDATION CHECKS ---
 
-    // 3. Only the session's therapist may mint a moderator token.
     const uid = request.auth.uid;
     if (session.therapistId !== uid) {
-      throw new HttpsError(
-        "permission-denied",
-        "You are not the therapist for this session."
-      );
+      throw new HttpsError("permission-denied", "You are not the therapist for this session.");
     }
 
-    // 4. Mint a short-lived RS256 JaaS JWT.
     const authToken = request.auth.token || {};
     const room = `autilog-${sessionId}`;
 
@@ -421,9 +402,9 @@ exports.getJaasToken = onCall(
   }
 );
 
-const { onDocumentDeleted } = require("firebase-functions/v2/firestore");
+// ─── Daily Summary Deleted ────────────────────────────────────────────
 
-exports.onDailySummaryDeleted = require("firebase-functions/v2/firestore").onDocumentDeleted(
+exports.onDailySummaryDeleted = onDocumentDeleted(
   {
     document: "parents/{parentId}/children/{childId}/dailySummaries/{summaryId}",
   },

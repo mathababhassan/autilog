@@ -4,6 +4,8 @@ import '../../patients/data/patient_repository.dart';
 import '../data/session_repository.dart';
 import 'session_list_event.dart';
 import 'session_list_state.dart';
+import '../../../shared/models/session_model.dart';
+import '../../../shared/models/child_model.dart';
 
 class SessionListBloc extends Bloc<SessionListEvent, SessionListState> {
   SessionListBloc({
