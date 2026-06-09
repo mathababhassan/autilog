@@ -343,6 +343,44 @@ exports.getJaasToken = onCall(
     }
     const session = sessionSnap.data();
 
+    // --- YOUR NEW VALIDATION CHECKS ---
+    // Check if session is virtual mode
+    if (session.mode !== 'virtual') {
+      throw new HttpsError(
+        "failed-precondition", 
+        "Only virtual sessions can be joined via video call."
+      );
+    }
+
+    // Check if session is cancelled
+    if (session.status === 'cancelled') {
+      throw new HttpsError(
+        "failed-precondition", 
+        "This session has been cancelled."
+      );
+    }
+
+    // Check if within join window (15 minutes before to 15 minutes after start time)
+    const now = new Date();
+    // Handle both Firestore Timestamp and string date formats
+    let sessionStart;
+    if (session.startTime && typeof session.startTime.toDate === 'function') {
+      sessionStart = session.startTime.toDate(); // Firestore Timestamp
+    } else if (session.startTime) {
+      sessionStart = new Date(session.startTime); // String or ISO date
+    } else {
+      throw new HttpsError("failed-precondition", "Session has no start time.");
+    }
+    
+    const timeDiffMinutes = (now - sessionStart) / (1000 * 60);
+    if (timeDiffMinutes < -15 || timeDiffMinutes > 15) {
+      throw new HttpsError(
+        "failed-precondition", 
+        "Video call is only available 15 minutes before and after session start time."
+      );
+    }
+    // --- END OF VALIDATION CHECKS ---
+
     // 3. Only the session's therapist may mint a moderator token.
     const uid = request.auth.uid;
     if (session.therapistId !== uid) {
@@ -352,8 +390,7 @@ exports.getJaasToken = onCall(
       );
     }
 
-    // 4. Mint a short-lived RS256 JaaS JWT. Identity comes from the verified
-    //    Firebase Auth token, never from client-supplied data.
+    // 4. Mint a short-lived RS256 JaaS JWT.
     const authToken = request.auth.token || {};
     const room = `autilog-${sessionId}`;
 
@@ -375,12 +412,11 @@ exports.getJaasToken = onCall(
 
     const token = jwt.sign(payload, JAAS_PRIVATE_KEY.value(), {
       algorithm: "RS256",
-      keyid: JAAS_KID, // sets the `kid` JWT header
-      expiresIn: "2h", // sets `exp`
-      notBefore: "-10s", // small clock-skew tolerance for `nbf`
+      keyid: JAAS_KID,
+      expiresIn: "2h",
+      notBefore: "-10s",
     });
 
-    // 5. Client builds the join URL from these.
     return { token, room, appId: JAAS_APP_ID };
   }
 );
