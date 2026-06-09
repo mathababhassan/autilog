@@ -31,10 +31,16 @@ class SessionListBloc extends Bloc<SessionListEvent, SessionListState> {
     emit(const SessionListLoading());
     try {
       final uid = _authRepository.currentUser!.uid;
-
-      final sessions = await _sessionRepository.fetchSessionsForTherapist(uid);
-      final patients = await _patientRepository.fetchAcceptedPatients(uid);
-
+    
+      // Run both fetches at the same time
+      final results = await Future.wait([
+        _sessionRepository.fetchSessionsForTherapist(uid),
+        _patientRepository.fetchAcceptedPatients(uid),
+      ]);
+    
+      final sessions = results[0] as List<SessionModel>;
+      final patients = results[1]; // The type depends on what fetchAcceptedPatients returns
+    
       emit(SessionListLoaded(
         allSessions: sessions,
         patients: patients,
