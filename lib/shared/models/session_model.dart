@@ -87,6 +87,26 @@ class SessionModel {
     );
   }
 
+  /// Window during which the virtual call can be joined: from [joinLeadTime]
+  /// before [scheduledAt] until [_joinGraceTime] after [endTime]. Public so the
+  /// UI can describe the window ("opens N min before") without duplicating it.
+  static const Duration joinLeadTime = Duration(minutes: 15);
+  static const Duration _joinGraceTime = Duration(minutes: 30);
+
+  /// Whether the call is joinable at [now]. Takes the clock as a parameter so
+  /// it can be unit-tested without mocking `DateTime.now()`.
+  ///
+  /// True only for a Virtual, non-cancelled session inside the join window.
+  bool isJoinableAt(DateTime now) {
+    if (mode != 'Virtual' || status == 'cancelled') return false;
+    final opens = scheduledAt.subtract(joinLeadTime);
+    final closes = endTime.add(_joinGraceTime);
+    return !now.isBefore(opens) && !now.isAfter(closes);
+  }
+
+  /// Convenience wrapper over [isJoinableAt] using the current time.
+  bool get isJoinable => isJoinableAt(DateTime.now());
+
   /// e.g. "9:00 AM - 11:00 AM"
   String get formattedTimeRange {
     String fmt(DateTime dt) {
