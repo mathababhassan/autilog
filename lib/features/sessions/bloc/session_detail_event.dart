@@ -16,3 +16,9 @@ class SessionDetailStarted extends SessionDetailEvent {
   @override
   List<Object?> get props => [sessionId];
 }
+
+/// Fired when the therapist taps "Join Meeting" on a Virtual session.
+/// Triggers minting a JaaS token and (on success) opening the call URL.
+class SessionJoinRequested extends SessionDetailEvent {
+  const SessionJoinRequested();
+}

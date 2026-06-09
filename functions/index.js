@@ -8,6 +8,14 @@ const db = admin.firestore();
 
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
+// JaaS (8x8) RS256 private key for signing meeting JWTs. Set via:
+//   firebase functions:secrets:set JAAS_PRIVATE_KEY
+const JAAS_PRIVATE_KEY = defineSecret("JAAS_PRIVATE_KEY");
+
+// JaaS app identifiers — NOT secret (they appear in the join URL / JWT header).
+const JAAS_APP_ID = "vpaas-magic-cookie-ee35ab3fd28f4bceaa1f898c313e6c8a";
+const JAAS_KID =
+  "vpaas-magic-cookie-ee35ab3fd28f4bceaa1f898c313e6c8a/7bc83c";
 
 // ─── Gemini AI Insights ───────────────────────────────────────────────
 
@@ -310,6 +318,72 @@ exports.rejectLinkRequest = onCall(async (request) => {
 
   return { success: true };
 });
+
+// ─── Virtual Session — JaaS Join Token ────────────────────────────────
+
+exports.getJaasToken = onCall(
+  { secrets: [JAAS_PRIVATE_KEY] },
+  async (request) => {
+    const jwt = require("jsonwebtoken");
+
+    // 1. Must be signed in.
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "You must be signed in to join a call.");
+    }
+
+    // 2. sessionId is required and must point at a real session.
+    const { sessionId } = request.data || {};
+    if (!sessionId || typeof sessionId !== "string") {
+      throw new HttpsError("invalid-argument", "A sessionId is required.");
+    }
+
+    const sessionSnap = await db.doc(`sessions/${sessionId}`).get();
+    if (!sessionSnap.exists) {
+      throw new HttpsError("not-found", "Session not found.");
+    }
+    const session = sessionSnap.data();
+
+    // 3. Only the session's therapist may mint a moderator token.
+    const uid = request.auth.uid;
+    if (session.therapistId !== uid) {
+      throw new HttpsError(
+        "permission-denied",
+        "You are not the therapist for this session."
+      );
+    }
+
+    // 4. Mint a short-lived RS256 JaaS JWT. Identity comes from the verified
+    //    Firebase Auth token, never from client-supplied data.
+    const authToken = request.auth.token || {};
+    const room = `autilog-${sessionId}`;
+
+    const payload = {
+      aud: "jitsi",
+      iss: "chat",
+      sub: JAAS_APP_ID,
+      room,
+      context: {
+        user: {
+          id: uid,
+          name: authToken.name || "Therapist",
+          email: authToken.email || "",
+          avatar: authToken.picture || "",
+          moderator: true,
+        },
+      },
+    };
+
+    const token = jwt.sign(payload, JAAS_PRIVATE_KEY.value(), {
+      algorithm: "RS256",
+      keyid: JAAS_KID, // sets the `kid` JWT header
+      expiresIn: "2h", // sets `exp`
+      notBefore: "-10s", // small clock-skew tolerance for `nbf`
+    });
+
+    // 5. Client builds the join URL from these.
+    return { token, room, appId: JAAS_APP_ID };
+  }
+);
 
 const { onDocumentDeleted } = require("firebase-functions/v2/firestore");
 
