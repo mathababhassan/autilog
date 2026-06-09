@@ -28,6 +28,8 @@ class SessionDetailLoaded extends SessionDetailState {
     this.joinStatus = JoinStatus.idle,
     this.joinUrl,
     this.joinError,
+    this.actionMessage,
+    this.actionIsError = false,
   });
 
   final SessionModel session;
@@ -48,6 +50,11 @@ class SessionDetailLoaded extends SessionDetailState {
   /// Set only on [JoinStatus.failure] — a user-friendly message.
   final String? joinError;
 
+  /// One-shot feedback for an action (e.g. marking the session completed).
+  /// Null on a plain load so the snackbar only fires after an action.
+  final String? actionMessage;
+  final bool actionIsError;
+
   SessionDetailLoaded copyWith({
     JoinStatus? joinStatus,
     Uri? joinUrl,
@@ -63,7 +70,8 @@ class SessionDetailLoaded extends SessionDetailState {
   }
 
   @override
-  List<Object?> get props => [session, child, joinStatus, joinUrl, joinError];
+  List<Object?> get props =>
+      [session, child, joinStatus, joinUrl, joinError, actionMessage, actionIsError];
 }
 
 class SessionDetailError extends SessionDetailState {

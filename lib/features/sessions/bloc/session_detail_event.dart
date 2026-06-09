@@ -22,3 +22,14 @@ class SessionDetailStarted extends SessionDetailEvent {
 class SessionJoinRequested extends SessionDetailEvent {
   const SessionJoinRequested();
 }
+
+/// Marks the session as completed (therapist-confirmed), then reloads so the
+/// status pill and available actions update.
+class SessionDetailMarkCompleted extends SessionDetailEvent {
+  const SessionDetailMarkCompleted({required this.sessionId});
+
+  final String sessionId;
+
+  @override
+  List<Object?> get props => [sessionId];
+}
