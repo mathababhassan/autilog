@@ -21,6 +21,7 @@ abstract final class Routes {
   static const String incidentDetail = '/parent/log/incident-detail';
   static const String logHistory = '/parent/log/history';
   static const String aiInsights = '/parent/ai-insights';
+  static const String parentSessions = '/parent/sessions';
 
   static const String dailySummary = '/parent/log/daily-summary';
 
