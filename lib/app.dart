@@ -43,7 +43,7 @@ import 'features/child_profile/bloc/child_profile_bloc.dart';
 import 'features/child_profile/bloc/child_profile_event.dart';
 import 'features/child_profile/data/child_profile_repository.dart';
 import 'features/child_profile/presentation/screens/child_profile_screen.dart';
-
+import 'features/sessions/presentation/parent/screens/parent_sessions_screen.dart';
 class App extends StatelessWidget {
   const App({super.key});
 
@@ -259,6 +259,16 @@ class _AppViewState extends State<_AppView> {
             );
           },
         ),
+        GoRoute(
+  path: Routes.parentSessions,
+  builder: (context, state) {
+    final args = state.extra as Map<String, dynamic>? ?? {};
+    return ParentSessionsScreen(
+      childId: args['childId'] as String? ?? '',
+      childName: args['childName'] as String? ?? '',
+    );
+  },
+),
        GoRoute(
         path: Routes.positiveMomentForm,
         builder: (context, state) {
