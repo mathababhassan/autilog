@@ -798,10 +798,13 @@ Future<void> _showRescheduleSheet(
         final duration = session.endTime.difference(session.scheduledAt);
         final endTime = scheduledAt.add(duration);
         await SessionRepository().rescheduleSession(
-          sessionId: session.id,
-          newStart: scheduledAt,
-          newEnd: endTime,
-        );
+        sessionId: session.id,
+        newStart: scheduledAt,
+        newEnd: endTime,
+        mode: session.mode,
+        location: session.location,
+        durationMinutes: endTime.difference(scheduledAt).inMinutes,
+      );
       },
     ),
   );

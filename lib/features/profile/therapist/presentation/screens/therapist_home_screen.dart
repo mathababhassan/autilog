@@ -907,6 +907,9 @@ Future<void> _showHomeRescheduleSheet(
           sessionId: session.id,
           newStart: scheduledAt,
           newEnd: endTime,
+          mode: session.mode,
+          location: session.location,
+          durationMinutes: endTime.difference(scheduledAt).inMinutes,
         );
       },
     ),
