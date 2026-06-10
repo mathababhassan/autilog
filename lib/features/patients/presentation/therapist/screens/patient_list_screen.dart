@@ -92,9 +92,9 @@ class _PatientListScreenState extends State<PatientListScreen> {
               final filteredActive = _searchQuery.isEmpty
                   ? state.activePatients
                   : state.activePatients
-                      .where((p) =>
-                          p.name.toLowerCase().contains(_searchQuery) ||
-                          p.diagnosisType.toLowerCase().contains(_searchQuery))
+                      .where((entry) =>
+                          entry.$1.name.toLowerCase().contains(_searchQuery) ||
+                          entry.$1.diagnosisType.toLowerCase().contains(_searchQuery))
                       .toList();
 
               final isActionInProgress =
@@ -149,7 +149,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
   Widget _buildContent(
     BuildContext context,
     List<PendingRequestDisplay> pending,
-    List<ChildModel> active,
+    List<(ChildModel, String)> active,
     bool isActionInProgress,
   ) {
     return SingleChildScrollView(
@@ -203,6 +203,8 @@ class _PatientListScreenState extends State<PatientListScreen> {
                                   requestId: request.requestId,
                                   parentId: request.parentId,
                                   childId: request.childId,
+                                  parentName: request.parentName,
+                                  childName: request.childName,
                                 ),
                               ),
                       onReject: () =>
@@ -249,7 +251,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
                 separatorBuilder: (_, _) =>
                     const SizedBox(height: AppSpacing.sm),
                 itemBuilder: (context, index) {
-                  final patient = active[index];
+                  final (patient, parentName) = active[index];
                   return _PatientCard(
                     patient: patient,
                     isActionInProgress: isActionInProgress,
@@ -258,6 +260,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
                       extra: PatientDetailArgs(
                         patient: patient,
                         therapistId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                        parentName: parentName,
                       ),
                     ),
                   );
@@ -955,10 +958,11 @@ class _TabBar extends StatelessWidget {
                 label: 'Sessions',
                 onTap: () => context.go(Routes.therapistSessions),
               ),
-              const _TabItem(
+              _TabItem(
                 iconOutline: 'assets/icons/report_outline.svg',
                 iconFilled: 'assets/icons/report_filled.svg',
                 label: 'Reports',
+                onTap: () => context.go(Routes.therapistReports),
               ),
             ],
           ),

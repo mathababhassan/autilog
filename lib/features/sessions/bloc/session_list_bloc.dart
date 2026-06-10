@@ -4,6 +4,8 @@ import '../../patients/data/patient_repository.dart';
 import '../data/session_repository.dart';
 import 'session_list_event.dart';
 import 'session_list_state.dart';
+import '../../../shared/models/session_model.dart';
+import '../../../shared/models/child_model.dart';
 
 class SessionListBloc extends Bloc<SessionListEvent, SessionListState> {
   SessionListBloc({
@@ -31,10 +33,16 @@ class SessionListBloc extends Bloc<SessionListEvent, SessionListState> {
     emit(const SessionListLoading());
     try {
       final uid = _authRepository.currentUser!.uid;
-
-      final sessions = await _sessionRepository.fetchSessionsForTherapist(uid);
-      final patients = await _patientRepository.fetchAcceptedPatients(uid);
-
+    
+      // Run both fetches at the same time
+      final results = await Future.wait([
+        _sessionRepository.fetchSessionsForTherapist(uid),
+        _patientRepository.fetchAcceptedPatients(uid),
+      ]);
+    
+      final sessions = results[0] as List<SessionModel>;
+      final patients = results[1] as List<ChildModel>;
+    
       emit(SessionListLoaded(
         allSessions: sessions,
         patients: patients,

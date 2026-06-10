@@ -16,7 +16,10 @@ class SessionModel {
   final String? preSessionParentNotes;
   final String? preSessionPrivateNotes;
   final String? notes;
+  final String? privateNotes;
+  final String? progress;
   final String? cancelReason;
+  final DateTime? notesLastEditedAt;
 
   const SessionModel({
     required this.id,
@@ -34,7 +37,10 @@ class SessionModel {
     this.preSessionParentNotes,
     this.preSessionPrivateNotes,
     this.notes,
+    this.privateNotes,
+    this.progress,
     this.cancelReason,
+    this.notesLastEditedAt,
   });
 
   factory SessionModel.fromMap(Map<String, dynamic> map, String id) {
@@ -65,7 +71,10 @@ class SessionModel {
       preSessionParentNotes: map['preSessionParentNotes'] as String?,
       preSessionPrivateNotes: map['preSessionPrivateNotes'] as String?,
       notes: map['notes'] as String?,
+      privateNotes: map['privateNotes'] as String?,
+      progress: map['progress'] as String?,
       cancelReason: map['cancelReason'] as String?,
+      notesLastEditedAt: (map['notesLastEditedAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -85,6 +94,8 @@ class SessionModel {
       if (preSessionParentNotes != null) 'preSessionParentNotes': preSessionParentNotes,
       if (preSessionPrivateNotes != null) 'preSessionPrivateNotes': preSessionPrivateNotes,
       if (notes != null) 'notes': notes,
+      if (privateNotes != null) 'privateNotes': privateNotes,
+      if (progress != null) 'progress': progress,
       if (cancelReason != null) 'cancelReason': cancelReason,
     };
   }
@@ -97,7 +108,10 @@ class SessionModel {
     String? preSessionParentNotes,
     String? preSessionPrivateNotes,
     String? notes,
+    String? privateNotes,
+    String? progress,
     String? cancelReason,
+    DateTime? notesLastEditedAt,
   }) {
     return SessionModel(
       id: id,
@@ -115,7 +129,10 @@ class SessionModel {
       preSessionParentNotes: preSessionParentNotes ?? this.preSessionParentNotes,
       preSessionPrivateNotes: preSessionPrivateNotes ?? this.preSessionPrivateNotes,
       notes: notes ?? this.notes,
+      privateNotes: privateNotes ?? this.privateNotes,
+      progress: progress ?? this.progress,
       cancelReason: cancelReason ?? this.cancelReason,
+      notesLastEditedAt: notesLastEditedAt ?? this.notesLastEditedAt,
     );
   }
 
@@ -155,4 +172,15 @@ class SessionModel {
     }
     return '${fmt(scheduledAt)} - ${fmt(endTime)}';
   }
+
+  /// e.g. "Mon, Jun 9"
+  String get formattedDateShort {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${days[scheduledAt.weekday - 1]}, ${months[scheduledAt.month - 1]} ${scheduledAt.day}';
+  }
+
 }

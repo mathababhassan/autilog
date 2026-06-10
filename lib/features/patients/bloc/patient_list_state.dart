@@ -28,13 +28,14 @@ class PatientListLoaded extends PatientListState {
   });
 
   final List<PendingRequestDisplay> pendingRequests;
-  final List<ChildModel> activePatients;
+  /// Each entry is (patient, parentName).
+  final List<(ChildModel, String)> activePatients;
   final PatientListActionStatus actionStatus;
   final String? actionMessage;
 
   PatientListLoaded copyWith({
     List<PendingRequestDisplay>? pendingRequests,
-    List<ChildModel>? activePatients,
+    List<(ChildModel, String)>? activePatients,
     PatientListActionStatus? actionStatus,
     String? actionMessage,
   }) {

@@ -11,9 +11,11 @@ abstract final class Routes {
   static const String therapistProfileEdit = '/therapist/profile/edit';
   static const String therapistPatients = '/therapist/patients';
   static const String patientDetails = '/therapist/patients/details';
+  static const String logReview = '/therapist/patients/log-review';
   static const String therapistSessions = '/therapist/sessions';
   static const String sessionDetail = '/therapist/session-detail';
   static const String scheduleSession = '/therapist/schedule-session';
+  static const String therapistReports = '/therapist/reports';
 
   // Parent
   static const String registerParent = '/auth/register/parent';
@@ -24,6 +26,10 @@ abstract final class Routes {
   static const String logHistory = '/parent/log/history';
   static const String aiInsights = '/parent/ai-insights';
   static const String parentSessions = '/parent/sessions';
+  static const String parentProfileEdit = '/parent/profile/edit';
+  static const String childEdit = '/parent/child/edit';
+  static const String sessionNotesAdd  = '/therapist/session/notes/add';
+  static const String sessionNotesEdit = '/therapist/session/notes/edit';
 
   static const String dailySummary = '/parent/log/daily-summary';
 

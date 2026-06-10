@@ -83,7 +83,9 @@ service cloud.firestore {
 
     // ── Parents & Children ───────────────────────────────────────────────────
     match /parents/{uid} {
-      allow read, write: if isAuth() && isOwner(uid);
+      allow read: if isAuth() && (isOwner(uid)
+        || exists(/databases/$(database)/documents/therapists/$(request.auth.uid)));
+      allow write: if isAuth() && isOwner(uid);
 
       match /children/{childId} {
         allow read: if canReadChildData(uid, childId);
@@ -92,6 +94,14 @@ service cloud.firestore {
         match /dailySummaries/{summaryId} {
           allow read: if canReadChildData(uid, childId);
           allow write: if isAuth() && isOwner(uid);
+
+          // ── Comments on Daily Summaries ───────────────────────────────────
+          match /comments/{commentId} {
+            allow read: if canReadChildData(uid, childId);
+            allow create: if isAuth() && isLinkedTherapist(childId);
+            allow update, delete: if isAuth() && isLinkedTherapist(childId)
+              && resource.data.therapistId == request.auth.uid;
+          }
         }
 
         match /aiInsights/{doc} {
@@ -101,6 +111,14 @@ service cloud.firestore {
         match /incidents/{incidentId} {
           allow read: if canReadChildData(uid, childId);
           allow write: if isAuth() && isOwner(uid);
+
+          // ── Comments on Incidents ─────────────────────────────────────────
+          match /comments/{commentId} {
+            allow read: if canReadChildData(uid, childId);
+            allow create: if isAuth() && isLinkedTherapist(childId);
+            allow update, delete: if isAuth() && isLinkedTherapist(childId)
+              && resource.data.therapistId == request.auth.uid;
+          }
         }
 
         match /positiveMoments/{momentId} {
@@ -114,10 +132,17 @@ service cloud.firestore {
           allow delete: if isAuth() && isOwner(uid);
         }
 
+        // ── Tracking Questions ────────────────────────────────────────────────
+        // Created and managed by the linked therapist per child.
+        // Parent reads them to render dynamically in the daily summary form.
+        match /trackingQuestions/{questionId} {
+          allow read: if canReadChildData(uid, childId);
+          allow create, update: if isAuth() && isLinkedTherapist(childId);
+          allow delete: if isAuth() && isLinkedTherapist(childId);
+        }
+
         match /linkedTherapists/{therapistId} {
           allow read: if canReadChildData(uid, childId);
-          // The therapist creates this link doc when accepting a request; the
-          // parent (owner) or the therapist can delete it on revoke / remove.
           allow create: if isAuth() && request.auth.uid == therapistId;
           allow delete: if isAuth()
             && (isOwner(uid) || request.auth.uid == therapistId);
@@ -133,9 +158,6 @@ service cloud.firestore {
 
     // ── Therapists ────────────────────────────────────────────────────────────
     match /therapists/{therapistId} {
-      // Profiles are readable by any signed-in user so a parent can look one up
-      // by email when sending a link request and show the linked therapist's
-      // details. Writes remain owner-only.
       allow read: if isAuth();
       allow write: if isAuth() && isOwner(therapistId);
 
@@ -144,14 +166,11 @@ service cloud.firestore {
       }
 
       match /patients/{childId} {
-        // Owner therapist manages the record; the linked parent may remove it
-        // when revoking access (matched on the stored parentId).
         allow read: if isAuth() && isOwner(therapistId);
         allow create: if isAuth() && isOwner(therapistId);
         allow delete: if isAuth()
           && (isOwner(therapistId) || resource.data.parentId == request.auth.uid);
 
-        // Positive-moment feed items — written by Cloud Functions only.
         match /feed/{momentId} {
           allow read: if isAuth() && isOwner(therapistId);
           allow write: if false;
@@ -159,10 +178,7 @@ service cloud.firestore {
       }
     }
 
-    // ── Patient link requests (client-side linking flow) ──────────────────────
-    // Top-level bridge between parent and therapist. A parent creates a pending
-    // request; the addressed therapist (matched by email) reads it and accepts
-    // (status -> accepted) or rejects (delete). The parent may cancel their own.
+    // ── Patient link requests ─────────────────────────────────────────────────
     match /linkRequests/{requestId} {
       allow read: if isAuth()
         && (resource.data.parentId == request.auth.uid
@@ -170,7 +186,6 @@ service cloud.firestore {
       allow create: if isAuth()
         && request.resource.data.parentId == request.auth.uid
         && request.resource.data.status == 'pending';
-      // Therapist accepts by flipping status; immutable fields must not change.
       allow update: if isAuth()
         && resource.data.therapistEmail == request.auth.token.email
         && request.resource.data.parentId == resource.data.parentId
@@ -182,9 +197,6 @@ service cloud.firestore {
     }
 
     // ── Sessions ──────────────────────────────────────────────────────────────
-    // Restored from the previously deployed rules. NOTE: intentionally loose
-    // (any signed-in user) to match the prior working state — the sessions
-    // feature owner should tighten this to therapist/parent ownership later.
     match /sessions/{sessionId} {
       allow read: if isAuth();
       allow create: if isAuth();

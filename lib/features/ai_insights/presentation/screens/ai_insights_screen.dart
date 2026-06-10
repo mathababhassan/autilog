@@ -308,7 +308,9 @@ class _UnlockedScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final summary = weeklyInsights['summary'] as String? ?? '';
     final progressDirection = weeklyInsights['progressDirection'] as String? ?? 'stable';
-    final tips = (weeklyInsights['tips'] as List<dynamic>?)?.cast<String>() ?? [];
+    final sleepTip = weeklyInsights['sleepTip'] as String? ?? '';
+    final strategyTip1 = weeklyInsights['strategyTip1'] as String? ?? '';
+    final strategyTip2 = weeklyInsights['strategyTip2'] as String? ?? '';
     final positiveMomentsHighlight = weeklyInsights['positiveMomentsHighlight'] as String? ?? '';
     final incidentPattern = weeklyInsights['incidentPattern'] as String? ?? '';
 
@@ -510,42 +512,98 @@ class _UnlockedScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Tips
-            if (tips.isNotEmpty) ...[
-              for (int i = 0; i < tips.length; i++) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppColors.secondary20,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            i == 0 ? Icons.bedtime_outlined : Icons.shield_outlined,
-                            color: AppColors.secondary,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            i == 0 ? 'SLEEP TIP' : 'STRATEGY TIP',
-                            style: AppTextStyles.tag.copyWith(
-                              color: AppColors.secondary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(tips[i], style: AppTextStyles.body),
-                    ],
-                  ),
+            if (sleepTip.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary20,
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                if (i < tips.length - 1) const SizedBox(height: 16),
-              ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.bedtime_outlined, color: AppColors.secondary, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'SLEEP TIP',
+                          style: AppTextStyles.tag.copyWith(
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(sleepTip, style: AppTextStyles.body),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (strategyTip1.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary20,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.shield_outlined, color: AppColors.secondary, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'STRATEGY TIP',
+                          style: AppTextStyles.tag.copyWith(
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(strategyTip1, style: AppTextStyles.body),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (strategyTip2.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary20,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.shield_outlined, color: AppColors.secondary, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'STRATEGY TIP',
+                          style: AppTextStyles.tag.copyWith(
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(strategyTip2, style: AppTextStyles.body),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
             ],
             const SizedBox(height: 16),
 

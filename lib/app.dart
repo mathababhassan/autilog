@@ -46,6 +46,14 @@ import 'features/child_profile/bloc/child_profile_event.dart';
 import 'features/child_profile/data/child_profile_repository.dart';
 import 'features/child_profile/presentation/screens/child_profile_screen.dart';
 import 'features/sessions/presentation/parent/screens/parent_sessions_screen.dart';
+import 'features/sessions/presentation/therapist/screens/session_notes_form_screen.dart';
+import 'features/sessions/presentation/therapist/screens/session_notes_edit_screen.dart';
+import 'shared/models/session_model.dart';
+import 'features/auth/presentation/parent/screens/parent_edit_profile_screen.dart';
+import 'features/auth/presentation/parent/screens/child_edit_screen.dart';
+import 'features/patients/presentation/therapist/screens/log_review_screen.dart';
+import 'features/profile/therapist/presentation/screens/therapist_reports_screen.dart';
+
 class App extends StatelessWidget {
   const App({super.key});
 
@@ -177,6 +185,17 @@ class _AppViewState extends State<_AppView> {
             return PatientDetailsScreen(args: args);
           },
         ),
+        GoRoute(
+          path: Routes.logReview,
+          builder: (context, state) {
+            final args = state.extra as LogReviewArgs;
+            return LogReviewScreen(args: args);
+          },
+        ),
+        GoRoute(
+          path: Routes.therapistReports,
+          builder: (_, __) => const TherapistReportsScreen(),
+        ),
         GoRoute(path: Routes.registerParent, builder: (_, __) => const ParentRegistrationScreen()),
         GoRoute(path: Routes.childOnboarding, builder: (_, __) => const ChildOnboardingScreen()),
         GoRoute(path: Routes.childRegistration, builder: (_, __) => const ChildRegistrationScreen()),
@@ -273,6 +292,42 @@ class _AppViewState extends State<_AppView> {
     );
   },
 ),
+        GoRoute(
+          path: Routes.parentProfileEdit,
+          builder: (context, state) {
+            final args = state.extra as Map<String, dynamic>? ?? {};
+            return ParentEditProfileScreen(
+              name: args['name'] as String? ?? '',
+              phone: args['phone'] as String? ?? '',
+              gender: args['gender'] as String? ?? '',
+              email: args['email'] as String? ?? '',
+            );
+          },
+        ),
+        GoRoute(
+          path: Routes.childEdit,
+          builder: (context, state) {
+            final args = state.extra as ChildEditArgs?;
+            if (args == null) return const SizedBox.shrink();
+            return ChildEditScreen(args: args);
+          },
+        ),
+        GoRoute(
+          path: Routes.sessionNotesAdd,
+          builder: (context, state) {
+            final session = state.extra as SessionModel?;
+            if (session == null) return const SizedBox.shrink();
+            return SessionNotesFormScreen(session: session);
+          },
+        ),
+        GoRoute(
+          path: Routes.sessionNotesEdit,
+          builder: (context, state) {
+            final session = state.extra as SessionModel?;
+            if (session == null) return const SizedBox.shrink();
+            return SessionNotesEditScreen(session: session);
+          },
+        ),
        GoRoute(
         path: Routes.positiveMomentForm,
         builder: (context, state) {
