@@ -1,11 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../features/auth/data/auth_repository.dart';
 import '../../patients/data/patient_repository.dart';
 import '../data/session_repository.dart';
 import 'session_list_event.dart';
 import 'session_list_state.dart';
-import '../../../shared/models/session_model.dart';
-import '../../../shared/models/child_model.dart';
 
 class SessionListBloc extends Bloc<SessionListEvent, SessionListState> {
   SessionListBloc({
@@ -35,22 +34,16 @@ class SessionListBloc extends Bloc<SessionListEvent, SessionListState> {
     emit(const SessionListLoading());
     try {
       final uid = _authRepository.currentUser!.uid;
-    
-      // Run both fetches at the same time
-      final results = await Future.wait([
-        _sessionRepository.fetchSessionsForTherapist(uid),
-        _patientRepository.fetchAcceptedPatients(uid),
-      ]);
-    
-      final sessions = results[0] as List<SessionModel>;
-      final pairs = results[1] as List<(ChildModel, String)>;
-      final patients = pairs.map((p) => p.$1).toList();
-    
+      final sessions = await _sessionRepository.fetchSessionsForTherapist(uid);
+      final triples = await _patientRepository.fetchAcceptedPatients(uid);
+      final patients = triples.map((t) => t.$1).toList();
+
       emit(SessionListLoaded(
         allSessions: sessions,
         patients: patients,
       ));
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('SessionListBloc._onLoad error: $e\n$st');
       emit(const SessionListError(
         message: 'Could not load your sessions. Please try again.',
       ));

@@ -15,10 +15,21 @@ class TherapistHomeCubit extends Cubit<TherapistHomeState> {
   final SessionRepository _sessionRepository;
   final FirebaseFirestore _firestore;
 
+  String? _lastTherapistId;
+  List<ChildModel>? _lastPatients;
+
+  Future<void> reload() async {
+    if (_lastTherapistId != null && _lastPatients != null) {
+      await load(therapistId: _lastTherapistId!, patients: _lastPatients!);
+    }
+  }
+
   Future<void> load({
     required String therapistId,
     required List<ChildModel> patients,
   }) async {
+    _lastTherapistId = therapistId;
+    _lastPatients = patients;
     emit(const TherapistHomeLoading());
 
     try {
