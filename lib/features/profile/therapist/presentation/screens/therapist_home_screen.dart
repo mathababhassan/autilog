@@ -11,6 +11,7 @@ import '../../../../../features/patients/bloc/patient_list_state.dart';
 import '../../../../../features/sessions/data/session_repository.dart';
 import '../../../../../shared/models/session_model.dart';
 import '../../../../../shared/widgets/app_primary_button.dart';
+import '../../../../../shared/widgets/app_snackbar.dart';
 import '../../bloc/therapist_home_cubit.dart';
 import '../../bloc/therapist_home_state.dart';
 import '../../bloc/therapist_profile_bloc.dart';
@@ -571,61 +572,72 @@ class _SessionCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => context.push(Routes.sessionDetail, extra: session.id),
       child: Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceDefault,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.dividerLight),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8, offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: AppColors.secondary20,
-            child: Text(
-              session.childName.isNotEmpty
-                  ? session.childName[0].toUpperCase()
-                  : '?',
-              style: AppTextStyles.subtitle.copyWith(
-                  color: AppColors.secondary, fontWeight: FontWeight.w700),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceDefault,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.dividerLight),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: AppColors.secondary20,
+              child: Text(
+                session.childName.isNotEmpty
+                    ? session.childName[0].toUpperCase()
+                    : '?',
+                style: AppTextStyles.subtitle.copyWith(
+                    color: AppColors.secondary, fontWeight: FontWeight.w700),
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(session.childName,
-                    style: AppTextStyles.body
-                        .copyWith(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.access_time,
-                        size: 13, color: AppColors.textPlaceholder),
-                    const SizedBox(width: 4),
-                    Text(session.formattedTimeRange,
-                        style: AppTextStyles.caption
-                            .copyWith(color: AppColors.textPlaceholder)),
-                    const SizedBox(width: 16),
-                    const Icon(Icons.location_on_outlined,
-                        size: 13, color: AppColors.textPlaceholder),
-                    const SizedBox(width: 4),
-                    Text(session.mode,
-                        style: AppTextStyles.caption
-                            .copyWith(color: AppColors.textPlaceholder)),
-                  ],
-                ),
-              ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(session.childName,
+                      style:
+                          AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time,
+                          size: 13, color: AppColors.textPlaceholder),
+                      const SizedBox(width: 4),
+                      Text(session.formattedTimeRange,
+                          style: AppTextStyles.caption
+                              .copyWith(color: AppColors.textPlaceholder)),
+                      const SizedBox(width: 16),
+                      const Icon(Icons.location_on_outlined,
+                          size: 13, color: AppColors.textPlaceholder),
+                      const SizedBox(width: 4),
+                      Text(session.mode,
+                          style: AppTextStyles.caption
+                              .copyWith(color: AppColors.textPlaceholder)),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+            // Actions menu
+            GestureDetector(
+              onTap: () => _showHomeSessionActions(context, session),
+              child: const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Icon(Icons.more_vert,
+                    size: 20, color: AppColors.textSubtle),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -819,6 +831,345 @@ class _TabBar extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Home session actions ─────────────────────────────────────────────────────
+
+void _showHomeSessionActions(BuildContext context, SessionModel session) {
+  final cubit = context.read<TherapistHomeCubit>();
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (sheetCtx) => Container(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceDefault,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                  color: AppColors.dividerLight,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 20),
+          ListTile(
+            leading: const Icon(Icons.edit_calendar_outlined,
+                color: AppColors.secondary),
+            title: Text('Reschedule',
+                style: AppTextStyles.body.copyWith(
+                    color: AppColors.secondary,
+                    fontWeight: FontWeight.w600)),
+            onTap: () async {
+              Navigator.of(sheetCtx).pop();
+              await _showHomeRescheduleSheet(context, session, cubit);
+            },
+          ),
+          const Divider(height: 1, color: AppColors.dividerLight),
+          ListTile(
+            leading: const Icon(Icons.cancel_outlined, color: AppColors.error),
+            title: Text('Cancel Session',
+                style: AppTextStyles.body.copyWith(
+                    color: AppColors.error, fontWeight: FontWeight.w600)),
+            onTap: () async {
+              Navigator.of(sheetCtx).pop();
+              await _showHomeCancelDialog(context, session, cubit);
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Future<void> _showHomeRescheduleSheet(
+    BuildContext context, SessionModel session, TherapistHomeCubit cubit) async {
+  final result = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _HomeRescheduleSheet(
+      session: session,
+      onConfirm: (date, time) async {
+        final scheduledAt = DateTime(
+            date.year, date.month, date.day, time.hour, time.minute);
+        final duration = session.endTime.difference(session.scheduledAt);
+        final endTime = scheduledAt.add(duration);
+        await SessionRepository().rescheduleSession(
+          sessionId: session.id,
+          newStart: scheduledAt,
+          newEnd: endTime,
+        );
+      },
+    ),
+  );
+  if (result == true && context.mounted) {
+    cubit.reload();
+    AppSnackbar.showSuccess(context, 'Session rescheduled successfully.');
+  }
+}
+
+Future<void> _showHomeCancelDialog(
+    BuildContext context, SessionModel session, TherapistHomeCubit cubit) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text('Cancel Session'),
+      content: Text(
+          'Are you sure you want to cancel the session with ${session.childName}?\n\nThe parent will be notified.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Keep Session'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          style: TextButton.styleFrom(foregroundColor: AppColors.error),
+          child: const Text('Cancel Session'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed == true && context.mounted) {
+    try {
+      await SessionRepository().cancelSession(session.id);
+      if (context.mounted) {
+        cubit.reload();
+        AppSnackbar.showSuccess(context, 'Session cancelled.');
+      }
+    } catch (_) {
+      if (context.mounted) {
+        AppSnackbar.showError(context, 'Could not cancel. Please try again.');
+      }
+    }
+  }
+}
+
+class _HomeRescheduleSheet extends StatefulWidget {
+  const _HomeRescheduleSheet(
+      {required this.session, required this.onConfirm});
+  final SessionModel session;
+  final Future<void> Function(DateTime, TimeOfDay) onConfirm;
+
+  @override
+  State<_HomeRescheduleSheet> createState() => _HomeRescheduleSheetState();
+}
+
+class _HomeRescheduleSheetState extends State<_HomeRescheduleSheet> {
+  late DateTime _selectedDate;
+  late TimeOfDay _selectedTime;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = widget.session.scheduledAt;
+    _selectedTime = TimeOfDay.fromDateTime(widget.session.scheduledAt);
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+            colorScheme:
+                const ColorScheme.light(primary: AppColors.secondary)),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime,
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+            colorScheme:
+                const ColorScheme.light(primary: AppColors.secondary)),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _selectedTime = picked);
+  }
+
+  String _fmtDate(DateTime d) {
+    const wd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const mo = ['Jan','Feb','Mar','Apr','May','Jun',
+                 'Jul','Aug','Sep','Oct','Nov','Dec'];
+    return '${wd[d.weekday - 1]}, ${d.day} ${mo[d.month - 1]} ${d.year}';
+  }
+
+  String _fmtTime(TimeOfDay t) {
+    final h = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
+    final m = t.minute.toString().padLeft(2, '0');
+    final p = t.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$h:$m $p';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    final s = widget.session;
+    return Container(
+      padding: EdgeInsets.fromLTRB(24, 20, 24, 24 + bottomPadding),
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceDefault,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                  color: AppColors.dividerLight,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text('Reschedule Session',
+              style:
+                  AppTextStyles.heading1.copyWith(color: AppColors.textMain)),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            decoration: BoxDecoration(
+                color: AppColors.inputFill,
+                borderRadius: BorderRadius.circular(14)),
+            child: Column(children: [
+              Text('${s.childName} · ${s.type}',
+                  style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.w700, color: AppColors.textMain),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 4),
+              Text(
+                '${s.formattedDateShort} · ${TimeOfDay.fromDateTime(s.scheduledAt).format(context)} · ${s.mode}',
+                style:
+                    AppTextStyles.caption.copyWith(color: AppColors.textSubtle),
+                textAlign: TextAlign.center,
+              ),
+            ]),
+          ),
+          const SizedBox(height: 20),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text('New Date',
+                style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w600, color: AppColors.textMain)),
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _pickDate,
+            child: Container(
+              width: double.infinity,
+              padding:
+                  const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceDefault,
+                border: Border.all(color: AppColors.borderInactive),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(children: [
+                const Icon(Icons.calendar_month_outlined,
+                    size: 18, color: AppColors.secondary),
+                const SizedBox(width: 10),
+                Text(_fmtDate(_selectedDate),
+                    style:
+                        AppTextStyles.body.copyWith(color: AppColors.textMain)),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text('New Time',
+                style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w600, color: AppColors.textMain)),
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _pickTime,
+            child: Container(
+              width: double.infinity,
+              padding:
+                  const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceDefault,
+                border: Border.all(color: AppColors.borderInactive),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(children: [
+                const Icon(Icons.access_time_outlined,
+                    size: 18, color: AppColors.secondary),
+                const SizedBox(width: 10),
+                Text(_fmtTime(_selectedTime),
+                    style:
+                        AppTextStyles.body.copyWith(color: AppColors.textMain)),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text('The parent will be notified of the change.',
+              style:
+                  AppTextStyles.caption.copyWith(color: AppColors.textSubtle),
+              textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: _loading
+                  ? null
+                  : () async {
+                      setState(() => _loading = true);
+                      try {
+                        await widget.onConfirm(_selectedDate, _selectedTime);
+                        if (mounted) Navigator.of(context).pop(true);
+                      } catch (_) {
+                        if (mounted) setState(() => _loading = false);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.secondary,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30)),
+                elevation: 0,
+              ),
+              child: _loading
+                  ? const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                  : Text('Reschedule & Notify Parent',
+                      style: AppTextStyles.body.copyWith(
+                          color: AppColors.textWhite,
+                          fontWeight: FontWeight.w700)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Text('Cancel',
+                style: AppTextStyles.body.copyWith(
+                    color: AppColors.secondary, fontWeight: FontWeight.w700)),
+          ),
+        ],
       ),
     );
   }

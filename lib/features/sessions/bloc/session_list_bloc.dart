@@ -41,7 +41,8 @@ class SessionListBloc extends Bloc<SessionListEvent, SessionListState> {
       ]);
     
       final sessions = results[0] as List<SessionModel>;
-      final patients = results[1] as List<ChildModel>;
+      final raw = results[1] as List<(ChildModel, String, bool)>;
+      final patients = raw.where((e) => !e.$3).map((e) => e.$1).toList();
     
       emit(SessionListLoaded(
         allSessions: sessions,

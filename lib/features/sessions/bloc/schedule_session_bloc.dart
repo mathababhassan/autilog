@@ -42,7 +42,8 @@ class ScheduleSessionBloc
   ) async {
     try {
       final uid = _authRepository.currentUser!.uid;
-      final patients = await _patientRepository.fetchAcceptedPatients(uid);
+      final raw = await _patientRepository.fetchAcceptedPatients(uid);
+      final patients = raw.where((e) => !e.$3).map((e) => e.$1).toList();
       emit(ScheduleSessionReady(patients: patients));
     } catch (_) {
       emit(ScheduleSessionLoadError(

@@ -830,10 +830,9 @@ void _showSessionActions(BuildContext context, SessionModel session) {
                 size: 20, color: AppColors.secondary),
             label: 'Reschedule',
             color: AppColors.secondary,
-            onTap: () {
+            onTap: () async {
               Navigator.of(sheetContext).pop();
-              AppSnackbar.showSuccess(
-                  context, 'Rescheduling is coming soon.');
+              await _showRescheduleSheet(context, session, bloc);
             },
           ),
           const Padding(
@@ -845,10 +844,9 @@ void _showSessionActions(BuildContext context, SessionModel session) {
                 size: 20, color: AppColors.error),
             label: 'Cancel Session',
             color: AppColors.error,
-            onTap: () {
+            onTap: () async {
               Navigator.of(sheetContext).pop();
-              AppSnackbar.showSuccess(
-                  context, 'Cancelling sessions is coming soon.');
+              await _showCancelDialog(context, session, bloc);
             },
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -1199,6 +1197,299 @@ const _months = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
+
+// ─── Reschedule / Cancel helpers ─────────────────────────────────────────────
+
+Future<void> _showRescheduleSheet(
+    BuildContext context, SessionModel session, SessionListBloc bloc) async {
+  final result = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => _RescheduleListSheet(
+      session: session,
+      onConfirm: (date, time) async {
+        final scheduledAt = DateTime(
+            date.year, date.month, date.day, time.hour, time.minute);
+        final duration = session.endTime.difference(session.scheduledAt);
+        final endTime = scheduledAt.add(duration);
+        await SessionRepository().rescheduleSession(
+          sessionId: session.id,
+          newStart: scheduledAt,
+          newEnd: endTime,
+        );
+      },
+    ),
+  );
+  if (result == true && context.mounted) {
+    bloc.add(const SessionListRefreshRequested());
+    AppSnackbar.showSuccess(context, 'Session rescheduled successfully.');
+  }
+}
+
+Future<void> _showCancelDialog(
+    BuildContext context, SessionModel session, SessionListBloc bloc) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text('Cancel Session'),
+      content: Text(
+          'Are you sure you want to cancel the session with ${session.childName}?\n\nThe parent will be notified.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Keep Session'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          style: TextButton.styleFrom(foregroundColor: AppColors.error),
+          child: const Text('Cancel Session'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed == true && context.mounted) {
+    try {
+      await SessionRepository().cancelSession(session.id);
+      if (context.mounted) {
+        bloc.add(const SessionListRefreshRequested());
+        AppSnackbar.showSuccess(context, 'Session cancelled.');
+      }
+    } catch (_) {
+      if (context.mounted) {
+        AppSnackbar.showError(context, 'Could not cancel. Please try again.');
+      }
+    }
+  }
+}
+
+class _RescheduleListSheet extends StatefulWidget {
+  const _RescheduleListSheet(
+      {required this.session, required this.onConfirm});
+  final SessionModel session;
+  final Future<void> Function(DateTime, TimeOfDay) onConfirm;
+
+  @override
+  State<_RescheduleListSheet> createState() => _RescheduleListSheetState();
+}
+
+class _RescheduleListSheetState extends State<_RescheduleListSheet> {
+  late DateTime _selectedDate;
+  late TimeOfDay _selectedTime;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = widget.session.scheduledAt;
+    _selectedTime = TimeOfDay.fromDateTime(widget.session.scheduledAt);
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+            colorScheme:
+                const ColorScheme.light(primary: AppColors.secondary)),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime,
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+            colorScheme:
+                const ColorScheme.light(primary: AppColors.secondary)),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _selectedTime = picked);
+  }
+
+  String _fmtDate(DateTime d) {
+    const wd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return '${wd[d.weekday - 1]}, ${d.day} ${mo[d.month - 1]} ${d.year}';
+  }
+
+  String _fmtTime(TimeOfDay t) {
+    final h = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
+    final m = t.minute.toString().padLeft(2, '0');
+    final p = t.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$h:$m $p';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    final s = widget.session;
+    return Container(
+      padding: EdgeInsets.fromLTRB(24, 20, 24, 24 + bottomPadding),
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceDefault,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                  color: AppColors.dividerLight,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text('Reschedule Session',
+              style: AppTextStyles.heading1
+                  .copyWith(color: AppColors.textMain)),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding:
+                const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.inputFill,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(children: [
+              Text('${s.childName} · ${s.type}',
+                  style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textMain),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 4),
+              Text(
+                '${s.formattedDateShort} · ${TimeOfDay.fromDateTime(s.scheduledAt).format(context)} · ${s.mode}',
+                style: AppTextStyles.caption
+                    .copyWith(color: AppColors.textSubtle),
+                textAlign: TextAlign.center,
+              ),
+            ]),
+          ),
+          const SizedBox(height: 20),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text('New Date',
+                style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMain)),
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _pickDate,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                  vertical: 14, horizontal: 16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceDefault,
+                border: Border.all(color: AppColors.borderInactive),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(children: [
+                const Icon(Icons.calendar_month_outlined,
+                    size: 18, color: AppColors.secondary),
+                const SizedBox(width: 10),
+                Text(_fmtDate(_selectedDate),
+                    style: AppTextStyles.body
+                        .copyWith(color: AppColors.textMain)),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text('New Time',
+                style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMain)),
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _pickTime,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                  vertical: 14, horizontal: 16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceDefault,
+                border: Border.all(color: AppColors.borderInactive),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(children: [
+                const Icon(Icons.access_time_outlined,
+                    size: 18, color: AppColors.secondary),
+                const SizedBox(width: 10),
+                Text(_fmtTime(_selectedTime),
+                    style: AppTextStyles.body
+                        .copyWith(color: AppColors.textMain)),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text('The parent will be notified of the change.',
+              style:
+                  AppTextStyles.caption.copyWith(color: AppColors.textSubtle),
+              textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: _loading
+                  ? null
+                  : () async {
+                      setState(() => _loading = true);
+                      try {
+                        await widget.onConfirm(
+                            _selectedDate, _selectedTime);
+                        if (mounted) Navigator.of(context).pop(true);
+                      } catch (_) {
+                        if (mounted) setState(() => _loading = false);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.secondary,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30)),
+                elevation: 0,
+              ),
+              child: _loading
+                  ? const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                  : Text('Reschedule & Notify Parent',
+                      style: AppTextStyles.body.copyWith(
+                          color: AppColors.textWhite,
+                          fontWeight: FontWeight.w700)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Text('Cancel',
+                style: AppTextStyles.body.copyWith(
+                    color: AppColors.secondary,
+                    fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// e.g. "Fri, 12 Jun · 2:00 PM"
 String _formatDateTime(DateTime dt) {
