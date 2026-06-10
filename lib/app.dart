@@ -196,7 +196,12 @@ class _AppViewState extends State<_AppView> {
         ),
         GoRoute(path: Routes.registerParent, builder: (_, __) => const ParentRegistrationScreen()),
         GoRoute(path: Routes.childOnboarding, builder: (_, __) => const ChildOnboardingScreen()),
-        GoRoute(path: Routes.childRegistration, builder: (_, __) => const ChildRegistrationScreen()),
+        GoRoute(
+          path: Routes.childRegistration,
+          builder: (_, state) => ChildRegistrationScreen(
+            fromProfile: state.uri.queryParameters['from'] == 'profile',
+          ),
+        ),
         GoRoute(path: Routes.parentHome, builder: (_, __) => const ParentHomeScreen()),
         GoRoute(path: Routes.parentProfile, builder: (_, __) => const ParentProfileScreen()),
         GoRoute(

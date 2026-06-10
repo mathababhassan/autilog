@@ -49,7 +49,10 @@ class PatientRepository {
       } catch (_) {}
     }
 
-    if (childName.isEmpty) childName = 'Unknown Child';
+    // For old requests without childName, show "Child of [parentName]" as fallback
+    if (childName.isEmpty) {
+      childName = parentName.isNotEmpty ? 'Child of $parentName' : 'Unknown Child';
+    }
     if (parentName.isEmpty) parentName = 'Unknown Parent';
 
     return PendingRequestDisplay(
@@ -68,8 +71,8 @@ class PatientRepository {
 }
 
   // ── Fetch accepted patients ───────────────────────────────────────────────
-  // Returns (ChildModel, parentName) pairs.
-  Future<List<(ChildModel, String)>> fetchAcceptedPatients(String therapistId) async {
+  // Returns (ChildModel, parentName, isDeleted) triples.
+  Future<List<(ChildModel, String, bool)>> fetchAcceptedPatients(String therapistId) async {
     final snapshot = await _firestore
         .collection('therapists')
         .doc(therapistId)
@@ -78,8 +81,9 @@ class PatientRepository {
 
     final results = await Future.wait(snapshot.docs.map((doc) async {
       final data = doc.data();
-      final parentId  = data['parentId']   as String? ?? '';
-      final childId   = doc.id;
+      final parentId   = data['parentId']  as String? ?? '';
+      final childId    = doc.id;
+      final isDeleted  = data['status'] == 'child_deleted';
 
       // parentName stored on the doc (new links) or fall back to linkRequests
       String parentName = data['parentName'] as String? ?? '';
@@ -149,7 +153,7 @@ class PatientRepository {
             {...childDoc.data()!, 'parentId': parentId},
             childId,
           );
-          return (child, parentName);
+          return (child, parentName, isDeleted);
         }
       } catch (_) {}
 
@@ -163,7 +167,7 @@ class PatientRepository {
         },
         childId,
       );
-      return (child, parentName);
+      return (child, parentName, isDeleted);
     }));
 
     return results;
@@ -248,24 +252,88 @@ class PatientRepository {
     required String parentId,
     required String childId,
   }) async {
+    // Always remove from therapists/{therapistId}/patients
+    await _firestore
+        .collection('therapists')
+        .doc(therapistId)
+        .collection('patients')
+        .doc(childId)
+        .delete();
+
+    // Remove linkedTherapists entry only if parentId is known (old records may be empty)
+    if (parentId.isNotEmpty) {
+      try {
+        await _firestore
+            .collection('parents')
+            .doc(parentId)
+            .collection('children')
+            .doc(childId)
+            .collection('linkedTherapists')
+            .doc(therapistId)
+            .delete();
+      } catch (_) {
+        // Best-effort — child doc may have been deleted or rules may block
+      }
+    }
+  }
+
+  // ── Delete child (called by parent) ──────────────────────────────────────
+  // Deletes the child doc, cleans up linkRequests, and marks the therapist's
+  // patient record as child_deleted so the therapist sees a notification.
+  Future<void> deleteChild({
+    required String parentId,
+    required String childId,
+    String? linkedTherapistId,
+  }) async {
     final batch = _firestore.batch();
 
-    // Remove from therapists/{therapistId}/patients
-    batch.delete(
-      _firestore.collection('therapists').doc(therapistId).collection('patients').doc(childId),
-    );
+    // Mark therapist's patient doc as deleted (so they see a notification)
+    if (linkedTherapistId != null && linkedTherapistId.isNotEmpty) {
+      batch.update(
+        _firestore
+            .collection('therapists')
+            .doc(linkedTherapistId)
+            .collection('patients')
+            .doc(childId),
+        {
+          'status': 'child_deleted',
+          'deletedAt': FieldValue.serverTimestamp(),
+        },
+      );
 
-    // Remove from parents/{parentId}/children/{childId}/linkedTherapists
+      // Remove from linkedTherapists subcollection
+      batch.delete(
+        _firestore
+            .collection('parents')
+            .doc(parentId)
+            .collection('children')
+            .doc(childId)
+            .collection('linkedTherapists')
+            .doc(linkedTherapistId),
+      );
+    }
+
+    // Delete the child doc itself
     batch.delete(
       _firestore
           .collection('parents')
           .doc(parentId)
           .collection('children')
-          .doc(childId)
-          .collection('linkedTherapists')
-          .doc(therapistId),
+          .doc(childId),
     );
 
     await batch.commit();
+
+    // Clean up linkRequests (best effort — may fail if already deleted)
+    try {
+      final linkSnap = await _firestore
+          .collection('linkRequests')
+          .where('childId', isEqualTo: childId)
+          .where('parentId', isEqualTo: parentId)
+          .get();
+      for (final doc in linkSnap.docs) {
+        doc.reference.delete();
+      }
+    } catch (_) {}
   }
 }

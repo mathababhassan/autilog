@@ -56,7 +56,7 @@ class _TherapistHomeScreenState extends State<TherapistHomeScreen> {
                 : '';
             _homeCubit.load(
               therapistId: uid,
-              patients: patientState.activePatients.map((e) => e.$1).toList(),
+              patients: patientState.activePatients.where((e) => !e.$3).map((e) => e.$1).toList(),
             );
           }
         },
@@ -815,6 +815,7 @@ class _TabBar extends StatelessWidget {
                 label: 'Reports',
                 onTap: () => context.go(Routes.therapistReports),
               ),
+
             ],
           ),
         ),

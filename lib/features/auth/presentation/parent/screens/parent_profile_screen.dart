@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/constants/routes.dart';
 import '../../../../../core/theme/theme.dart';
 import '../../../../child_profile/presentation/screens/child_profile_screen.dart';
+import '../../../../patients/data/patient_repository.dart';
 import 'child_edit_screen.dart';
 
 class ParentProfileScreen extends StatelessWidget {
@@ -56,7 +57,7 @@ class ParentProfileScreen extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                               color: AppColors.textMain)),
                       GestureDetector(
-                        onTap: () => context.push(Routes.childRegistration),
+                        onTap: () => context.push('${Routes.childRegistration}?from=profile'),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 8),
@@ -498,11 +499,11 @@ class _ChildCardState extends State<_ChildCard> {
         return;
       }
 
-      // ── Step 2: fallback — linkRequests with status == 'accepted' ──
+      // ── Step 2: fallback — linkRequests filtered by parentId (security rule) ──
       final snap = await FirebaseFirestore.instance
           .collection('linkRequests')
           .where('childId', isEqualTo: widget.childId)
-          .where('status', isEqualTo: 'accepted')
+          .where('parentId', isEqualTo: widget.parentId)
           .limit(1)
           .get();
 
@@ -540,7 +541,8 @@ class _ChildCardState extends State<_ChildCard> {
 
       if (mounted) {
         setState(() {
-          _linkedTherapistId = therapistId ?? therapistEmail;
+          // Only use therapistId (UID) — never fall back to email as an ID
+          _linkedTherapistId = therapistId;
           _linkedTherapistName = name ?? '';
           _linkedTherapistEmail = email ?? '';
         });
@@ -556,6 +558,63 @@ class _ChildCardState extends State<_ChildCard> {
       age--;
     }
     return age;
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final childName = widget.data['name'] as String? ?? 'this child';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Child Profile'),
+        content: Text(
+          'Are you sure you want to delete $childName\'s profile? '
+          'This cannot be undone.'
+          '${_linkedTherapistId != null ? '\n\nThe linked therapist will be notified.' : ''}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel',
+                style: AppTextStyles.body
+                    .copyWith(color: AppColors.textSubtle)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text('Delete',
+                style: AppTextStyles.body.copyWith(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await PatientRepository().deleteChild(
+        parentId: widget.parentId,
+        childId: widget.childId,
+        linkedTherapistId: _linkedTherapistId,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        const SnackBar(
+          content: Text('Child profile deleted'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   @override
@@ -641,6 +700,25 @@ class _ChildCardState extends State<_ChildCard> {
                       'Edit',
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _confirmDelete(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Delete',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.error,
                         fontWeight: FontWeight.w700,
                       ),
                     ),

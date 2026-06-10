@@ -11,7 +11,10 @@ import '../../../../../core/constants/routes.dart';
 import 'package:formz/formz.dart';
 
 class ChildRegistrationScreen extends StatelessWidget {
-  const ChildRegistrationScreen({super.key});
+  /// Set to true when navigated from the parent profile (not registration flow).
+  /// Hides the "I'll do this later" skip button.
+  final bool fromProfile;
+  const ChildRegistrationScreen({super.key, this.fromProfile = false});
 
   @override
   Widget build(BuildContext context) {
@@ -34,14 +37,15 @@ class ChildRegistrationScreen extends StatelessWidget {
             );
           }
         },
-        child: const _ChildRegistrationView(),
+        child: _ChildRegistrationView(fromProfile: fromProfile),
       ),
     );
   }
 }
 
 class _ChildRegistrationView extends StatefulWidget {
-  const _ChildRegistrationView();
+  final bool fromProfile;
+  const _ChildRegistrationView({this.fromProfile = false});
 
   @override
   State<_ChildRegistrationView> createState() => _ChildRegistrationViewState();
@@ -247,17 +251,18 @@ class _ChildRegistrationViewState extends State<_ChildRegistrationView> {
 
                       const SizedBox(height: 16),
 
-                      // Skip
-                      Center(
-                        child: TextButton(
-                          onPressed: () => context.go('/parentHome'),
-                          child: const Text(
-                            "I'll do this later →",
-                            style: TextStyle(
-                                color: Colors.black54, fontSize: 14),
+                      // Skip — only shown during registration, not when opened from profile
+                      if (!widget.fromProfile)
+                        Center(
+                          child: TextButton(
+                            onPressed: () => context.go('/parentHome'),
+                            child: const Text(
+                              "I'll do this later →",
+                              style: TextStyle(
+                                  color: Colors.black54, fontSize: 14),
+                            ),
                           ),
                         ),
-                      ),
                       const SizedBox(height: 24),
                     ],
                   ),
