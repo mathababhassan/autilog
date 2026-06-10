@@ -1,9 +1,12 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../../core/constants/routes.dart';
 import '../../../../../core/theme/theme.dart';
 import '../../../../../shared/models/child_model.dart';
 import '../../../../../shared/models/session_model.dart';
@@ -14,6 +17,9 @@ import '../../../bloc/session_detail_bloc.dart';
 import '../../../bloc/session_detail_event.dart';
 import '../../../bloc/session_detail_state.dart';
 import '../../../data/session_repository.dart';
+import '../../../../patients/presentation/therapist/screens/patient_details_screen.dart';
+import '../widgets/cancel_session_sheet.dart';
+import '../widgets/reschedule_session_sheet.dart';
 import 'session_notes_form_screen.dart';
 import 'session_notes_edit_screen.dart';
 
@@ -226,7 +232,18 @@ class _LoadedBodyState extends State<_LoadedBody> {
             _SecondaryButton(
               label: 'Cancel',
               color: AppColors.error,
-              onPressed: () => _showCancelDialog(context, session),
+              onPressed: () async {
+                final bloc = context.read<SessionDetailBloc>();
+                final confirmed = await showModalBottomSheet<bool>(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  isScrollControlled: true,
+                  builder: (_) => CancelSessionSheet(session: session),
+                );
+                if (confirmed == true && context.mounted) {
+                  bloc.add(SessionDetailCancelRequested(sessionId: session.id));
+                }
+              },
             ),
           ],
         ],
@@ -521,8 +538,16 @@ class _PatientCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _TappableCard(
-      onTap: () =>
-          AppSnackbar.showError(context, 'Patient profile is coming soon'),
+      onTap: child == null
+          ? () => AppSnackbar.showError(context, 'Could not load patient profile.')
+          : () => context.push(
+                Routes.patientDetails,
+                extra: PatientDetailArgs(
+                  patient: child!,
+                  therapistId:
+                      FirebaseAuth.instance.currentUser?.uid ?? '',
+                ),
+              ),
       child: Row(
         children: [
           _Avatar(name: session.childName, radius: 20),
