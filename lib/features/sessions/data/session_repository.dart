@@ -39,6 +39,20 @@ class SessionRepository {
     return snap.docs.map((doc) => SessionModel.fromMap(doc.data(), doc.id)).toList();
   }
 
+  /// All sessions belonging to a therapist, regardless of status.
+  ///
+  /// Uses a single equality filter (no `orderBy`) so it needs no composite
+  /// Firestore index. The Session List BLoC partitions these into Upcoming /
+  /// Past and sorts them in memory, and also filters by patient client-side.
+  Future<List<SessionModel>> fetchSessionsForTherapist(String therapistId) async {
+    final snap = await _firestore
+        .collection('sessions')
+        .where('therapistId', isEqualTo: therapistId)
+        .get();
+
+    return snap.docs.map((doc) => SessionModel.fromMap(doc.data(), doc.id)).toList();
+  }
+
   Future<List<SessionModel>> fetchSessionsForChild(String childId) async {
     final snap = await _firestore
         .collection('sessions')
@@ -82,6 +96,15 @@ class SessionRepository {
   Future<String> addSession(SessionModel session) async {
     final ref = await _firestore.collection('sessions').add(session.toMap());
     return ref.id;
+  }
+
+  /// Marks an upcoming session as completed. The therapist confirms the
+  /// session happened; we never derive this from the clock (a past-dated
+  /// session may be a no-show, not a completion).
+  Future<void> markSessionCompleted(String sessionId) async {
+    await _firestore.collection('sessions').doc(sessionId).update({
+      'status': 'completed',
+    });
   }
 
   Future<void> cancelSession(String sessionId, {String? reason}) async {

@@ -9,7 +9,8 @@ import '../../../../../core/theme/theme.dart';
 import '../../../../../shared/models/child_model.dart';
 import '../../../../../shared/widgets/app_snackbar.dart';
 import '../../../data/patient_repository.dart';
-
+import 'patient_details_screen.dart';
+import 'log_review_screen.dart';
 
 // ─── Args ─────────────────────────────────────────────────────
 
@@ -246,6 +247,8 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       backgroundColor: AppColors.surfaceDefault,
       appBar: AppBar(
         backgroundColor: AppColors.surfaceDefault,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, size: 18, color: AppColors.textMain),
@@ -445,7 +448,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
               children: [
                 _SectionTitle('Recent Logs'),
                 TextButton(
-                  onPressed: () {},
+                  onPressed: () => context.push(Routes.logReview, extra: LogReviewArgs(
+                  parentId: patient.parentId,
+                  childId: patient.childId,
+                  childName: patient.name,
+                  initialTab: 0,
+                )),
                   child: Text('View All', style: AppTextStyles.caption.copyWith(color: AppColors.secondary, fontWeight: FontWeight.w700)),
                 ),
               ],
@@ -463,7 +471,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
             else
               ...(_recentLogs.map((log) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: _LogRow(log: log),
+                child: _LogRow(
+                log: log,
+                parentId: patient.parentId,
+                childId: patient.childId,
+                childName: patient.name,
+              ),
               ))),
             const SizedBox(height: 20),
 
@@ -516,8 +529,8 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
             children: [
               _TabItem(icon: Icons.home_outlined, label: 'Home', onTap: () => context.go(Routes.therapistHome)),
               _TabItem(icon: Icons.people_outline, label: 'Patients', active: true, onTap: () => context.go(Routes.therapistPatients)),
-              const _TabItem(icon: Icons.calendar_month_outlined, label: 'Sessions'),
-              const _TabItem(icon: Icons.bar_chart_outlined, label: 'Reports'),
+              _TabItem(icon: Icons.calendar_month_outlined, label: 'Sessions', onTap: () => context.go(Routes.therapistSessions),),
+              _TabItem(icon: Icons.bar_chart_outlined, label: 'Reports', onTap: () => context.go(Routes.therapistReports),),
             ],
           ),
         ),
@@ -596,7 +609,16 @@ class _SeverityBadge extends StatelessWidget {
 
 class _LogRow extends StatelessWidget {
   final Map<String, dynamic> log;
-  const _LogRow({required this.log});
+  final String parentId;
+  final String childId;
+  final String childName;
+
+  const _LogRow({
+    required this.log,
+    required this.parentId,
+    required this.childId,
+    required this.childName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -641,7 +663,12 @@ class _LogRow extends StatelessWidget {
           Text(dateStr, style: AppTextStyles.caption.copyWith(color: AppColors.textSubtle)),
           const SizedBox(width: 8),
           GestureDetector(
-            onTap: () {},
+            onTap: () => context.push(Routes.logReview, extra: LogReviewArgs(
+              parentId: parentId,
+              childId: childId,
+              childName: childName,
+              initialTab: log['type'] == 'incident' ? 1 : 0,
+            )),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(color: AppColors.secondary, borderRadius: BorderRadius.circular(20)),

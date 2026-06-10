@@ -16,7 +16,7 @@ dependencies:
   firebase_auth: ^6.4.0
   cloud_firestore: ^6.3.0
   firebase_storage: ^13.3.0
-  cloud_functions: ^6.0.0
+  cloud_functions: ^6.3.2
   url_launcher: ^6.3.0
   google_fonts: ^6.2.1
   flutter_bloc: ^9.1.1
@@ -32,6 +32,7 @@ dependencies:
   shared_preferences: ^2.5.5
   video_player: ^2.11.1
   chewie: ^1.14.1
+  fl_chart: ^1.2.0
 
 dev_dependencies:
   flutter_test:

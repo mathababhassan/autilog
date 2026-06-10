@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../../core/theme/theme.dart';
 import '../../../../../shared/models/child_model.dart';
 import '../../../../../shared/models/session_model.dart';
+import '../../../../../shared/widgets/app_confirm_dialog.dart';
 import '../../../../../shared/widgets/app_primary_button.dart';
 import '../../../../../shared/widgets/app_snackbar.dart';
 import '../../../bloc/session_detail_bloc.dart';
@@ -34,54 +35,67 @@ class _SessionDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.surfaceDefault,
-      appBar: AppBar(
+    return BlocListener<SessionDetailBloc, SessionDetailState>(
+      listenWhen: (prev, curr) =>
+          curr is SessionDetailLoaded && curr.actionMessage != null,
+      listener: (context, state) {
+        final loaded = state as SessionDetailLoaded;
+        if (loaded.actionIsError) {
+          AppSnackbar.showError(context, loaded.actionMessage!);
+        } else {
+          AppSnackbar.showSuccess(context, loaded.actionMessage!);
+        }
+      },
+      child: Scaffold(
         backgroundColor: AppColors.surfaceDefault,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: const BackButton(color: AppColors.textMain),
-        title: Text('Session Details', style: AppTextStyles.heading1),
-      ),
-      body: BlocConsumer<SessionDetailBloc, SessionDetailState>(
-        // Only react when the join sub-status changes, so unrelated rebuilds
-        // don't re-launch the call or re-show the error.
-        listenWhen: (prev, curr) =>
-            curr is SessionDetailLoaded &&
-            (prev is! SessionDetailLoaded ||
-                prev.joinStatus != curr.joinStatus),
-        listener: (context, state) {
-          if (state is! SessionDetailLoaded) return;
-          if (state.joinStatus == JoinStatus.success && state.joinUrl != null) {
-            _launchCall(context, state.joinUrl!);
-          } else if (state.joinStatus == JoinStatus.failure) {
-            AppSnackbar.showError(
-              context,
-              state.joinError ?? 'Could not start the call. Please try again.',
+        appBar: AppBar(
+          backgroundColor: AppColors.surfaceDefault,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: const BackButton(color: AppColors.textMain),
+          title: Text('Session Details', style: AppTextStyles.heading1),
+        ),
+        body: BlocConsumer<SessionDetailBloc, SessionDetailState>(
+          listenWhen: (prev, curr) =>
+              curr is SessionDetailLoaded &&
+              (prev is! SessionDetailLoaded ||
+                  prev.joinStatus != curr.joinStatus),
+          listener: (context, state) {
+            if (state is! SessionDetailLoaded) return;
+            if (state.joinStatus == JoinStatus.success &&
+                state.joinUrl != null) {
+              _launchCall(context, state.joinUrl!);
+            } else if (state.joinStatus == JoinStatus.failure) {
+              AppSnackbar.showError(
+                context,
+                state.joinError ??
+                    'Could not start the call. Please try again.',
+              );
+            }
+          },
+          builder: (context, state) {
+            if (state is SessionDetailLoading ||
+                state is SessionDetailInitial) {
+              return const Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              );
+            }
+            if (state is SessionDetailError) {
+              return _ErrorView(
+                message: state.message,
+                onRetry: () => context
+                    .read<SessionDetailBloc>()
+                    .add(SessionDetailStarted(sessionId: sessionId)),
+              );
+            }
+            final loaded = state as SessionDetailLoaded;
+            return _LoadedBody(
+              session: loaded.session,
+              child: loaded.child,
+              joinStatus: loaded.joinStatus,
             );
-          }
-        },
-        builder: (context, state) {
-          if (state is SessionDetailLoading || state is SessionDetailInitial) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
-          }
-          if (state is SessionDetailError) {
-            return _ErrorView(
-              message: state.message,
-              onRetry: () => context
-                  .read<SessionDetailBloc>()
-                  .add(SessionDetailStarted(sessionId: sessionId)),
-            );
-          }
-          final loaded = state as SessionDetailLoaded;
-          return _LoadedBody(
-            session: loaded.session,
-            child: loaded.child,
-            joinStatus: loaded.joinStatus,
-          );
-        },
+          },
+        ),
       ),
     );
   }
@@ -148,8 +162,10 @@ class _LoadedBody extends StatelessWidget {
         children: [
           _InfoCard(session: session, child: child),
           const SizedBox(height: AppSpacing.xl),
-          _ModeActionCard(session: session, joinStatus: joinStatus),
-          const SizedBox(height: AppSpacing.xl),
+          if (session.status == 'upcoming' && !session.isPastDue) ...[
+            _ModeActionCard(session: session, joinStatus: joinStatus),
+            const SizedBox(height: AppSpacing.xl),
+          ],
           _SectionLabel('Patient'),
           const SizedBox(height: AppSpacing.sm),
           _PatientCard(session: session, child: child),
@@ -157,22 +173,108 @@ class _LoadedBody extends StatelessWidget {
           _SectionLabel('Session Notes'),
           const SizedBox(height: AppSpacing.sm),
           _NotesCard(session: session),
-          const SizedBox(height: AppSpacing.xl3),
-          _SecondaryButton(
-            label: 'Reschedule',
-            color: AppColors.secondary,
-            onPressed: () => AppSnackbar.showError(
-                context, 'Reschedule is coming soon'),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _SecondaryButton(
-            label: 'Cancel Session',
-            color: AppColors.error,
-            icon: Icons.close,
-            onPressed: () =>
-                AppSnackbar.showError(context, 'Cancel is coming soon'),
+          // Actions only apply while the session is still upcoming.
+          if (session.status == 'upcoming') ...[
+            const SizedBox(height: AppSpacing.xl3),
+            if (session.isPastDue) ...[
+              const _NeedsReviewHint(),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            _MarkCompletedButton(session: session),
+            const SizedBox(height: AppSpacing.sm),
+            _SecondaryButton(
+              label: 'Reschedule',
+              color: AppColors.secondary,
+              onPressed: () =>
+                  AppSnackbar.showError(context, 'Reschedule is coming soon'),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            _SecondaryButton(
+              label: 'Cancel',
+              color: AppColors.error,
+              onPressed: () =>
+                  AppSnackbar.showError(context, 'Cancel is coming soon'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Needs-review hint ───────────────────────────────────────────────────────
+
+class _NeedsReviewHint extends StatelessWidget {
+  const _NeedsReviewHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.inputFill,
+        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline,
+              size: 18, color: AppColors.textDisabled),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              "This session's time has passed. Mark it completed if it "
+              'happened, or cancel it.',
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textDisabled, height: 1.4),
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Mark as Completed ───────────────────────────────────────────────────────
+
+class _MarkCompletedButton extends StatelessWidget {
+  const _MarkCompletedButton({required this.session});
+
+  final SessionModel session;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () async {
+          final bloc = context.read<SessionDetailBloc>();
+          final confirmed = await showAppConfirmDialog(
+            context: context,
+            title: 'Mark as completed?',
+            message:
+                "This moves ${session.childName}'s session to your past sessions.",
+            confirmLabel: 'Mark Completed',
+            confirmColor: AppColors.primary,
+          );
+          if (confirmed) {
+            bloc.add(SessionDetailMarkCompleted(sessionId: session.id));
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.textWhite,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          minimumSize: const Size.fromHeight(48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
+          ),
+        ),
+        child: Text('Complete',
+            style: AppTextStyles.body.copyWith(
+                fontWeight: FontWeight.w700, color: AppColors.textWhite)),
       ),
     );
   }
@@ -220,7 +322,8 @@ class _InfoCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              _StatusPill(status: session.status),
+              _StatusPill(
+                  status: session.isPastDue ? 'needs_review' : session.status),
             ],
           ),
           const Padding(
@@ -268,8 +371,9 @@ class _StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, bg, fg) = switch (status) {
-      'completed' => ('Completed', AppColors.secondary20, AppColors.secondary),
+      'completed' => ('Completed', AppColors.success20, AppColors.success),
       'cancelled' => ('Cancelled', AppColors.error20, AppColors.error),
+      'needs_review' => ('Needs review', AppColors.inputFill, AppColors.textDisabled),
       _ => ('Upcoming', AppColors.secondary20, AppColors.secondary),
     };
     return Container(
@@ -515,13 +619,11 @@ class _SecondaryButton extends StatelessWidget {
     required this.label,
     required this.color,
     required this.onPressed,
-    this.icon,
   });
 
   final String label;
   final Color color;
   final VoidCallback onPressed;
-  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -536,18 +638,9 @@ class _SecondaryButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: AppSpacing.sm),
-            ],
-            Text(label,
-                style: AppTextStyles.body
-                    .copyWith(color: color, fontWeight: FontWeight.w700)),
-          ],
-        ),
+        child: Text(label,
+            style: AppTextStyles.body
+                .copyWith(color: color, fontWeight: FontWeight.w700)),
       ),
     );
   }

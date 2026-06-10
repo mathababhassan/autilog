@@ -1,4 +1,4 @@
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentDeleted } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
@@ -6,39 +6,96 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.firestore();
 
-const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+const GROQ_API_KEY = defineSecret("GROQ_API_KEY");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
-// JaaS (8x8) RS256 private key for signing meeting JWTs. Set via:
-//   firebase functions:secrets:set JAAS_PRIVATE_KEY
 const JAAS_PRIVATE_KEY = defineSecret("JAAS_PRIVATE_KEY");
 
-// JaaS app identifiers — NOT secret (they appear in the join URL / JWT header).
 const JAAS_APP_ID = "vpaas-magic-cookie-ee35ab3fd28f4bceaa1f898c313e6c8a";
-const JAAS_KID =
-  "vpaas-magic-cookie-ee35ab3fd28f4bceaa1f898c313e6c8a/7bc83c";
+const JAAS_KID = "vpaas-magic-cookie-ee35ab3fd28f4bceaa1f898c313e6c8a/7bc83c";
 
-// ─── Gemini AI Insights ───────────────────────────────────────────────
+// ─── Shared AI data fetcher ───────────────────────────────────────────
+
+async function fetchChildAIData(parentId, childId) {
+  const childSnap = await db.doc(`parents/${parentId}/children/${childId}`).get();
+  const childData = childSnap.data() || {};
+  const childName = childData.name || "the child";
+  const childAge = childData.age || "unknown";
+
+  let summariesJSON = "[]";
+  try {
+    const snap = await db
+      .collection(`parents/${parentId}/children/${childId}/dailySummaries`)
+      .orderBy("date", "desc")
+      .limit(7)
+      .get();
+    if (!snap.empty) summariesJSON = JSON.stringify(snap.docs.map((d) => d.data()), null, 2);
+  } catch (err) {
+    console.warn("Could not load daily summaries:", err.message);
+  }
+
+  let incidentsJSON = "[]";
+  try {
+    const snap = await db
+      .collection(`parents/${parentId}/children/${childId}/incidents`)
+      .orderBy("date", "desc")
+      .limit(7)
+      .get();
+    if (!snap.empty) incidentsJSON = JSON.stringify(snap.docs.map((d) => d.data()), null, 2);
+  } catch (err) {
+    console.warn("Could not load incidents:", err.message);
+  }
+
+  let positiveMomentsJSON = "[]";
+  try {
+    const snap = await db
+      .collection(`parents/${parentId}/children/${childId}/positiveMoments`)
+      .orderBy("date", "desc")
+      .limit(7)
+      .get();
+    if (!snap.empty) positiveMomentsJSON = JSON.stringify(snap.docs.map((d) => d.data()), null, 2);
+  } catch (err) {
+    console.warn("Could not load positive moments:", err.message);
+  }
+
+  return { childName, childAge, summariesJSON, incidentsJSON, positiveMomentsJSON };
+}
+
+async function callGroq(apiKey, prompt) {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.4,
+    }),
+  });
+  const data = await response.json();
+  const text = data.choices[0].message.content.trim();
+  return JSON.parse(text);
+}
+
+// ─── Trigger 1: Daily Summary Created ────────────────────────────────
+// Updates: summary, sleepTip, strategyTip1, strategyTip2, progressDirection, daysLogged, isUnlocked
 
 exports.onDailySummaryCreated = onDocumentCreated(
   {
     document: "parents/{parentId}/children/{childId}/dailySummaries/{summaryId}",
-    secrets: [GEMINI_API_KEY],
+    secrets: [GROQ_API_KEY],
   },
   async (event) => {
-    const { GoogleGenerativeAI } = require("@google/generative-ai");
-
     const snap = event.data;
     if (!snap) return;
 
     const { parentId, childId } = event.params;
 
     const summariesRef = db.collection(`parents/${parentId}/children/${childId}/dailySummaries`);
-    const summariesSnap = await summariesRef
-      .orderBy("date", "desc")
-      .limit(7)
-      .get();
+    const countSnap = await summariesRef.get();
+    const daysLogged = countSnap.size;
 
-    const daysLogged = summariesSnap.size;
     const aiInsightsRef = db.doc(`parents/${parentId}/children/${childId}/aiInsights/current`);
 
     if (daysLogged < 7) {
@@ -46,105 +103,247 @@ exports.onDailySummaryCreated = onDocumentCreated(
       return;
     }
 
-    const childSnap = await db.doc(`parents/${parentId}/children/${childId}`).get();
-    const childData = childSnap.data() || {};
-    const childName = childData.name || "your child";
-    const childAge = childData.age || "unknown";
+    const { childName, childAge, summariesJSON, incidentsJSON, positiveMomentsJSON } =
+      await fetchChildAIData(parentId, childId);
 
-    const summaries = summariesSnap.docs.map((d) => d.data());
-    const summariesJSON = JSON.stringify(summaries, null, 2);
-
-    let positiveMomentsJSON = "[]";
-    try {
-      const momentsSnap = await db
-        .collection(`parents/${parentId}/children/${childId}/positiveMoments`)
-        .orderBy("date", "desc")
-        .limit(7)
-        .get();
-      if (!momentsSnap.empty) {
-        positiveMomentsJSON = JSON.stringify(
-          momentsSnap.docs.map((d) => d.data()),
-          null,
-          2
-        );
-      }
-    } catch (err) {
-      console.warn("Could not load positive moments:", err.message);
-    }
-
-    let incidentsJSON = "[]";
-    try {
-      const incidentsSnap = await db
-        .collection(`parents/${parentId}/children/${childId}/incidents`)
-        .orderBy("date", "desc")
-        .limit(7)
-        .get();
-      if (!incidentsSnap.empty) {
-        incidentsJSON = JSON.stringify(
-          incidentsSnap.docs.map((d) => d.data()),
-          null,
-          2
-        );
-      }
-    } catch (err) {
-      console.warn("Could not load incidents:", err.message);
-    }
-
-    try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-      const prompt = `You are a clinical behavioral analyst assistant for parents of children with autism.
+    const prompt = `You are a clinical behavioral analyst assistant for parents of children with autism.
 Child: ${childName}, Age: ${childAge}
 
-Based on the last 7 daily summaries (sleep, mood, meals, routine):
+Last 7 daily summaries (sleep, mood, meals, routine):
 ${summariesJSON}
 
-Recent positive moments logged:
-${positiveMomentsJSON}
-
-Recent behavioral incidents (meltdowns, triggers, severity):
+Recent behavioral incidents:
 ${incidentsJSON}
+
+Recent positive moments:
+${positiveMomentsJSON}
 
 Respond ONLY with this JSON (no markdown, no extra text):
 {
-  "summary": "2-3 sentence plain-language summary of this week's patterns",
+  "summary": "2-3 sentence plain-language summary of this week's patterns referencing specific details like sleep hours, mood scores, or routines",
   "progressDirection": "improving|stable|needs_attention",
-  "tips": ["tip1", "tip2", "tip3"],
-  "positiveMomentsHighlight": "1 sentence highlighting a positive trend",
-  "incidentPattern": "1 sentence about incident patterns if any"
+  "sleepTip": "1 specific actionable tip about sleep based on the data",
+  "strategyTip1": "1 specific behavioral strategy tip based on the data",
+  "strategyTip2": "1 specific environmental or routine tip based on the data"
 }`;
 
-      const result = await model.generateContent(prompt);
-      const text = result.response.text().trim();
-      const insights = JSON.parse(text);
+    try {
+      const insights = await callGroq(GROQ_API_KEY.value(), prompt);
 
-      await aiInsightsRef.set(
-        {
-          isUnlocked: true,
-          daysLogged,
-          generatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          weeklyInsights: {
-            summary: insights.summary,
-            progressDirection: insights.progressDirection,
-            tips: insights.tips,
-            positiveMomentsHighlight: insights.positiveMomentsHighlight,
-            incidentPattern: insights.incidentPattern,
-          },
+      await aiInsightsRef.set({
+        isUnlocked: true,
+        daysLogged,
+        generatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        weeklyInsights: {
+          summary: insights.summary,
+          progressDirection: insights.progressDirection,
+          sleepTip: insights.sleepTip,
+          strategyTip1: insights.strategyTip1,
+          strategyTip2: insights.strategyTip2,
         },
-        { merge: true }
-      );
+      }, { merge: true });
+
     } catch (error) {
-      console.error("Gemini call failed:", error);
-      // Don't overwrite isUnlocked if already true
+      console.error("Groq call failed (daily summary trigger):", error);
       const existing = await aiInsightsRef.get();
       if (!existing.exists || existing.data()?.isUnlocked !== true) {
-        await aiInsightsRef.set(
-          { isUnlocked: false, error: "generation_failed" },
-          { merge: true }
-        );
+        await aiInsightsRef.set({ isUnlocked: false, error: "generation_failed" }, { merge: true });
       }
     }
+  }
+);
+
+// ─── Trigger 2: Behavioral Incident Created ───────────────────────────
+// Updates: incidentPattern, strategyTip1, strategyTip2, progressDirection
+
+exports.onIncidentCreatedAI = onDocumentCreated(
+  {
+    document: "parents/{parentId}/children/{childId}/incidents/{incidentId}",
+    secrets: [GROQ_API_KEY],
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
+    const { parentId, childId } = event.params;
+
+    const aiInsightsRef = db.doc(`parents/${parentId}/children/${childId}/aiInsights/current`);
+    const existing = await aiInsightsRef.get();
+    if (!existing.exists || existing.data()?.isUnlocked !== true) return;
+
+    const { childName, childAge, summariesJSON, incidentsJSON, positiveMomentsJSON } =
+      await fetchChildAIData(parentId, childId);
+
+    const prompt = `You are a clinical behavioral analyst assistant for parents of children with autism.
+Child: ${childName}, Age: ${childAge}
+
+Last 7 daily summaries:
+${summariesJSON}
+
+Recent behavioral incidents (most recent just added):
+${incidentsJSON}
+
+Recent positive moments:
+${positiveMomentsJSON}
+
+Respond ONLY with this JSON (no markdown, no extra text):
+{
+  "progressDirection": "improving|stable|needs_attention",
+  "incidentPattern": "1-2 sentences describing the pattern of triggers and behaviors observed across recent incidents, referencing specific triggers or settings",
+  "strategyTip1": "1 specific behavioral de-escalation or prevention strategy based on the incident data",
+  "strategyTip2": "1 specific environmental modification tip based on the incident triggers"
+}`;
+
+    try {
+      const insights = await callGroq(GROQ_API_KEY.value(), prompt);
+
+      await aiInsightsRef.set({
+        weeklyInsights: {
+          progressDirection: insights.progressDirection,
+          incidentPattern: insights.incidentPattern,
+          strategyTip1: insights.strategyTip1,
+          strategyTip2: insights.strategyTip2,
+        },
+      }, { merge: true });
+
+    } catch (error) {
+      console.error("Groq call failed (incident trigger):", error);
+    }
+  }
+);
+
+// ─── Reports — AI Practice Summary (callable) ─────────────────────────
+
+exports.getReportSummary = onCall(
+  { secrets: [GROQ_API_KEY] },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Must be signed in.");
+    }
+
+    const { stats } = request.data || {};
+    if (!stats) {
+      throw new HttpsError("invalid-argument", "stats is required.");
+    }
+
+    const prompt = `You are a clinical assistant summarizing a therapist's caseload for the selected period.
+Aggregated data across all their patients:
+${JSON.stringify(stats, null, 2)}
+
+Respond ONLY with this JSON (no markdown, no extra text):
+{
+  "summary": "2-3 sentence plain-language overview of trends across all patients this period, referencing the actual numbers",
+  "focusArea": "1 sentence suggesting where the therapist should focus attention this period"
+}`;
+
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${GROQ_API_KEY.value()}`,
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.4,
+        }),
+      });
+
+      const groqData = await response.json();
+      const text = groqData.choices[0].message.content.trim();
+      const insights = JSON.parse(text);
+
+      return {
+        summary: insights.summary,
+        focusArea: insights.focusArea,
+      };
+    } catch (error) {
+      console.error("Groq report summary failed:", error);
+      throw new HttpsError("internal", "Failed to generate summary.");
+    }
+  }
+);
+
+// ─── Trigger 3: Positive Moment Created (AI only) ─────────────────────
+// Updates: positiveMomentsHighlight, strategyTip1, strategyTip2, progressDirection
+
+exports.onPositiveMomentCreatedAI = onDocumentCreated(
+  {
+    document: "parents/{parentId}/children/{childId}/positiveMoments/{momentId}",
+    secrets: [GROQ_API_KEY],
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
+    const { parentId, childId } = event.params;
+
+    const aiInsightsRef = db.doc(`parents/${parentId}/children/${childId}/aiInsights/current`);
+    const existing = await aiInsightsRef.get();
+    if (!existing.exists || existing.data()?.isUnlocked !== true) return;
+
+    const { childName, childAge, summariesJSON, incidentsJSON, positiveMomentsJSON } =
+      await fetchChildAIData(parentId, childId);
+
+    const prompt = `You are a clinical behavioral analyst assistant for parents of children with autism.
+Child: ${childName}, Age: ${childAge}
+
+Last 7 daily summaries:
+${summariesJSON}
+
+Recent behavioral incidents:
+${incidentsJSON}
+
+Recent positive moments (most recent just added):
+${positiveMomentsJSON}
+
+Respond ONLY with this JSON (no markdown, no extra text):
+{
+  "progressDirection": "improving|stable|needs_attention",
+  "positiveMomentsHighlight": "1-2 sentences highlighting the positive trend or strength observed, referencing specific behaviors or settings",
+  "strategyTip1": "1 specific tip to reinforce or build on the positive behaviors observed",
+  "strategyTip2": "1 tip to create more opportunities for positive moments based on what worked"
+}`;
+
+    try {
+      const insights = await callGroq(GROQ_API_KEY.value(), prompt);
+
+      await aiInsightsRef.set({
+        weeklyInsights: {
+          progressDirection: insights.progressDirection,
+          positiveMomentsHighlight: insights.positiveMomentsHighlight,
+          strategyTip1: insights.strategyTip1,
+          strategyTip2: insights.strategyTip2,
+        },
+      }, { merge: true });
+
+    } catch (error) {
+      console.error("Groq call failed (positive moment trigger):", error);
+    }
+  }
+);
+
+// ─── Daily Summary Deleted ────────────────────────────────────────────
+
+exports.onDailySummaryDeleted = onDocumentDeleted(
+  {
+    document: "parents/{parentId}/children/{childId}/dailySummaries/{summaryId}",
+  },
+  async (event) => {
+    const { parentId, childId } = event.params;
+
+    const summariesSnap = await db
+      .collection(`parents/${parentId}/children/${childId}/dailySummaries`)
+      .get();
+
+    const daysLogged = summariesSnap.size;
+    const aiInsightsRef = db.doc(`parents/${parentId}/children/${childId}/aiInsights/current`);
+
+    await aiInsightsRef.set(
+      { daysLogged, isUnlocked: daysLogged >= 7 },
+      { merge: true }
+    );
   }
 );
 
@@ -326,12 +525,10 @@ exports.getJaasToken = onCall(
   async (request) => {
     const jwt = require("jsonwebtoken");
 
-    // 1. Must be signed in.
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "You must be signed in to join a call.");
     }
 
-    // 2. sessionId is required and must point at a real session.
     const { sessionId } = request.data || {};
     if (!sessionId || typeof sessionId !== "string") {
       throw new HttpsError("invalid-argument", "A sessionId is required.");
@@ -343,54 +540,34 @@ exports.getJaasToken = onCall(
     }
     const session = sessionSnap.data();
 
-    // --- YOUR NEW VALIDATION CHECKS ---
-    // Check if session is virtual mode
     if (session.mode !== 'virtual') {
-      throw new HttpsError(
-        "failed-precondition", 
-        "Only virtual sessions can be joined via video call."
-      );
+      throw new HttpsError("failed-precondition", "Only virtual sessions can be joined via video call.");
     }
 
-    // Check if session is cancelled
     if (session.status === 'cancelled') {
-      throw new HttpsError(
-        "failed-precondition", 
-        "This session has been cancelled."
-      );
+      throw new HttpsError("failed-precondition", "This session has been cancelled.");
     }
 
-    // Check if within join window (15 minutes before to 15 minutes after start time)
     const now = new Date();
-    // Handle both Firestore Timestamp and string date formats
     let sessionStart;
     if (session.startTime && typeof session.startTime.toDate === 'function') {
-      sessionStart = session.startTime.toDate(); // Firestore Timestamp
+      sessionStart = session.startTime.toDate();
     } else if (session.startTime) {
-      sessionStart = new Date(session.startTime); // String or ISO date
+      sessionStart = new Date(session.startTime);
     } else {
       throw new HttpsError("failed-precondition", "Session has no start time.");
     }
-    
+
     const timeDiffMinutes = (now - sessionStart) / (1000 * 60);
     if (timeDiffMinutes < -15 || timeDiffMinutes > 15) {
-      throw new HttpsError(
-        "failed-precondition", 
-        "Video call is only available 15 minutes before and after session start time."
-      );
+      throw new HttpsError("failed-precondition", "Video call is only available 15 minutes before and after session start time.");
     }
-    // --- END OF VALIDATION CHECKS ---
 
-    // 3. Only the session's therapist may mint a moderator token.
     const uid = request.auth.uid;
     if (session.therapistId !== uid) {
-      throw new HttpsError(
-        "permission-denied",
-        "You are not the therapist for this session."
-      );
+      throw new HttpsError("permission-denied", "You are not the therapist for this session.");
     }
 
-    // 4. Mint a short-lived RS256 JaaS JWT.
     const authToken = request.auth.token || {};
     const room = `autilog-${sessionId}`;
 
@@ -418,29 +595,6 @@ exports.getJaasToken = onCall(
     });
 
     return { token, room, appId: JAAS_APP_ID };
-  }
-);
-
-const { onDocumentDeleted } = require("firebase-functions/v2/firestore");
-
-exports.onDailySummaryDeleted = require("firebase-functions/v2/firestore").onDocumentDeleted(
-  {
-    document: "parents/{parentId}/children/{childId}/dailySummaries/{summaryId}",
-  },
-  async (event) => {
-    const { parentId, childId } = event.params;
-
-    const summariesSnap = await db
-      .collection(`parents/${parentId}/children/${childId}/dailySummaries`)
-      .get();
-
-    const daysLogged = summariesSnap.size;
-    const aiInsightsRef = db.doc(`parents/${parentId}/children/${childId}/aiInsights/current`);
-
-    await aiInsightsRef.set(
-      { daysLogged, isUnlocked: daysLogged >= 7 },
-      { merge: true }
-    );
   }
 );
 
