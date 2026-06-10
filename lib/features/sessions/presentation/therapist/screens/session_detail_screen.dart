@@ -14,6 +14,7 @@ import '../../../bloc/session_detail_bloc.dart';
 import '../../../bloc/session_detail_event.dart';
 import '../../../bloc/session_detail_state.dart';
 import '../../../data/session_repository.dart';
+import '../widgets/reschedule_session_sheet.dart';
 
 class SessionDetailScreen extends StatelessWidget {
   const SessionDetailScreen({super.key, required this.sessionId});
@@ -95,6 +96,7 @@ class _SessionDetailView extends StatelessWidget {
               session: loaded.session,
               child: loaded.child,
               joinStatus: loaded.joinStatus,
+              isRescheduling: loaded.isRescheduling,
             );
           },
         ),
@@ -144,11 +146,13 @@ class _LoadedBody extends StatefulWidget {
     required this.session,
     required this.child,
     required this.joinStatus,
+    this.isRescheduling = false,
   });
 
   final SessionModel session;
   final ChildModel? child;
   final JoinStatus joinStatus;
+  final bool isRescheduling;
 
   @override
   State<_LoadedBody> createState() => _LoadedBodyState();
@@ -213,8 +217,28 @@ class _LoadedBodyState extends State<_LoadedBody> {
             _SecondaryButton(
               label: 'Reschedule',
               color: AppColors.secondary,
-              onPressed: () =>
-                  AppSnackbar.showError(context, 'Reschedule is coming soon'),
+              onPressed: widget.isRescheduling ? null : () async {
+                final result =
+                    await showModalBottomSheet<RescheduleResult>(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  isScrollControlled: true,
+                  builder: (_) =>
+                      RescheduleSessionSheet(session: session),
+                );
+                if (result != null && context.mounted) {
+                  context.read<SessionDetailBloc>().add(
+                        SessionDetailRescheduleRequested(
+                          sessionId: session.id,
+                          newStart: result.newStart,
+                          newEnd: result.newEnd,
+                          mode: result.mode,
+                          location: result.location,
+                          durationMinutes: result.durationMinutes,
+                        ),
+                      );
+                }
+              },
             ),
             const SizedBox(height: AppSpacing.sm),
             _SecondaryButton(
@@ -652,7 +676,7 @@ class _SecondaryButton extends StatelessWidget {
 
   final String label;
   final Color color;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {

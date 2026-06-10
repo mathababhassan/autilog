@@ -33,3 +33,26 @@ class SessionDetailMarkCompleted extends SessionDetailEvent {
   @override
   List<Object?> get props => [sessionId];
 }
+
+/// Reschedules the session to a new date/time/duration/mode, then reloads.
+class SessionDetailRescheduleRequested extends SessionDetailEvent {
+  const SessionDetailRescheduleRequested({
+    required this.sessionId,
+    required this.newStart,
+    required this.newEnd,
+    required this.mode,
+    required this.location,
+    required this.durationMinutes,
+  });
+
+  final String sessionId;
+  final DateTime newStart;
+  final DateTime newEnd;
+  final String mode;
+  final String location;
+  final int durationMinutes;
+
+  @override
+  List<Object?> get props =>
+      [sessionId, newStart, newEnd, mode, location, durationMinutes];
+}

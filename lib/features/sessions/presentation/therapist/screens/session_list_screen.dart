@@ -15,6 +15,7 @@ import '../../../bloc/session_list_bloc.dart';
 import '../../../bloc/session_list_event.dart';
 import '../../../bloc/session_list_state.dart';
 import '../../../data/session_repository.dart';
+import '../widgets/reschedule_session_sheet.dart';
 
 // ─── Screen (provides the BLoC) ───────────────────────────────────────────────
 
@@ -55,7 +56,12 @@ class _SessionListView extends StatelessWidget {
         backgroundColor: AppColors.surfaceDefault,
         appBar: _buildAppBar(context),
         floatingActionButton: _AddSessionButton(
-          onTap: () => context.go(Routes.scheduleSession),
+          onTap: () async {
+            await context.push(Routes.scheduleSession);
+            if (context.mounted) {
+              context.read<SessionListBloc>().add(const SessionListRefreshRequested());
+            }
+          },
         ),
         bottomNavigationBar: const _TabBar(),
         body: BlocBuilder<SessionListBloc, SessionListState>(
@@ -81,7 +87,12 @@ class _SessionListView extends StatelessWidget {
           // Zero sessions for the whole account → full-screen empty.
           if (!loaded.hasAnySessions) {
             return _EmptyState(
-              onSchedule: () => context.go(Routes.scheduleSession),
+              onSchedule: () async {
+                await context.push(Routes.scheduleSession);
+                if (context.mounted) {
+                  context.read<SessionListBloc>().add(const SessionListRefreshRequested());
+                }
+              },
             );
           }
 
@@ -830,10 +841,28 @@ void _showSessionActions(BuildContext context, SessionModel session) {
                 size: 20, color: AppColors.secondary),
             label: 'Reschedule',
             color: AppColors.secondary,
-            onTap: () {
+            onTap: () async {
               Navigator.of(sheetContext).pop();
-              AppSnackbar.showSuccess(
-                  context, 'Rescheduling is coming soon.');
+              final result =
+                  await showModalBottomSheet<RescheduleResult>(
+                context: context,
+                backgroundColor: Colors.transparent,
+                isScrollControlled: true,
+                builder: (_) =>
+                    RescheduleSessionSheet(session: session),
+              );
+              if (result != null && context.mounted) {
+                context.read<SessionListBloc>().add(
+                      SessionRescheduleRequested(
+                        sessionId: session.id,
+                        newStart: result.newStart,
+                        newEnd: result.newEnd,
+                        mode: result.mode,
+                        location: result.location,
+                        durationMinutes: result.durationMinutes,
+                      ),
+                    );
+              }
             },
           ),
           const Padding(
