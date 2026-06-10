@@ -53,6 +53,7 @@ import 'features/auth/presentation/parent/screens/parent_edit_profile_screen.dar
 import 'features/auth/presentation/parent/screens/child_edit_screen.dart';
 import 'features/patients/presentation/therapist/screens/log_review_screen.dart';
 import 'features/profile/therapist/presentation/screens/therapist_reports_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -99,6 +100,21 @@ class _AppView extends StatefulWidget {
   State<_AppView> createState() => _AppViewState();
 }
 
+Future<bool> _checkIfParentHasChildren(String parentId) async {
+  try {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('parents')
+        .doc(parentId)
+        .collection('children')
+        .limit(1)
+        .get();
+    return snapshot.docs.isNotEmpty;
+  } catch (_) {
+    return false;
+  }
+}
+
+
 class _AppViewState extends State<_AppView> {
   late final GoRouter _router;
   late final _AuthRouterNotifier _notifier;
@@ -137,7 +153,7 @@ class _AppViewState extends State<_AppView> {
     _router = GoRouter(
       refreshListenable: _notifier,
       initialLocation: Routes.splash,
-      redirect: (context, state) {
+      redirect: (context, state) async {
         final authState = _authBloc.state;
         final isOnAuthRoute = state.matchedLocation.startsWith('/auth');
         final isOnSplash = state.matchedLocation == Routes.splash;
@@ -145,14 +161,15 @@ class _AppViewState extends State<_AppView> {
         if (isOnSplash) return null;
 
         if (authState is AuthUnauthenticated || authState is AuthInitial) {
-          return isOnAuthRoute ? null : Routes.roleSelection;
+          return isOnAuthRoute ? null : Routes.login;
         }
 
         if (authState is AuthAuthenticated && isOnAuthRoute) {
           if (authState.user.role == 'therapist') {
             return Routes.therapistHome;
           } else if (authState.user.role == 'parent') {
-            return Routes.childOnboarding;
+            final hasChildren = await _checkIfParentHasChildren(authState.user.userId);
+            return hasChildren ? Routes.parentHome : Routes.childOnboarding;
           }
         }
 

@@ -6,6 +6,10 @@ import 'package:intl/intl.dart';
 
 import '../../../../../core/theme/theme.dart';
 
+import '../widgets/add_tracking_question_sheet.dart';
+import '../widgets/delete_tracking_question_dialog.dart';
+import '../widgets/edit_tracking_question_sheet.dart';
+
 // ─── Args ─────────────────────────────────────────────────────
 
 class LogReviewArgs {
@@ -278,6 +282,10 @@ class _QuestionsViewState extends State<_QuestionsView> {
                 .collection('trackingQuestions')
                 .snapshots(),
             builder: (context, snapshot) {
+              print('=== TRACKING QUESTIONS DEBUG ===');
+              print('Parent ID: ${widget.parentId}');
+              print('Child ID: ${widget.childId}');
+              print('================================');
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator(color: AppColors.primary));
               }
@@ -329,138 +337,175 @@ class _QuestionsViewState extends State<_QuestionsView> {
                   final status = data['status'] as String? ?? 'active';
                   final isActive = status == 'active';
 
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceDefault,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border(
-                        left: BorderSide(
-                          color: isActive ? AppColors.secondary : AppColors.borderInactive,
-                          width: 4,
-                        ),
-                        top: BorderSide(color: AppColors.borderInactive),
-                        right: BorderSide(color: AppColors.borderInactive),
-                        bottom: BorderSide(color: AppColors.borderInactive),
+                return Container(
+  padding: const EdgeInsets.all(16),
+  decoration: BoxDecoration(
+    color: AppColors.surfaceDefault,
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(
+      color: AppColors.borderInactive,
+      width: 1,
+    ),
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // Left accent border
+      Container(
+        decoration: BoxDecoration(
+          border: Border(
+            left: BorderSide(
+              color: isActive ? AppColors.secondary : AppColors.borderInactive,
+              width: 4,
+            ),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      questionText,
+                      style: AppTextStyles.body.copyWith(
+                        color: isActive ? AppColors.textMain : AppColors.textDisabled,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? const Color(0xFFE6F9E8)
+                          : AppColors.inputFill,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                questionText,
-                                style: AppTextStyles.body.copyWith(
-                                  color: isActive ? AppColors.textMain : AppColors.textDisabled,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: isActive
-                                    ? const Color(0xFFE6F9E8)
-                                    : AppColors.inputFill,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.circle,
-                                    size: 6,
-                                    color: isActive ? AppColors.success : AppColors.textSubtle,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    isActive ? 'Active' : 'Inactive',
-                                    style: AppTextStyles.tag.copyWith(
-                                      color: isActive ? AppColors.success : AppColors.textSubtle,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                        Icon(
+                          Icons.circle,
+                          size: 6,
+                          color: isActive ? AppColors.success : AppColors.textSubtle,
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(width: 4),
                         Text(
-                          'Answer type: $answerType',
-                          style: AppTextStyles.caption.copyWith(color: AppColors.textSubtle),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            if (isActive)
-                              TextButton(
-                                onPressed: () {
-                                  // TODO: wire T-20 Edit Question popup
-                                },
-                                style: TextButton.styleFrom(
-                                  minimumSize: Size.zero,
-                                  padding: EdgeInsets.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                child: Text(
-                                  'Edit',
-                                  style: AppTextStyles.caption.copyWith(
-                                    color: AppColors.secondary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              )
-                            else
-                              TextButton(
-                                onPressed: () async {
-                                  await FirebaseFirestore.instance
-                                      .collection('parents')
-                                      .doc(widget.parentId)
-                                      .collection('children')
-                                      .doc(widget.childId)
-                                      .collection('trackingQuestions')
-                                      .doc(doc.id)
-                                      .update({'status': 'active'});
-                                },
-                                style: TextButton.styleFrom(
-                                  minimumSize: Size.zero,
-                                  padding: EdgeInsets.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                child: Text(
-                                  'Reactivate',
-                                  style: AppTextStyles.caption.copyWith(
-                                    color: AppColors.secondary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(width: 16),
-                            TextButton(
-                              onPressed: () {
-                                // TODO: wire T-21 Delete confirmation popup
-                              },
-                              style: TextButton.styleFrom(
-                                minimumSize: Size.zero,
-                                padding: EdgeInsets.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: Text(
-                                'Delete',
-                                style: AppTextStyles.caption.copyWith(
-                                  color: AppColors.error,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
+                          isActive ? 'Active' : 'Inactive',
+                          style: AppTextStyles.tag.copyWith(
+                            color: isActive ? AppColors.success : AppColors.textSubtle,
+                          ),
                         ),
                       ],
                     ),
-                  );
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Answer type: $answerType',
+                style: AppTextStyles.caption.copyWith(color: AppColors.textSubtle),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (isActive)
+                    TextButton(
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                          ),
+                          builder: (ctx) => EditTrackingQuestionSheet(
+                            parentId: widget.parentId,
+                            childId: widget.childId,
+                            questionId: doc.id,
+                            currentText: questionText,
+                            currentAnswerType: answerType,
+                            currentStatus: status,
+                          ),
+                        );
+                      },
+                      style: TextButton.styleFrom(
+                        minimumSize: Size.zero,
+                        padding: EdgeInsets.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        'Edit',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.secondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )
+                  else
+                    TextButton(
+                      onPressed: () async {
+                        await FirebaseFirestore.instance
+                            .collection('parents')
+                            .doc(widget.parentId)
+                            .collection('children')
+                            .doc(widget.childId)
+                            .collection('trackingQuestions')
+                            .doc(doc.id)
+                            .update({'status': 'active'});
+                      },
+                      style: TextButton.styleFrom(
+                        minimumSize: Size.zero,
+                        padding: EdgeInsets.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        'Reactivate',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.secondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 16),
+                  TextButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => DeleteTrackingQuestionDialog(
+                          parentId: widget.parentId,
+                          childId: widget.childId,
+                          questionId: doc.id,
+                          questionText: questionText,
+                          childName: widget.childName,
+                        ),
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      minimumSize: Size.zero,
+                      padding: EdgeInsets.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'Delete',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.error,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  ),
+);
                 },
               );
             },
@@ -473,7 +518,18 @@ class _QuestionsViewState extends State<_QuestionsView> {
             width: double.infinity,
             child: OutlinedButton(
               onPressed: () {
-                // TODO: wire T-19 Add Question popup
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  builder: (ctx) => AddTrackingQuestionSheet(
+                    parentId: widget.parentId,
+                    childId: widget.childId,
+                    childName: widget.childName,
+                  ),
+                );
               },
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: AppColors.secondary),

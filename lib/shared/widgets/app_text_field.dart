@@ -14,6 +14,7 @@ class AppTextField extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final bool enabled;
   final List<TextInputFormatter>? inputFormatters;
+  final TextStyle? textStyle;
 
   const AppTextField({
     required this.label,
@@ -27,6 +28,7 @@ class AppTextField extends StatefulWidget {
     this.onChanged,
     this.enabled = true,
     this.inputFormatters,
+    this.textStyle,
     super.key,
   });
 
@@ -117,7 +119,7 @@ class _AppTextFieldState extends State<AppTextField> {
       onChanged: widget.onChanged,
       enabled: widget.enabled,
       inputFormatters: widget.inputFormatters,
-      style: valueStyle,
+      style: widget.textStyle ?? valueStyle,
       decoration: InputDecoration(
         labelText: widget.label,
         hintText: widget.hint,

@@ -75,10 +75,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(
-                          Icons.stars_rounded,
-                          color: AppColors.textWhite,
-                          size: 24,
+                        Image.asset(
+                          'assets/images/autilog_logo.png',
+                          width: 24,
+                          height: 24,
                         ),
                         const SizedBox(width: AppSpacing.sm),
                         Text(
@@ -111,50 +111,59 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              // Form card
-              Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: AppColors.surfaceDefault,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(32),
-                    topRight: Radius.circular(32),
-                  ),
-                ),
+              // Form section with transparent background
+              Padding(
                 padding: const EdgeInsets.all(AppSpacing.xl2),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: AppSpacing.lg),
-                      AppTextField(
-                        label: 'Email',
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Email is required';
-                          }
-                          if (!value.contains('@')) {
-                            return 'Enter a valid email';
-                          }
-                          return null;
-                        },
+                      // Email field with white background
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: AppTextField(
+                          label: 'Email',
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          textStyle: const TextStyle(color: Colors.black), 
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Email is required';
+                            }
+                            if (!value.contains('@')) {
+                              return 'Enter a valid email';
+                            }
+                            return null;
+                          },
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.xl),
-                      AppTextField(
-                        label: 'Password',
-                        controller: _passwordController,
-                        obscureText: true,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Password is required';
-                          }
-                          return null;
-                        },
+                      
+                      // Password field with white background
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: AppTextField(
+                          label: 'Password',
+                          controller: _passwordController,
+                          textStyle: const TextStyle(color: Colors.black), 
+                          obscureText: true,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Password is required';
+                            }
+                            return null;
+                          },
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.sm),
+                      
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
@@ -162,19 +171,48 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Text(
                             'Forgot password?',
                             style: AppTextStyles.caption.copyWith(
-                              color: AppColors.secondary,
+                              color: Colors.white,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xl2),
-                      AppPrimaryButton(
-                        label: 'Log In',
-                        isLoading: _isLoading,
-                        onPressed: _login,
+                      
+                      // Login button - using secondary color to stand out from primary background
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _login,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.secondary,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: Colors.white.withOpacity(0.5),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(32),
+                            ),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(
+                                  'Log In',
+                                  style: AppTextStyles.body.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.xl),
+                      
                       Center(
                         child: GestureDetector(
                           onTap: () => context.go(Routes.roleSelection),
@@ -182,13 +220,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             text: TextSpan(
                               text: "Don't have an account? ",
                               style: AppTextStyles.caption.copyWith(
-                                color: AppColors.textDisabled,
+                                color: Colors.white.withOpacity(0.8),
                               ),
                               children: [
                                 TextSpan(
                                   text: 'Register',
                                   style: AppTextStyles.caption.copyWith(
-                                    color: AppColors.secondary,
+                                    color: Colors.white,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),

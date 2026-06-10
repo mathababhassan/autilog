@@ -182,15 +182,18 @@ class _ParentSessionsScreenState extends State<ParentSessionsScreen> {
               ],
             ),
           ),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.22),
+          GestureDetector(
+            onTap: () => context.push(Routes.parentProfile),
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.22),
+              ),
+              child: const Icon(Icons.person_outline,
+                  color: AppColors.textWhite, size: 20),
             ),
-            child: const Icon(Icons.person_outline,
-                color: AppColors.textWhite, size: 20),
           ),
         ],
       ),
@@ -327,42 +330,40 @@ class _ParentSessionsScreenState extends State<ParentSessionsScreen> {
   // ── Bottom nav ────────────────────────────────────────────────────────────
 
   Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceDefault,
-        border:
-            Border(top: BorderSide(color: AppColors.dividerLight)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-              vertical: 10, horizontal: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(
-                icon: Icons.home_outlined,
-                activeIcon: Icons.home,
-                label: 'Home',
-                onTap: () => context.go(Routes.parentHome),
-              ),
-              _NavItem(
-                icon: Icons.edit_note_outlined,
-                activeIcon: Icons.edit_note,
-                label: 'Log',
-                onTap: () {},
-              ),
-              _NavItem(
-                icon: Icons.calendar_month_outlined,
-                activeIcon: Icons.calendar_month,
-                label: 'Sessions',
-                active: true,
-              ),
-            ],
-          ),
+    return BottomNavigationBar(
+      currentIndex: 2, // 2 = Sessions tab is active
+      onTap: (index) {
+        if (index == 0) {
+          context.go(Routes.parentHome);
+        } else if (index == 1) {
+          // Navigate to Log History screen
+          context.push(Routes.logHistory, extra: widget.childId);
+        } else if (index == 2) {
+          // Already on Sessions screen, optionally refresh
+          _load();
+        }
+      },
+      selectedItemColor: AppColors.primary,
+      unselectedItemColor: Colors.black38,
+      type: BottomNavigationBarType.fixed,
+      elevation: 12,
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          activeIcon: Icon(Icons.home),
+          label: 'Home',
         ),
-      ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.assignment_outlined),
+          activeIcon: Icon(Icons.assignment),
+          label: 'Log',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.calendar_month_outlined),
+          activeIcon: Icon(Icons.calendar_month),
+          label: 'Sessions',
+        ),
+      ],
     );
   }
 }

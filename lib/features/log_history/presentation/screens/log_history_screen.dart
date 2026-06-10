@@ -20,6 +20,7 @@ import '../../../positive_moment/positive_moment_route_args.dart';
 
 class LogHistoryScreen extends StatefulWidget {
   final String childId;
+
   const LogHistoryScreen({super.key, required this.childId});
 
   @override
@@ -195,15 +196,16 @@ class _LogHistoryScreenState extends State<LogHistoryScreen> {
                 if (childDocs.length > 1)
                   _buildChildDropdown(childDocs, childModels, uid),
                 _buildViewToggle(),
-                  if (!_calendarMode)
-                    _buildFilterChips(),
-                  if (_calendarMode)
-                    _buildCalendar()
-                  else
-                    Expanded(child: _buildLogList(context, selectedChild, childModels)),
+                if (!_calendarMode)
+                  _buildFilterChips(),
+                if (_calendarMode)
+                  _buildCalendar()
+                else
+                  Expanded(child: _buildLogList(context, selectedChild, childModels)),
               ],
             ),
           ),
+          bottomNavigationBar: widget.childId.isNotEmpty ? _buildBottomNav(context) : null,
         );
       },
     );
@@ -253,7 +255,7 @@ class _LogHistoryScreenState extends State<LogHistoryScreen> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: _selectedChildId,
+                value: _selectedChildId != null && _selectedChildId!.isNotEmpty ? _selectedChildId : null,
                 isExpanded: true,
                 icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.secondary),
                 items: childDocs.map((doc) {
@@ -568,6 +570,49 @@ class _LogHistoryScreenState extends State<LogHistoryScreen> {
 
     return const SizedBox.shrink();
   }
+
+  
+  Widget _buildBottomNav(BuildContext context) {
+  final childId = _selectedChildId ?? '';
+  final childName = _selectedChildId != null ? _childModels[_selectedChildId]?.name ?? '' : '';
+  
+  return BottomNavigationBar(
+    currentIndex: 1,
+    onTap: (index) {
+      if (index == 0) {
+        context.go(Routes.parentHome);
+      } else if (index == 1) {
+        // Already on Log History
+      } else if (index == 2) {
+        context.push(Routes.parentSessions, extra: {
+          'childId': childId,
+          'childName': childName,
+        });
+      }
+    },
+    selectedItemColor: AppColors.primary,
+    unselectedItemColor: Colors.black38,
+    type: BottomNavigationBarType.fixed,
+    elevation: 12,
+    items: const [
+      BottomNavigationBarItem(
+        icon: Icon(Icons.home_outlined),
+        activeIcon: Icon(Icons.home),
+        label: 'Home',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.assignment_outlined),
+        activeIcon: Icon(Icons.assignment),
+        label: 'Log',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.calendar_month_outlined),
+        activeIcon: Icon(Icons.calendar_month),
+        label: 'Sessions',
+      ),
+    ],
+  );
+}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
