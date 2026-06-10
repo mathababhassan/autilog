@@ -577,10 +577,12 @@ exports.getJaasToken = onCall(
     }
 
     const uid = request.auth.uid;
-    if (session.therapistId !== uid) {
+    const isTherapist = session.therapistId === uid;
+    const isParent = session.parentId === uid;
+    if (!isTherapist && !isParent) {
       throw new HttpsError(
         "permission-denied",
-        "You are not the therapist for this session."
+        "You are not a participant of this session."
       );
     }
 
@@ -595,10 +597,10 @@ exports.getJaasToken = onCall(
       context: {
         user: {
           id: uid,
-          name: authToken.name || "Therapist",
+          name: authToken.name || (isTherapist ? "Therapist" : "Parent"),
           email: authToken.email || "",
           avatar: authToken.picture || "",
-          moderator: true,
+          moderator: isTherapist,
         },
       },
     };
