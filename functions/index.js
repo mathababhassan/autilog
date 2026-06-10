@@ -7,6 +7,7 @@ admin.initializeApp();
 const db = admin.firestore();
 
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+const GROQ_API_KEY = defineSecret("GROQ_API_KEY");
 const GMAIL_APP_PASSWORD = defineSecret("GMAIL_APP_PASSWORD");
 // JaaS (8x8) RS256 private key for signing meeting JWTs. Set via:
 //   firebase functions:secrets:set JAAS_PRIVATE_KEY
@@ -144,6 +145,186 @@ Respond ONLY with this JSON (no markdown, no extra text):
           { merge: true }
         );
       }
+    }
+  }
+);
+
+// ─── Shared Groq helpers ─────────────────────────────────────────────
+
+async function fetchChildAIData(parentId, childId) {
+  const childSnap = await db.doc(`parents/${parentId}/children/${childId}`).get();
+  const childData = childSnap.data() || {};
+  const childName = childData.name || "the child";
+  const childAge = childData.age || "unknown";
+
+  let summariesJSON = "[]";
+  try {
+    const snap = await db
+      .collection(`parents/${parentId}/children/${childId}/dailySummaries`)
+      .orderBy("date", "desc").limit(7).get();
+    if (!snap.empty) summariesJSON = JSON.stringify(snap.docs.map((d) => d.data()), null, 2);
+  } catch (err) { console.warn("Could not load daily summaries:", err.message); }
+
+  let incidentsJSON = "[]";
+  try {
+    const snap = await db
+      .collection(`parents/${parentId}/children/${childId}/incidents`)
+      .orderBy("date", "desc").limit(7).get();
+    if (!snap.empty) incidentsJSON = JSON.stringify(snap.docs.map((d) => d.data()), null, 2);
+  } catch (err) { console.warn("Could not load incidents:", err.message); }
+
+  let positiveMomentsJSON = "[]";
+  try {
+    const snap = await db
+      .collection(`parents/${parentId}/children/${childId}/positiveMoments`)
+      .orderBy("date", "desc").limit(7).get();
+    if (!snap.empty) positiveMomentsJSON = JSON.stringify(snap.docs.map((d) => d.data()), null, 2);
+  } catch (err) { console.warn("Could not load positive moments:", err.message); }
+
+  return { childName, childAge, summariesJSON, incidentsJSON, positiveMomentsJSON };
+}
+
+async function callGroq(apiKey, prompt) {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.4,
+    }),
+  });
+  const data = await response.json();
+  return JSON.parse(data.choices[0].message.content.trim());
+}
+
+// ─── Trigger: Behavioral Incident Created ────────────────────────────
+
+exports.onIncidentCreatedAI = onDocumentCreated(
+  {
+    document: "parents/{parentId}/children/{childId}/incidents/{incidentId}",
+    secrets: [GROQ_API_KEY],
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const { parentId, childId } = event.params;
+    const aiInsightsRef = db.doc(`parents/${parentId}/children/${childId}/aiInsights/current`);
+    const existing = await aiInsightsRef.get();
+    if (!existing.exists || existing.data()?.isUnlocked !== true) return;
+
+    const { childName, childAge, summariesJSON, incidentsJSON, positiveMomentsJSON } =
+      await fetchChildAIData(parentId, childId);
+
+    const prompt = `You are a clinical behavioral analyst assistant for parents of children with autism.
+Child: ${childName}, Age: ${childAge}
+Last 7 daily summaries:\n${summariesJSON}
+Recent behavioral incidents (most recent just added):\n${incidentsJSON}
+Recent positive moments:\n${positiveMomentsJSON}
+Respond ONLY with this JSON (no markdown, no extra text):
+{
+  "progressDirection": "improving|stable|needs_attention",
+  "incidentPattern": "1-2 sentences describing the pattern of triggers and behaviors observed",
+  "strategyTip1": "1 specific behavioral de-escalation or prevention strategy",
+  "strategyTip2": "1 specific environmental modification tip based on the incident triggers"
+}`;
+
+    try {
+      const insights = await callGroq(GROQ_API_KEY.value(), prompt);
+      await aiInsightsRef.set({
+        weeklyInsights: {
+          progressDirection: insights.progressDirection,
+          incidentPattern: insights.incidentPattern,
+          strategyTip1: insights.strategyTip1,
+          strategyTip2: insights.strategyTip2,
+        },
+      }, { merge: true });
+    } catch (error) {
+      console.error("Groq call failed (incident trigger):", error);
+    }
+  }
+);
+
+// ─── Trigger: Positive Moment Created (AI) ───────────────────────────
+
+exports.onPositiveMomentCreatedAI = onDocumentCreated(
+  {
+    document: "parents/{parentId}/children/{childId}/positiveMoments/{momentId}",
+    secrets: [GROQ_API_KEY],
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const { parentId, childId } = event.params;
+    const aiInsightsRef = db.doc(`parents/${parentId}/children/${childId}/aiInsights/current`);
+    const existing = await aiInsightsRef.get();
+    if (!existing.exists || existing.data()?.isUnlocked !== true) return;
+
+    const { childName, childAge, summariesJSON, incidentsJSON, positiveMomentsJSON } =
+      await fetchChildAIData(parentId, childId);
+
+    const prompt = `You are a clinical behavioral analyst assistant for parents of children with autism.
+Child: ${childName}, Age: ${childAge}
+Last 7 daily summaries:\n${summariesJSON}
+Recent behavioral incidents:\n${incidentsJSON}
+Recent positive moments (most recent just added):\n${positiveMomentsJSON}
+Respond ONLY with this JSON (no markdown, no extra text):
+{
+  "progressDirection": "improving|stable|needs_attention",
+  "positiveMomentsHighlight": "1-2 sentences highlighting the positive trend or strength observed",
+  "strategyTip1": "1 specific tip to reinforce or build on the positive behaviors",
+  "strategyTip2": "1 tip to create more opportunities for positive moments based on what worked"
+}`;
+
+    try {
+      const insights = await callGroq(GROQ_API_KEY.value(), prompt);
+      await aiInsightsRef.set({
+        weeklyInsights: {
+          progressDirection: insights.progressDirection,
+          positiveMomentsHighlight: insights.positiveMomentsHighlight,
+          strategyTip1: insights.strategyTip1,
+          strategyTip2: insights.strategyTip2,
+        },
+      }, { merge: true });
+    } catch (error) {
+      console.error("Groq call failed (positive moment trigger):", error);
+    }
+  }
+);
+
+// ─── Reports — AI Practice Summary (callable) ────────────────────────
+
+exports.getReportSummary = onCall(
+  { secrets: [GROQ_API_KEY] },
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "Must be signed in.");
+    const { stats } = request.data || {};
+    if (!stats) throw new HttpsError("invalid-argument", "stats is required.");
+
+    const prompt = `You are a clinical assistant summarizing a therapist's caseload for the selected period.
+Aggregated data across all their patients:\n${JSON.stringify(stats, null, 2)}
+Respond ONLY with this JSON (no markdown, no extra text):
+{
+  "summary": "2-3 sentence plain-language overview of trends across all patients this period",
+  "focusArea": "1 sentence suggesting where the therapist should focus attention this period"
+}`;
+
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY.value()}` },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.4,
+        }),
+      });
+      const groqData = await response.json();
+      const insights = JSON.parse(groqData.choices[0].message.content.trim());
+      return { summary: insights.summary, focusArea: insights.focusArea };
+    } catch (error) {
+      console.error("Groq report summary failed:", error);
+      throw new HttpsError("internal", "Failed to generate summary.");
     }
   }
 );
@@ -343,43 +524,40 @@ exports.getJaasToken = onCall(
     }
     const session = sessionSnap.data();
 
-    // --- YOUR NEW VALIDATION CHECKS ---
-    // Check if session is virtual mode
-    if (session.mode !== 'virtual') {
+    // Backward-compat: docs written before `mode` existed used location='Online'.
+    const mode = session.mode ?? (session.location === 'Online' ? 'Virtual' : 'In-Person');
+    if (mode !== 'Virtual') {
       throw new HttpsError(
-        "failed-precondition", 
+        "failed-precondition",
         "Only virtual sessions can be joined via video call."
       );
     }
 
-    // Check if session is cancelled
+    // Must not be cancelled.
     if (session.status === 'cancelled') {
       throw new HttpsError(
-        "failed-precondition", 
+        "failed-precondition",
         "This session has been cancelled."
       );
     }
 
-    // Check if within join window (15 minutes before to 15 minutes after start time)
+    // Must be within the join window: 10 min before scheduledAt → endTime.
     const now = new Date();
-    // Handle both Firestore Timestamp and string date formats
-    let sessionStart;
-    if (session.startTime && typeof session.startTime.toDate === 'function') {
-      sessionStart = session.startTime.toDate(); // Firestore Timestamp
-    } else if (session.startTime) {
-      sessionStart = new Date(session.startTime); // String or ISO date
-    } else {
+    if (!session.scheduledAt || typeof session.scheduledAt.toDate !== 'function') {
       throw new HttpsError("failed-precondition", "Session has no start time.");
     }
-    
-    const timeDiffMinutes = (now - sessionStart) / (1000 * 60);
-    if (timeDiffMinutes < -15 || timeDiffMinutes > 15) {
+    const sessionStart = session.scheduledAt.toDate();
+    const sessionEnd = (session.endTime && typeof session.endTime.toDate === 'function')
+      ? session.endTime.toDate()
+      : new Date(sessionStart.getTime() + 2 * 60 * 60 * 1000);
+
+    const joinOpensAt = new Date(sessionStart.getTime() - 10 * 60 * 1000);
+    if (now < joinOpensAt || now > sessionEnd) {
       throw new HttpsError(
-        "failed-precondition", 
-        "Video call is only available 15 minutes before and after session start time."
+        "failed-precondition",
+        "Video call is only available from 10 minutes before start until the session ends."
       );
     }
-    // --- END OF VALIDATION CHECKS ---
 
     // 3. Only the session's therapist may mint a moderator token.
     const uid = request.auth.uid;
