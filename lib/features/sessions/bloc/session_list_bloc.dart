@@ -20,6 +20,7 @@ class SessionListBloc extends Bloc<SessionListEvent, SessionListState> {
     on<SessionListRefreshRequested>(_onLoad);
     on<SessionPatientFilterChanged>(_onFilterChanged);
     on<SessionMarkedCompleted>(_onMarkCompleted);
+    on<SessionRescheduleRequested>(_onReschedule);
   }
 
   final SessionRepository _sessionRepository;
@@ -67,6 +68,39 @@ class SessionListBloc extends Bloc<SessionListEvent, SessionListState> {
       emit(current.copyWith(clearFilter: true));
     } else {
       emit(current.copyWith(selectedChildId: event.childId));
+    }
+  }
+
+  Future<void> _onReschedule(
+    SessionRescheduleRequested event,
+    Emitter<SessionListState> emit,
+  ) async {
+    final current = state;
+    if (current is! SessionListLoaded) return;
+
+    try {
+      await _sessionRepository.rescheduleSession(
+        sessionId: event.sessionId,
+        newStart: event.newStart,
+        newEnd: event.newEnd,
+        mode: event.mode,
+        location: event.location,
+        durationMinutes: event.durationMinutes,
+      );
+
+      final uid = _authRepository.currentUser!.uid;
+      final sessions = await _sessionRepository.fetchSessionsForTherapist(uid);
+
+      emit(current.copyWith(
+        allSessions: sessions,
+        actionStatus: SessionListActionStatus.success,
+        actionMessage: 'Session rescheduled.',
+      ));
+    } catch (_) {
+      emit(current.copyWith(
+        actionStatus: SessionListActionStatus.error,
+        actionMessage: 'Could not reschedule. Please try again.',
+      ));
     }
   }
 

@@ -97,6 +97,7 @@ class _SessionDetailView extends StatelessWidget {
               session: loaded.session,
               child: loaded.child,
               joinStatus: loaded.joinStatus,
+              isRescheduling: loaded.isRescheduling,
             );
           },
         ),
@@ -146,11 +147,13 @@ class _LoadedBody extends StatefulWidget {
     required this.session,
     required this.child,
     required this.joinStatus,
+    this.isRescheduling = false,
   });
 
   final SessionModel session;
   final ChildModel? child;
   final JoinStatus joinStatus;
+  final bool isRescheduling;
 
   @override
   State<_LoadedBody> createState() => _LoadedBodyState();
@@ -729,7 +732,7 @@ class _SecondaryButton extends StatelessWidget {
 
   final String label;
   final Color color;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {

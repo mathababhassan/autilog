@@ -39,3 +39,27 @@ class SessionMarkedCompleted extends SessionListEvent {
   @override
   List<Object?> get props => [sessionId];
 }
+
+/// Reschedules a session to a new date/time/duration/mode. Writes to Firestore,
+/// then reloads so the card reflects the updated values.
+class SessionRescheduleRequested extends SessionListEvent {
+  const SessionRescheduleRequested({
+    required this.sessionId,
+    required this.newStart,
+    required this.newEnd,
+    required this.mode,
+    required this.location,
+    required this.durationMinutes,
+  });
+
+  final String sessionId;
+  final DateTime newStart;
+  final DateTime newEnd;
+  final String mode;
+  final String location;
+  final int durationMinutes;
+
+  @override
+  List<Object?> get props =>
+      [sessionId, newStart, newEnd, mode, location, durationMinutes];
+}

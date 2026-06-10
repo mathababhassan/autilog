@@ -30,6 +30,7 @@ class SessionDetailLoaded extends SessionDetailState {
     this.joinError,
     this.actionMessage,
     this.actionIsError = false,
+    this.isRescheduling = false,
   });
 
   final SessionModel session;
@@ -55,23 +56,44 @@ class SessionDetailLoaded extends SessionDetailState {
   final String? actionMessage;
   final bool actionIsError;
 
+  /// True while a reschedule Firestore write is in flight.
+  final bool isRescheduling;
+
+  /// [joinUrl]/[joinError] intentionally reset to null when not provided —
+  /// they are one-shot values tied to a single join attempt.
   SessionDetailLoaded copyWith({
+    SessionModel? session,
+    ChildModel? child,
     JoinStatus? joinStatus,
     Uri? joinUrl,
     String? joinError,
+    String? actionMessage,
+    bool? actionIsError,
+    bool? isRescheduling,
   }) {
     return SessionDetailLoaded(
-      session: session,
-      child: child,
+      session: session ?? this.session,
+      child: child ?? this.child,
       joinStatus: joinStatus ?? this.joinStatus,
       joinUrl: joinUrl,
       joinError: joinError,
+      actionMessage: actionMessage,
+      actionIsError: actionIsError ?? false,
+      isRescheduling: isRescheduling ?? this.isRescheduling,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [session, child, joinStatus, joinUrl, joinError, actionMessage, actionIsError];
+  List<Object?> get props => [
+        session,
+        child,
+        joinStatus,
+        joinUrl,
+        joinError,
+        actionMessage,
+        actionIsError,
+        isRescheduling,
+      ];
 }
 
 class SessionDetailError extends SessionDetailState {
