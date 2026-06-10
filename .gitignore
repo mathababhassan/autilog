@@ -54,5 +54,13 @@ firebase_options.dart
 .env
 cors.json
 
+# Root-level npm artefacts (dependencies live in functions/, not the repo root)
+/node_modules/
+/package.json
+/package-lock.json
+
 google-services.json
 GoogleService-Info.plist
+
+
+functions/scripts
