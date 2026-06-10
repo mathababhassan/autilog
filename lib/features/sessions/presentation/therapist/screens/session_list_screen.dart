@@ -55,7 +55,7 @@ class _SessionListView extends StatelessWidget {
         backgroundColor: AppColors.surfaceDefault,
         appBar: _buildAppBar(context),
         floatingActionButton: _AddSessionButton(
-          onTap: () => _showSchedulingPlaceholder(context),
+          onTap: () => context.go(Routes.scheduleSession),
         ),
         bottomNavigationBar: const _TabBar(),
         body: BlocBuilder<SessionListBloc, SessionListState>(
@@ -81,7 +81,7 @@ class _SessionListView extends StatelessWidget {
           // Zero sessions for the whole account → full-screen empty.
           if (!loaded.hasAnySessions) {
             return _EmptyState(
-              onSchedule: () => _showSchedulingPlaceholder(context),
+              onSchedule: () => context.go(Routes.scheduleSession),
             );
           }
 
@@ -1190,9 +1190,6 @@ class _TabItem extends StatelessWidget {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-void _showSchedulingPlaceholder(BuildContext context) {
-  AppSnackbar.showSuccess(context, 'Session scheduling is coming soon.');
-}
 
 int _durationMinutes(SessionModel session) =>
     session.endTime.difference(session.scheduledAt).inMinutes;

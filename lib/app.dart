@@ -26,6 +26,7 @@ import 'features/profile/therapist/data/therapist_repository.dart';
 import 'features/profile/therapist/presentation/screens/therapist_edit_profile_screen.dart';
 import 'features/profile/therapist/presentation/screens/therapist_home_screen.dart';
 import 'features/profile/therapist/presentation/screens/therapist_profile_overview_screen.dart';
+import 'features/sessions/presentation/therapist/screens/schedule_session_screen.dart';
 import 'features/sessions/presentation/therapist/screens/session_detail_screen.dart';
 import 'features/sessions/presentation/therapist/screens/session_list_screen.dart';
 import 'features/incident_log/presentation/screens/incident_detail_screen.dart';
@@ -168,6 +169,7 @@ class _AppViewState extends State<_AppView> {
         GoRoute(path: Routes.therapistProfileEdit, builder: (_, __) => const TherapistEditProfileScreen()),
         GoRoute(path: Routes.therapistPatients, builder: (_, __) => const PatientListScreen()),
         GoRoute(path: Routes.therapistSessions, builder: (_, __) => const SessionListScreen()),
+        GoRoute(path: Routes.scheduleSession, builder: (_, __) => const ScheduleSessionScreen()),
         GoRoute(
           path: Routes.sessionDetail,
           builder: (context, state) {

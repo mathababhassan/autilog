@@ -12,9 +12,12 @@ class SessionModel {
   final String mode;     // 'In-Person', 'Virtual'
   final String type;     // 'Assessment', 'Behavioral Intervention', 'Follow-up', 'Parent Consultation'
   final String status;   // 'upcoming', 'completed', 'cancelled'
-  final String? notes;           // parent-facing notes
-  final String? privateNotes;    // therapist-only notes
-  final String? progress;        // 'improving' | 'stable' | 'needs_attention'
+  final int durationMinutes;
+  final String? preSessionParentNotes;
+  final String? preSessionPrivateNotes;
+  final String? notes;
+  final String? privateNotes;
+  final String? progress;
   final String? cancelReason;
   final DateTime? notesLastEditedAt;
 
@@ -30,6 +33,9 @@ class SessionModel {
     required this.mode,
     required this.type,
     required this.status,
+    required this.durationMinutes,
+    this.preSessionParentNotes,
+    this.preSessionPrivateNotes,
     this.notes,
     this.privateNotes,
     this.progress,
@@ -54,6 +60,16 @@ class SessionModel {
       // most common session type so the card's type line always renders.
       type: map['type'] as String? ?? 'Behavioral Intervention',
       status: map['status'] as String? ?? 'upcoming',
+      // Backward-compat: old docs have no durationMinutes; derive from timestamps.
+      durationMinutes: map['durationMinutes'] as int? ??
+          ((map['endTime'] as dynamic)?.toDate() as DateTime? ?? DateTime.now())
+              .difference(
+                (map['scheduledAt'] as dynamic)?.toDate() as DateTime? ?? DateTime.now(),
+              )
+              .inMinutes
+              .abs(),
+      preSessionParentNotes: map['preSessionParentNotes'] as String?,
+      preSessionPrivateNotes: map['preSessionPrivateNotes'] as String?,
       notes: map['notes'] as String?,
       privateNotes: map['privateNotes'] as String?,
       progress: map['progress'] as String?,
@@ -74,6 +90,9 @@ class SessionModel {
       'mode': mode,
       'type': type,
       'status': status,
+      'durationMinutes': durationMinutes,
+      if (preSessionParentNotes != null) 'preSessionParentNotes': preSessionParentNotes,
+      if (preSessionPrivateNotes != null) 'preSessionPrivateNotes': preSessionPrivateNotes,
       if (notes != null) 'notes': notes,
       if (privateNotes != null) 'privateNotes': privateNotes,
       if (progress != null) 'progress': progress,
@@ -85,6 +104,9 @@ class SessionModel {
     String? status,
     DateTime? scheduledAt,
     DateTime? endTime,
+    int? durationMinutes,
+    String? preSessionParentNotes,
+    String? preSessionPrivateNotes,
     String? notes,
     String? privateNotes,
     String? progress,
@@ -103,6 +125,9 @@ class SessionModel {
       mode: mode,
       type: type,
       status: status ?? this.status,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      preSessionParentNotes: preSessionParentNotes ?? this.preSessionParentNotes,
+      preSessionPrivateNotes: preSessionPrivateNotes ?? this.preSessionPrivateNotes,
       notes: notes ?? this.notes,
       privateNotes: privateNotes ?? this.privateNotes,
       progress: progress ?? this.progress,
@@ -114,18 +139,17 @@ class SessionModel {
   /// Window during which the virtual call can be joined: from [joinLeadTime]
   /// before [scheduledAt] until [_joinGraceTime] after [endTime]. Public so the
   /// UI can describe the window ("opens N min before") without duplicating it.
-  static const Duration joinLeadTime = Duration(minutes: 15);
-  static const Duration _joinGraceTime = Duration(minutes: 30);
+  static const Duration joinLeadTime = Duration(minutes: 10);
 
   /// Whether the call is joinable at [now]. Takes the clock as a parameter so
   /// it can be unit-tested without mocking `DateTime.now()`.
   ///
-  /// True only for a Virtual, non-cancelled session inside the join window.
+  /// True only for a Virtual, non-cancelled session inside the join window:
+  /// from [joinLeadTime] before [scheduledAt] until [endTime].
   bool isJoinableAt(DateTime now) {
     if (mode != 'Virtual' || status == 'cancelled') return false;
     final opens = scheduledAt.subtract(joinLeadTime);
-    final closes = endTime.add(_joinGraceTime);
-    return !now.isBefore(opens) && !now.isAfter(closes);
+    return !now.isBefore(opens) && !now.isAfter(endTime);
   }
 
   /// Convenience wrapper over [isJoinableAt] using the current time.
@@ -159,6 +183,4 @@ class SessionModel {
     return '${days[scheduledAt.weekday - 1]}, ${months[scheduledAt.month - 1]} ${scheduledAt.day}';
   }
 
-  /// Session duration in minutes
-  int get durationMinutes => endTime.difference(scheduledAt).inMinutes;
 }

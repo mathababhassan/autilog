@@ -539,33 +539,49 @@ exports.getJaasToken = onCall(
       throw new HttpsError("not-found", "Session not found.");
     }
     const session = sessionSnap.data();
+    console.log(`[getJaasToken] sessionId=${sessionId} mode=${session.mode} status=${session.status} scheduledAt=${session.scheduledAt?.toDate()} endTime=${session.endTime?.toDate()} therapistId=${session.therapistId} callerUid=${request.auth.uid}`);
 
-    if (session.mode !== 'virtual') {
-      throw new HttpsError("failed-precondition", "Only virtual sessions can be joined via video call.");
+    // Backward-compat: docs written before `mode` existed used location='Online'.
+    const mode = session.mode ?? (session.location === 'Online' ? 'Virtual' : 'In-Person');
+    if (mode !== 'Virtual') {
+      throw new HttpsError(
+        "failed-precondition",
+        "Only virtual sessions can be joined via video call."
+      );
     }
 
+    // Must not be cancelled.
     if (session.status === 'cancelled') {
-      throw new HttpsError("failed-precondition", "This session has been cancelled.");
+      throw new HttpsError(
+        "failed-precondition",
+        "This session has been cancelled."
+      );
     }
 
+    // Must be within the join window: 10 min before scheduledAt → endTime.
     const now = new Date();
-    let sessionStart;
-    if (session.startTime && typeof session.startTime.toDate === 'function') {
-      sessionStart = session.startTime.toDate();
-    } else if (session.startTime) {
-      sessionStart = new Date(session.startTime);
-    } else {
+    if (!session.scheduledAt || typeof session.scheduledAt.toDate !== 'function') {
       throw new HttpsError("failed-precondition", "Session has no start time.");
     }
+    const sessionStart = session.scheduledAt.toDate();
+    const sessionEnd = (session.endTime && typeof session.endTime.toDate === 'function')
+      ? session.endTime.toDate()
+      : new Date(sessionStart.getTime() + 2 * 60 * 60 * 1000);
 
-    const timeDiffMinutes = (now - sessionStart) / (1000 * 60);
-    if (timeDiffMinutes < -15 || timeDiffMinutes > 15) {
-      throw new HttpsError("failed-precondition", "Video call is only available 15 minutes before and after session start time.");
+    const joinOpensAt = new Date(sessionStart.getTime() - 10 * 60 * 1000);
+    if (now < joinOpensAt || now > sessionEnd) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Video call is only available from 10 minutes before start until the session ends."
+      );
     }
 
     const uid = request.auth.uid;
     if (session.therapistId !== uid) {
-      throw new HttpsError("permission-denied", "You are not the therapist for this session.");
+      throw new HttpsError(
+        "permission-denied",
+        "You are not the therapist for this session."
+      );
     }
 
     const authToken = request.auth.token || {};
