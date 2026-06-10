@@ -56,7 +56,7 @@ class _SessionListView extends StatelessWidget {
         backgroundColor: AppColors.surfaceDefault,
         appBar: _buildAppBar(context),
         floatingActionButton: _AddSessionButton(
-          onTap: () => context.go(Routes.scheduleSession),
+          onTap: () => context.push(Routes.scheduleSession),
         ),
         bottomNavigationBar: const _TabBar(),
         body: BlocBuilder<SessionListBloc, SessionListState>(
@@ -82,7 +82,7 @@ class _SessionListView extends StatelessWidget {
           // Zero sessions for the whole account → full-screen empty.
           if (!loaded.hasAnySessions) {
             return _EmptyState(
-              onSchedule: () => context.go(Routes.scheduleSession),
+              onSchedule: () => context.push(Routes.scheduleSession),
             );
           }
 
