@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -137,7 +139,7 @@ class _ErrorView extends StatelessWidget {
 
 // ─── Loaded body ───────────────────────────────────────────────────────────────
 
-class _LoadedBody extends StatelessWidget {
+class _LoadedBody extends StatefulWidget {
   const _LoadedBody({
     required this.session,
     required this.child,
@@ -149,7 +151,33 @@ class _LoadedBody extends StatelessWidget {
   final JoinStatus joinStatus;
 
   @override
+  State<_LoadedBody> createState() => _LoadedBodyState();
+}
+
+class _LoadedBodyState extends State<_LoadedBody> {
+  Timer? _clock;
+
+  @override
+  void initState() {
+    super.initState();
+    // Rebuild every 30 s so time-gated UI (join window, past-due card) stays
+    // in sync without requiring the user to leave and re-enter.
+    _clock = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _clock?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final session = widget.session;
+    final child = widget.child;
+    final joinStatus = widget.joinStatus;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screenMargin,
@@ -179,9 +207,9 @@ class _LoadedBody extends StatelessWidget {
             if (session.isPastDue) ...[
               const _NeedsReviewHint(),
               const SizedBox(height: AppSpacing.md),
+              _MarkCompletedButton(session: session),
+              const SizedBox(height: AppSpacing.sm),
             ],
-            _MarkCompletedButton(session: session),
-            const SizedBox(height: AppSpacing.sm),
             _SecondaryButton(
               label: 'Reschedule',
               color: AppColors.secondary,
@@ -401,7 +429,8 @@ class _ModeActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isVirtual = session.mode == 'Virtual';
-    final icon = isVirtual ? Icons.videocam_outlined : Icons.location_on_outlined;
+    final icon =
+        isVirtual ? Icons.videocam_outlined : Icons.location_on_outlined;
     final title = isVirtual ? 'Video Call' : session.location;
 
     // Virtual: gate the Join button on the time window; In-person: still stubbed.
