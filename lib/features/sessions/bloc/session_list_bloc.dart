@@ -85,6 +85,7 @@ class SessionListBloc extends Bloc<SessionListEvent, SessionListState> {
         newEnd: event.newEnd,
         mode: event.mode,
         location: event.location,
+        durationMinutes: event.durationMinutes,
       );
 
       final uid = _authRepository.currentUser!.uid;

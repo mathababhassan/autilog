@@ -112,6 +112,7 @@ class SessionDetailBloc extends Bloc<SessionDetailEvent, SessionDetailState> {
         newEnd: event.newEnd,
         mode: event.mode,
         location: event.location,
+        durationMinutes: event.durationMinutes,
       );
       final session = await repository.fetchSessionById(event.sessionId);
       emit(SessionDetailLoaded(

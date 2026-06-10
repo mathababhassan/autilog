@@ -42,6 +42,7 @@ class SessionDetailRescheduleRequested extends SessionDetailEvent {
     required this.newEnd,
     required this.mode,
     required this.location,
+    required this.durationMinutes,
   });
 
   final String sessionId;
@@ -49,7 +50,9 @@ class SessionDetailRescheduleRequested extends SessionDetailEvent {
   final DateTime newEnd;
   final String mode;
   final String location;
+  final int durationMinutes;
 
   @override
-  List<Object?> get props => [sessionId, newStart, newEnd, mode, location];
+  List<Object?> get props =>
+      [sessionId, newStart, newEnd, mode, location, durationMinutes];
 }

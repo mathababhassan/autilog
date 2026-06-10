@@ -849,6 +849,7 @@ void _showSessionActions(BuildContext context, SessionModel session) {
                         newEnd: result.newEnd,
                         mode: result.mode,
                         location: result.location,
+                        durationMinutes: result.durationMinutes,
                       ),
                     );
               }

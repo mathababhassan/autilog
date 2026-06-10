@@ -120,6 +120,7 @@ class SessionRepository {
     required DateTime newEnd,
     required String mode,
     required String location,
+    required int durationMinutes,
   }) async {
     await _firestore.collection('sessions').doc(sessionId).update({
       'scheduledAt': Timestamp.fromDate(newStart),
@@ -127,6 +128,7 @@ class SessionRepository {
       'status': 'upcoming',
       'mode': mode,
       'location': location,
+      'durationMinutes': durationMinutes,
     });
   }
 

@@ -13,12 +13,14 @@ class RescheduleResult {
     required this.newEnd,
     required this.mode,
     required this.location,
+    required this.durationMinutes,
   });
 
   final DateTime newStart;
   final DateTime newEnd;
   final String mode;
   final String location;
+  final int durationMinutes;
 }
 
 // ─── Sheet ────────────────────────────────────────────────────────────────────
@@ -113,7 +115,7 @@ class _RescheduleSessionSheetState extends State<RescheduleSessionSheet> {
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
-    if (picked != null) setState(() => _date = picked);
+    if (picked != null && mounted) setState(() => _date = picked);
   }
 
   Future<void> _pickTime() async {
@@ -121,7 +123,7 @@ class _RescheduleSessionSheetState extends State<RescheduleSessionSheet> {
       context: context,
       initialTime: _time,
     );
-    if (picked != null) setState(() => _time = picked);
+    if (picked != null && mounted) setState(() => _time = picked);
   }
 
   void _showDurationPicker() {
@@ -223,6 +225,7 @@ class _RescheduleSessionSheetState extends State<RescheduleSessionSheet> {
         newEnd: start.add(Duration(minutes: _durationMinutes)),
         mode: _mode,
         location: _locationFor(_mode),
+        durationMinutes: _durationMinutes,
       ),
     );
   }
@@ -276,7 +279,7 @@ class _RescheduleSessionSheetState extends State<RescheduleSessionSheet> {
                   '${widget.session.childName} · ${widget.session.type}',
                   style: AppTextStyles.body.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1A1A1A),
+                    color: AppColors.textMain,
                   ),
                   textAlign: TextAlign.center,
                 ),
