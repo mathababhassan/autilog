@@ -15,6 +15,7 @@ import '../../../bloc/session_list_bloc.dart';
 import '../../../bloc/session_list_event.dart';
 import '../../../bloc/session_list_state.dart';
 import '../../../data/session_repository.dart';
+import '../widgets/reschedule_session_sheet.dart';
 
 // ─── Screen (provides the BLoC) ───────────────────────────────────────────────
 
@@ -830,10 +831,27 @@ void _showSessionActions(BuildContext context, SessionModel session) {
                 size: 20, color: AppColors.secondary),
             label: 'Reschedule',
             color: AppColors.secondary,
-            onTap: () {
+            onTap: () async {
               Navigator.of(sheetContext).pop();
-              AppSnackbar.showSuccess(
-                  context, 'Rescheduling is coming soon.');
+              final result =
+                  await showModalBottomSheet<RescheduleResult>(
+                context: context,
+                backgroundColor: Colors.transparent,
+                isScrollControlled: true,
+                builder: (_) =>
+                    RescheduleSessionSheet(session: session),
+              );
+              if (result != null && context.mounted) {
+                context.read<SessionListBloc>().add(
+                      SessionRescheduleRequested(
+                        sessionId: session.id,
+                        newStart: result.newStart,
+                        newEnd: result.newEnd,
+                        mode: result.mode,
+                        location: result.location,
+                      ),
+                    );
+              }
             },
           ),
           const Padding(
