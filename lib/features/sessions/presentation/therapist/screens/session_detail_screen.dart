@@ -14,7 +14,8 @@ import '../../../bloc/session_detail_bloc.dart';
 import '../../../bloc/session_detail_event.dart';
 import '../../../bloc/session_detail_state.dart';
 import '../../../data/session_repository.dart';
-import '../widgets/reschedule_session_sheet.dart';
+import 'session_notes_form_screen.dart';
+import 'session_notes_edit_screen.dart';
 
 class SessionDetailScreen extends StatelessWidget {
   const SessionDetailScreen({super.key, required this.sessionId});
@@ -205,6 +206,8 @@ class _LoadedBodyState extends State<_LoadedBody> {
           _SectionLabel('Session Notes'),
           const SizedBox(height: AppSpacing.sm),
           _NotesCard(session: session),
+          const SizedBox(height: AppSpacing.md),
+          _PrivateNotesCard(session: session),
           // Actions only apply while the session is still upcoming.
           if (session.status == 'upcoming') ...[
             const SizedBox(height: AppSpacing.xl3),
@@ -217,35 +220,13 @@ class _LoadedBodyState extends State<_LoadedBody> {
             _SecondaryButton(
               label: 'Reschedule',
               color: AppColors.secondary,
-              onPressed: widget.isRescheduling ? null : () async {
-                final result =
-                    await showModalBottomSheet<RescheduleResult>(
-                  context: context,
-                  backgroundColor: Colors.transparent,
-                  isScrollControlled: true,
-                  builder: (_) =>
-                      RescheduleSessionSheet(session: session),
-                );
-                if (result != null && context.mounted) {
-                  context.read<SessionDetailBloc>().add(
-                        SessionDetailRescheduleRequested(
-                          sessionId: session.id,
-                          newStart: result.newStart,
-                          newEnd: result.newEnd,
-                          mode: result.mode,
-                          location: result.location,
-                          durationMinutes: result.durationMinutes,
-                        ),
-                      );
-                }
-              },
+              onPressed: () => _showRescheduleSheet(context, session),
             ),
             const SizedBox(height: AppSpacing.sm),
             _SecondaryButton(
               label: 'Cancel',
               color: AppColors.error,
-              onPressed: () =>
-                  AppSnackbar.showError(context, 'Cancel is coming soon'),
+              onPressed: () => _showCancelDialog(context, session),
             ),
           ],
         ],
@@ -580,8 +561,20 @@ class _NotesCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasNotes = session.notes != null && session.notes!.trim().isNotEmpty;
     return _TappableCard(
-      onTap: () =>
-          AppSnackbar.showError(context, 'Session notes are coming soon'),
+      onTap: () async {
+        final result = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => hasNotes
+                ? SessionNotesEditScreen(session: session)
+                : SessionNotesFormScreen(session: session),
+          ),
+        );
+        if (result == true && context.mounted) {
+          context.read<SessionDetailBloc>().add(
+                SessionDetailStarted(sessionId: session.id),
+              );
+        }
+      },
       child: Row(
         children: [
           const Icon(Icons.description_outlined,
@@ -596,6 +589,69 @@ class _NotesCard extends StatelessWidget {
                   height: 1.2,
                   color:
                       hasNotes ? AppColors.textMain : AppColors.textPlaceholder),
+            ),
+          ),
+          const Icon(Icons.chevron_right, color: AppColors.iconDefault),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Private notes card (therapist-only) ──────────────────────────────────────
+
+class _PrivateNotesCard extends StatelessWidget {
+  const _PrivateNotesCard({required this.session});
+  final SessionModel session;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasNotes =
+        session.privateNotes != null && session.privateNotes!.trim().isNotEmpty;
+
+    return _TappableCard(
+      onTap: () async {
+        final result = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => hasNotes
+                ? SessionNotesEditScreen(session: session)
+                : SessionNotesFormScreen(session: session),
+          ),
+        );
+        if (result == true && context.mounted) {
+          context
+              .read<SessionDetailBloc>()
+              .add(SessionDetailStarted(sessionId: session.id));
+        }
+      },
+      child: Row(
+        children: [
+          const Icon(Icons.lock_outline, size: 20, color: AppColors.textSubtle),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Private Notes',
+                  style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSubtle,
+                      fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  hasNotes
+                      ? session.privateNotes!.trim()
+                      : 'Add private notes (not visible to parent)',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.body.copyWith(
+                      height: 1.2,
+                      color: hasNotes
+                          ? AppColors.textMain
+                          : AppColors.textPlaceholder),
+                ),
+              ],
             ),
           ),
           const Icon(Icons.chevron_right, color: AppColors.iconDefault),
@@ -697,6 +753,330 @@ class _SecondaryButton extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─── Reschedule sheet ─────────────────────────────────────────────────────────
+
+Future<void> _showRescheduleSheet(
+    BuildContext context, SessionModel session) async {
+  final result = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _RescheduleSheet(
+      session: session,
+      onConfirm: (newDate, newTime) async {
+        final scheduledAt = DateTime(
+          newDate.year, newDate.month, newDate.day,
+          newTime.hour, newTime.minute,
+        );
+        final duration = session.endTime.difference(session.scheduledAt);
+        final endTime = scheduledAt.add(duration);
+        await SessionRepository().rescheduleSession(
+          sessionId: session.id,
+          newStart: scheduledAt,
+          newEnd: endTime,
+        );
+      },
+    ),
+  );
+  if (result == true && context.mounted) {
+    context
+        .read<SessionDetailBloc>()
+        .add(SessionDetailStarted(sessionId: session.id));
+  }
+}
+
+class _RescheduleSheet extends StatefulWidget {
+  const _RescheduleSheet({required this.session, required this.onConfirm});
+  final SessionModel session;
+  final Future<void> Function(DateTime date, TimeOfDay time) onConfirm;
+
+  @override
+  State<_RescheduleSheet> createState() => _RescheduleSheetState();
+}
+
+class _RescheduleSheetState extends State<_RescheduleSheet> {
+  DateTime? _selectedDate;
+  TimeOfDay? _selectedTime;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill with current session values
+    _selectedDate = widget.session.scheduledAt;
+    _selectedTime = TimeOfDay.fromDateTime(widget.session.scheduledAt);
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppColors.secondary),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime ?? TimeOfDay.now(),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppColors.secondary),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _selectedTime = picked);
+  }
+
+  String _formatDate(DateTime d) {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]} ${d.year}';
+  }
+
+  String _formatTime(TimeOfDay t) {
+    final h = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
+    final m = t.minute.toString().padLeft(2, '0');
+    final period = t.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$h:$m $period';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    final session = widget.session;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(24, 20, 24, 24 + bottomPadding),
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceDefault,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Grabber
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.dividerLight,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Title
+          Text('Reschedule Session',
+              style: AppTextStyles.heading1.copyWith(color: AppColors.textMain)),
+          const SizedBox(height: 16),
+          // Session context card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.inputFill,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  '${session.childName} · ${session.type}',
+                  style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.w700, color: AppColors.textMain),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${session.formattedDateShort} · ${TimeOfDay.fromDateTime(session.scheduledAt).format(context)} · ${session.mode}',
+                  style: AppTextStyles.caption.copyWith(color: AppColors.textSubtle),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          // New Date
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text('New Date',
+                style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w600, color: AppColors.textMain)),
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _pickDate,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceDefault,
+                border: Border.all(color: AppColors.borderInactive),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_month_outlined,
+                      size: 18, color: AppColors.secondary),
+                  const SizedBox(width: 10),
+                  Text(
+                    _selectedDate != null
+                        ? _formatDate(_selectedDate!)
+                        : 'Select date',
+                    style: AppTextStyles.body.copyWith(color: AppColors.textMain),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // New Time
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text('New Time',
+                style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w600, color: AppColors.textMain)),
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _pickTime,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceDefault,
+                border: Border.all(color: AppColors.borderInactive),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.access_time_outlined,
+                      size: 18, color: AppColors.secondary),
+                  const SizedBox(width: 10),
+                  Text(
+                    _selectedTime != null
+                        ? _formatTime(_selectedTime!)
+                        : 'Select time',
+                    style: AppTextStyles.body.copyWith(color: AppColors.textMain),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Info text
+          Text(
+            'The parent will be notified of the change.',
+            style: AppTextStyles.caption.copyWith(color: AppColors.textSubtle),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          // Confirm button
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: (_loading || _selectedDate == null || _selectedTime == null)
+                  ? null
+                  : () async {
+                      setState(() => _loading = true);
+                      try {
+                        await widget.onConfirm(_selectedDate!, _selectedTime!);
+                        if (mounted) {
+                          Navigator.of(context).pop(true);
+                          AppSnackbar.showSuccess(
+                              context, 'Session rescheduled successfully.');
+                        }
+                      } catch (_) {
+                        if (mounted) {
+                          AppSnackbar.showError(
+                              context, 'Could not reschedule. Please try again.');
+                          setState(() => _loading = false);
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.secondary,
+                disabledBackgroundColor: AppColors.secondary.withValues(alpha: 0.5),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30)),
+                elevation: 0,
+              ),
+              child: _loading
+                  ? const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    )
+                  : Text('Reschedule & Notify Parent',
+                      style: AppTextStyles.body.copyWith(
+                          color: AppColors.textWhite,
+                          fontWeight: FontWeight.w700)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Cancel
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Text('Cancel',
+                style: AppTextStyles.body.copyWith(
+                    color: AppColors.secondary, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+void _showCancelDialog(BuildContext context, SessionModel session) {
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text('Cancel Session'),
+      content: Text(
+        'Are you sure you want to cancel the session with ${session.childName}?\n\nThe parent will be notified.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Keep Session'),
+        ),
+        TextButton(
+          onPressed: () async {
+            Navigator.of(ctx).pop();
+            try {
+              await SessionRepository().cancelSession(session.id);
+              if (context.mounted) {
+                context.read<SessionDetailBloc>()
+                    .add(SessionDetailStarted(sessionId: session.id));
+                AppSnackbar.showSuccess(context, 'Session cancelled.');
+              }
+            } catch (_) {
+              if (context.mounted) {
+                AppSnackbar.showError(
+                    context, 'Could not cancel. Please try again.');
+              }
+            }
+          },
+          style: TextButton.styleFrom(foregroundColor: AppColors.error),
+          child: const Text('Cancel Session'),
+        ),
+      ],
+    ),
+  );
 }
 
 // ─── Side effects ──────────────────────────────────────────────────────────────
