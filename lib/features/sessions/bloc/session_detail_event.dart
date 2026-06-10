@@ -34,6 +34,16 @@ class SessionDetailMarkCompleted extends SessionDetailEvent {
   List<Object?> get props => [sessionId];
 }
 
+/// Cancels the session, then reloads so the status pill and action group update.
+class SessionDetailCancelRequested extends SessionDetailEvent {
+  const SessionDetailCancelRequested({required this.sessionId});
+
+  final String sessionId;
+
+  @override
+  List<Object?> get props => [sessionId];
+}
+
 /// Reschedules the session to a new date/time/duration/mode, then reloads.
 class SessionDetailRescheduleRequested extends SessionDetailEvent {
   const SessionDetailRescheduleRequested({

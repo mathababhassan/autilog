@@ -40,6 +40,17 @@ class SessionMarkedCompleted extends SessionListEvent {
   List<Object?> get props => [sessionId];
 }
 
+/// Cancels a session. Writes `status: 'cancelled'` to Firestore, then reloads
+/// so the card moves from Upcoming to Past.
+class SessionCancelRequested extends SessionListEvent {
+  const SessionCancelRequested(this.sessionId);
+
+  final String sessionId;
+
+  @override
+  List<Object?> get props => [sessionId];
+}
+
 /// Reschedules a session to a new date/time/duration/mode. Writes to Firestore,
 /// then reloads so the card reflects the updated values.
 class SessionRescheduleRequested extends SessionListEvent {
