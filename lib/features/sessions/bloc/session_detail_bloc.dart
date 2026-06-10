@@ -14,6 +14,7 @@ class SessionDetailBloc extends Bloc<SessionDetailEvent, SessionDetailState> {
     on<SessionDetailStarted>(_onStarted);
     on<SessionJoinRequested>(_onJoinRequested);
     on<SessionDetailMarkCompleted>(_onMarkCompleted);
+    on<SessionDetailRescheduleRequested>(_onRescheduleRequested);
   }
 
   final SessionRepository repository;
@@ -91,6 +92,38 @@ class SessionDetailBloc extends Bloc<SessionDetailEvent, SessionDetailState> {
         session: current.session,
         child: current.child,
         actionMessage: 'Could not update the session. Please try again.',
+        actionIsError: true,
+      ));
+    }
+  }
+
+  Future<void> _onRescheduleRequested(
+    SessionDetailRescheduleRequested event,
+    Emitter<SessionDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    emit(current.copyWith(isRescheduling: true));
+    try {
+      await repository.rescheduleSession(
+        sessionId: event.sessionId,
+        newStart: event.newStart,
+        newEnd: event.newEnd,
+        mode: event.mode,
+        location: event.location,
+      );
+      final session = await repository.fetchSessionById(event.sessionId);
+      emit(SessionDetailLoaded(
+        session: session,
+        child: current.child,
+        actionMessage: 'Session rescheduled.',
+      ));
+    } catch (_) {
+      emit(SessionDetailLoaded(
+        session: current.session,
+        child: current.child,
+        actionMessage: 'Could not reschedule. Please try again.',
         actionIsError: true,
       ));
     }

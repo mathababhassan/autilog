@@ -118,11 +118,15 @@ class SessionRepository {
     required String sessionId,
     required DateTime newStart,
     required DateTime newEnd,
+    required String mode,
+    required String location,
   }) async {
     await _firestore.collection('sessions').doc(sessionId).update({
       'scheduledAt': Timestamp.fromDate(newStart),
       'endTime': Timestamp.fromDate(newEnd),
       'status': 'upcoming',
+      'mode': mode,
+      'location': location,
     });
   }
 
