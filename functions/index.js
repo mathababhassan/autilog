@@ -579,6 +579,7 @@ exports.getJaasToken = onCall(
     const uid = request.auth.uid;
     const isTherapist = session.therapistId === uid;
     const isParent = session.parentId === uid;
+
     if (!isTherapist && !isParent) {
       throw new HttpsError(
         "permission-denied",
