@@ -42,7 +42,8 @@ class SessionListBloc extends Bloc<SessionListEvent, SessionListState> {
       ]);
     
       final sessions = results[0] as List<SessionModel>;
-      final patients = results[1] as List<ChildModel>;
+      final pairs = results[1] as List<(ChildModel, String)>;
+      final patients = pairs.map((p) => p.$1).toList();
     
       emit(SessionListLoaded(
         allSessions: sessions,
