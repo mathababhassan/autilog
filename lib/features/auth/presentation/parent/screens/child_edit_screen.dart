@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/theme.dart';
 import '../../../../../shared/widgets/app_text_field.dart';
+import '../../../../patients/data/patient_repository.dart';
 
 /// Route extra — passed via GoRouter `extra:`.
 class ChildEditArgs {
@@ -44,6 +45,7 @@ class _ChildEditScreenState extends State<ChildEditScreen> {
   DateTime? _selectedDob;
 
   bool _saving = false;
+  bool _deleting = false;
   bool _changingTherapist = false;
 
   // Linked therapist (loaded once)
@@ -153,11 +155,11 @@ class _ChildEditScreenState extends State<ChildEditScreen> {
         return;
       }
 
-      // ── Step 2: fallback — check linkRequests with status == 'accepted' ──
+      // ── Step 2: fallback — check linkRequests filtered by parentId (security rule) ──
       final snap = await FirebaseFirestore.instance
           .collection('linkRequests')
           .where('childId', isEqualTo: _childId)
-          .where('status', isEqualTo: 'accepted')
+          .where('parentId', isEqualTo: _parentId)
           .limit(1)
           .get();
 
@@ -304,11 +306,22 @@ class _ChildEditScreenState extends State<ChildEditScreen> {
     final therapistId = therapistDoc.id;
     final parentId = FirebaseAuth.instance.currentUser!.uid;
 
+    // Fetch parent name to denormalize onto the request
+    String parentName = '';
+    try {
+      final parentDoc = await FirebaseFirestore.instance
+          .collection('parents').doc(parentId).get();
+      parentName = parentDoc.data()?['name'] as String? ?? '';
+    } catch (_) {}
+
     await FirebaseFirestore.instance.collection('linkRequests').add({
       'parentId': parentId,
+      'parentName': parentName,
       'therapistId': therapistId,
       'childId': _childId,
-      'childName': _data['name'],
+      'childName': _nameCtrl.text.trim().isNotEmpty
+          ? _nameCtrl.text.trim()
+          : (_data['name'] as String? ?? ''),
       'therapistEmail': therapistEmail,
       'status': 'pending',
       'createdAt': FieldValue.serverTimestamp(),
@@ -322,6 +335,68 @@ class _ChildEditScreenState extends State<ChildEditScreen> {
         ),
       );
       context.pop();
+    }
+  }
+
+  // ── Delete child ───────────────────────────────────────────────────────────
+
+  Future<void> _deleteChild() async {
+    final childName = _data['name'] as String? ?? 'this child';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Child Profile'),
+        content: Text(
+          'Are you sure you want to delete $childName\'s profile? '
+          'This cannot be undone.\n\n'
+          'If linked to a therapist, they will be notified.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel',
+                style: AppTextStyles.body.copyWith(color: AppColors.textSubtle)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text('Delete',
+                style: AppTextStyles.body.copyWith(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deleting = true);
+    try {
+      await PatientRepository().deleteChild(
+        parentId: _parentId,
+        childId: _childId,
+        linkedTherapistId: _linkedTherapistId,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Child profile deleted'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Pop twice: back from edit screen, then back from child card
+        context.pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
+        setState(() => _deleting = false);
+      }
     }
   }
 
@@ -601,7 +676,41 @@ class _ChildEditScreenState extends State<ChildEditScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 12),
+
+                  // ── Delete button ─────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.screenMargin),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: OutlinedButton.icon(
+                        onPressed: _deleting ? null : _deleteChild,
+                        icon: _deleting
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: AppColors.error),
+                              )
+                            : const Icon(Icons.delete_outline,
+                                size: 18, color: AppColors.error),
+                        label: Text('Delete Child Profile',
+                            style: AppTextStyles.subtitle.copyWith(
+                                color: AppColors.error,
+                                fontWeight: FontWeight.w700)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppColors.error),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                                AppSpacing.pillRadius),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),

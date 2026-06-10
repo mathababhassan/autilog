@@ -149,7 +149,7 @@ class _PatientListScreenState extends State<PatientListScreen> {
   Widget _buildContent(
     BuildContext context,
     List<PendingRequestDisplay> pending,
-    List<(ChildModel, String)> active,
+    List<(ChildModel, String, bool)> active,
     bool isActionInProgress,
   ) {
     return SingleChildScrollView(
@@ -251,18 +251,27 @@ class _PatientListScreenState extends State<PatientListScreen> {
                 separatorBuilder: (_, _) =>
                     const SizedBox(height: AppSpacing.sm),
                 itemBuilder: (context, index) {
-                  final (patient, parentName) = active[index];
+                  final (patient, parentName, isDeleted) = active[index];
                   return _PatientCard(
                     patient: patient,
+                    isDeleted: isDeleted,
                     isActionInProgress: isActionInProgress,
-                    onViewDetails: () => context.push(
-                      Routes.patientDetails,
-                      extra: PatientDetailArgs(
-                        patient: patient,
-                        therapistId: FirebaseAuth.instance.currentUser?.uid ?? '',
-                        parentName: parentName,
-                      ),
-                    ),
+                    onViewDetails: () async {
+                      await context.push(
+                        Routes.patientDetails,
+                        extra: PatientDetailArgs(
+                          patient: patient,
+                          therapistId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                          parentName: parentName,
+                          isDeleted: isDeleted,
+                        ),
+                      );
+                      // Refresh the list when returning from details
+                      // (handles the case where a patient was removed)
+                      if (context.mounted) {
+                        context.read<PatientListBloc>().add(const PatientListStarted());
+                      }
+                    },
                   );
                 },
               ),
@@ -273,57 +282,6 @@ class _PatientListScreenState extends State<PatientListScreen> {
     );
   }
 
-  void _showRemoveSheet(BuildContext context, ChildModel patient) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surfaceModal,
-      shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(AppSpacing.cardRadius)),
-      ),
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.dividerLight,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            ListTile(
-              leading: const Icon(Icons.person_remove_outlined,
-                  color: AppColors.error),
-              title: Text('Remove Patient',
-                  style: AppTextStyles.body.copyWith(color: AppColors.error)),
-              onTap: () {
-                Navigator.of(context).pop();
-                context.read<PatientListBloc>().add(
-                      ActivePatientRemoved(
-                        parentId: patient.parentId,
-                        childId: patient.childId,
-                      ),
-                    );
-              },
-            ),
-            ListTile(
-              leading:
-                  const Icon(Icons.close, color: AppColors.textPlaceholder),
-              title: Text('Cancel',
-                  style: AppTextStyles.body
-                      .copyWith(color: AppColors.textPlaceholder)),
-              onTap: () => Navigator.of(context).pop(),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // ─── Search bar ───────────────────────────────────────────────
@@ -645,19 +603,27 @@ class _PatientCard extends StatelessWidget {
     required this.patient,
     required this.isActionInProgress,
     required this.onViewDetails,
+    this.isDeleted = false,
   });
 
   final ChildModel patient;
   final bool isActionInProgress;
   final VoidCallback onViewDetails;
+  final bool isDeleted;
 
-  bool get _isAlert => patient.severityLevel == 3;
+  bool get _isAlert => !isDeleted && patient.severityLevel == 3;
 
   @override
   Widget build(BuildContext context) {
-    final cardColor = _isAlert ? AppColors.accentRed20 : AppColors.surfaceDefault;
-    final borderColor = _isAlert ? AppColors.error : AppColors.borderInactive;
-    final dividerColor = _isAlert ? AppColors.error : AppColors.dividerLight;
+    final cardColor = isDeleted
+        ? AppColors.inputFill
+        : _isAlert ? AppColors.accentRed20 : AppColors.surfaceDefault;
+    final borderColor = isDeleted
+        ? AppColors.textDisabled
+        : _isAlert ? AppColors.error : AppColors.borderInactive;
+    final dividerColor = isDeleted
+        ? AppColors.textDisabled
+        : _isAlert ? AppColors.error : AppColors.dividerLight;
     final infoTextColor =
         _isAlert ? AppColors.textMain : AppColors.textDisabled;
 
@@ -711,7 +677,19 @@ class _PatientCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              _ActiveSeverityBadge(severityLevel: patient.severityLevel),
+              if (isDeleted)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.error,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text('DELETED',
+                      style: AppTextStyles.tag.copyWith(
+                          color: Colors.white, fontWeight: FontWeight.w700)),
+                )
+              else
+                _ActiveSeverityBadge(severityLevel: patient.severityLevel),
             ],
           ),
           const SizedBox(height: 12),
@@ -720,55 +698,85 @@ class _PatientCard extends StatelessWidget {
           Divider(height: 1, thickness: 1, color: dividerColor),
           const SizedBox(height: 8),
 
-          // Session info + View Details
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_isAlert) ...[
+          // Deleted notice OR session info + View Details
+          if (isDeleted)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Profile deleted by parent',
+                    style: AppTextStyles.caption
+                        .copyWith(color: AppColors.error),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: isActionInProgress ? null : onViewDetails,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.textDisabled,
+                      borderRadius: BorderRadius.circular(56),
+                    ),
+                    child: Text('View',
+                        style: AppTextStyles.caption.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ],
+            )
+          else
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_isAlert) ...[
+                        _InfoRow(
+                          icon: Icons.calendar_today_outlined,
+                          iconSize: 14,
+                          text: 'Friday · 2:00 PM',
+                          color: infoTextColor,
+                        ),
+                        const SizedBox(height: 6),
+                      ],
                       _InfoRow(
-                        icon: Icons.calendar_today_outlined,
+                        icon: Icons.access_time_outlined,
                         iconSize: 14,
-                        text: 'Friday · 2:00 PM',
+                        text: 'Last log 2 days ago',
                         color: infoTextColor,
                       ),
-                      const SizedBox(height: 6),
                     ],
-                    _InfoRow(
-                      icon: Icons.access_time_outlined,
-                      iconSize: 14,
-                      text: 'Last log 2 days ago',
-                      color: infoTextColor,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              GestureDetector(
-                onTap: isActionInProgress ? null : onViewDetails,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.secondary,
-                    borderRadius: BorderRadius.circular(56),
                   ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    'View Details',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textWhite,
-                      fontWeight: FontWeight.w700,
+                ),
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: isActionInProgress ? null : onViewDetails,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary,
+                      borderRadius: BorderRadius.circular(56),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'View Details',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textWhite,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
         ],
       ),
     );
@@ -952,15 +960,17 @@ class _TabBar extends StatelessWidget {
                 label: 'Patients',
                 active: true,
               ),
-              const _TabItem(
+              _TabItem(
                 iconOutline: 'assets/icons/session_outline.svg',
                 iconFilled: 'assets/icons/session_filled.svg',
                 label: 'Sessions',
+                onTap: () => context.go(Routes.therapistSessions),
               ),
-              const _TabItem(
+              _TabItem(
                 iconOutline: 'assets/icons/report_outline.svg',
                 iconFilled: 'assets/icons/report_filled.svg',
                 label: 'Reports',
+                onTap: () => context.go(Routes.therapistReports),
               ),
             ],
           ),

@@ -164,6 +164,8 @@ class _AppViewState extends State<_AppView> {
         GoRoute(path: Routes.therapistProfile, builder: (_, __) => const TherapistProfileOverviewScreen()),
         GoRoute(path: Routes.therapistProfileEdit, builder: (_, __) => const TherapistEditProfileScreen()),
         GoRoute(path: Routes.therapistPatients, builder: (_, __) => const PatientListScreen()),
+        GoRoute(path: Routes.therapistSessions, builder: (_, __) => const Scaffold(body: Center(child: Text('Sessions — coming soon')))),
+        GoRoute(path: Routes.therapistReports,  builder: (_, __) => const Scaffold(body: Center(child: Text('Reports — coming soon')))),
         GoRoute(
           path: Routes.sessionDetail,
           builder: (context, state) {
@@ -181,7 +183,12 @@ class _AppViewState extends State<_AppView> {
         ),
         GoRoute(path: Routes.registerParent, builder: (_, __) => const ParentRegistrationScreen()),
         GoRoute(path: Routes.childOnboarding, builder: (_, __) => const ChildOnboardingScreen()),
-        GoRoute(path: Routes.childRegistration, builder: (_, __) => const ChildRegistrationScreen()),
+        GoRoute(
+          path: Routes.childRegistration,
+          builder: (_, state) => ChildRegistrationScreen(
+            fromProfile: state.uri.queryParameters['from'] == 'profile',
+          ),
+        ),
         GoRoute(path: Routes.parentHome, builder: (_, __) => const ParentHomeScreen()),
         GoRoute(path: Routes.parentProfile, builder: (_, __) => const ParentProfileScreen()),
         GoRoute(

@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -10,7 +9,6 @@ import '../../../../../core/theme/theme.dart';
 import '../../../../../shared/models/child_model.dart';
 import '../../../../../shared/widgets/app_snackbar.dart';
 import '../../../data/patient_repository.dart';
-import 'patient_details_screen.dart';
 
 
 // ─── Args ─────────────────────────────────────────────────────
@@ -19,11 +17,13 @@ class PatientDetailArgs {
   final ChildModel patient;
   final String therapistId;
   final String parentName;
+  final bool isDeleted;
 
   const PatientDetailArgs({
     required this.patient,
     required this.therapistId,
     this.parentName = '',
+    this.isDeleted = false,
   });
 }
 
@@ -54,6 +54,11 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   }
 
   Future<void> _fetchData() async {
+    // Skip all Firestore queries for deleted patients — paths no longer valid
+    if (widget.args.isDeleted) {
+      setState(() => _loadingLogs = false);
+      return;
+    }
     try {
       final therapistId = widget.args.therapistId;
       final patient    = widget.args.patient;
@@ -201,6 +206,19 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
     if (confirmed != true || !mounted) return;
 
     setState(() => _removing = true);
+
+    // Pop first when patient is deleted — avoids Firestore stream assertion errors
+    // caused by security re-evaluation while active listeners are watching deleted paths.
+    if (widget.args.isDeleted && mounted) {
+      context.pop();
+      PatientRepository().removePatient(
+        therapistId: widget.args.therapistId,
+        parentId: widget.args.patient.parentId,
+        childId: widget.args.patient.childId,
+      ).ignore();
+      return;
+    }
+
     try {
       await PatientRepository().removePatient(
         therapistId: widget.args.therapistId,
@@ -260,6 +278,58 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Deleted banner ────────────────────────────────────────────
+            if (widget.args.isDeleted) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.error20,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.error),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded,
+                            color: AppColors.error, size: 18),
+                        const SizedBox(width: 8),
+                        Text('Profile Deleted',
+                            style: AppTextStyles.subtitle.copyWith(
+                                color: AppColors.error,
+                                fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'The parent has deleted this child\'s profile. '
+                      'You can remove them from your patient list.',
+                      style: AppTextStyles.caption
+                          .copyWith(color: AppColors.error),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _removing ? null : _removePatient,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.error,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text('Remove from My Patients',
+                            style: AppTextStyles.body
+                                .copyWith(color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // ── Patient info card ─────────────────────────────────────────
             Container(
               width: double.infinity,
@@ -308,7 +378,12 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                 color: AppColors.secondary20,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: StreamBuilder<DocumentSnapshot>(
+              child: widget.args.isDeleted
+                  ? Text(
+                      'AI insights unavailable — child profile has been deleted.',
+                      style: AppTextStyles.caption.copyWith(color: AppColors.textSubtle),
+                    )
+                  : StreamBuilder<DocumentSnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('parents')
                     .doc(patient.parentId)

@@ -56,7 +56,7 @@ class _TherapistHomeScreenState extends State<TherapistHomeScreen> {
                 : '';
             _homeCubit.load(
               therapistId: uid,
-              patients: patientState.activePatients.map((e) => e.$1).toList(),
+              patients: patientState.activePatients.where((e) => !e.$3).map((e) => e.$1).toList(),
             );
           }
         },
@@ -807,12 +807,15 @@ class _TabBar extends StatelessWidget {
                 iconOutline: 'assets/icons/session_outline.svg',
                 iconFilled: 'assets/icons/session_filled.svg',
                 label: 'Sessions',
+                onTap: () => context.go(Routes.therapistSessions),
               ),
               _TabItem(
                 iconOutline: 'assets/icons/report_outline.svg',
                 iconFilled: 'assets/icons/report_filled.svg',
                 label: 'Reports',
+                onTap: () => context.go(Routes.therapistReports),
               ),
+
             ],
           ),
         ),

@@ -148,10 +148,12 @@ service cloud.firestore {
       }
 
       match /patients/{childId} {
-        // Owner therapist manages the record; the linked parent may remove it
-        // when revoking access (matched on the stored parentId).
+        // Owner therapist manages the record; the linked parent may remove or
+        // mark it as deleted (matched on the stored parentId).
         allow read: if isAuth() && isOwner(therapistId);
         allow create: if isAuth() && isOwner(therapistId);
+        allow update: if isAuth()
+          && (isOwner(therapistId) || resource.data.parentId == request.auth.uid);
         allow delete: if isAuth()
           && (isOwner(therapistId) || resource.data.parentId == request.auth.uid);
 
