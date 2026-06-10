@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../../core/constants/routes.dart';
 import '../../../../../core/theme/theme.dart';
+import '../../../../../features/sessions/data/jaas_repository.dart';
 import '../../../../../features/sessions/data/session_repository.dart';
 import '../../../../../shared/models/session_model.dart';
+import '../../../../../shared/widgets/app_snackbar.dart';
 
 class ParentSessionsScreen extends StatefulWidget {
   const ParentSessionsScreen({
@@ -398,7 +401,7 @@ String _reminderTime(SessionModel s) {
 
 // ─── Upcoming session card ────────────────────────────────────────────────────
 
-class _UpcomingSessionCard extends StatelessWidget {
+class _UpcomingSessionCard extends StatefulWidget {
   const _UpcomingSessionCard({
     required this.session,
     required this.therapistName,
@@ -410,7 +413,34 @@ class _UpcomingSessionCard extends StatelessWidget {
   final VoidCallback onCancel;
 
   @override
+  State<_UpcomingSessionCard> createState() => _UpcomingSessionCardState();
+}
+
+class _UpcomingSessionCardState extends State<_UpcomingSessionCard> {
+  bool _joiningCall = false;
+
+  Future<void> _joinCall() async {
+    setState(() => _joiningCall = true);
+    try {
+      final result =
+          await JaasRepository().fetchJoinToken(widget.session.id);
+      final url = result.joinUrl;
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        throw Exception('Could not open the meeting link.');
+      }
+    } catch (_) {
+      if (mounted) {
+        AppSnackbar.showError(
+            context, 'Could not join the session. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _joiningCall = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final session = widget.session;
     final joinActive = _isJoinActive(session);
 
     return Container(
@@ -432,7 +462,7 @@ class _UpcomingSessionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Therapist name
-          Text(therapistName,
+          Text(widget.therapistName,
               style: AppTextStyles.body.copyWith(
                   fontWeight: FontWeight.w700,
                   color: AppColors.textMain)),
@@ -479,7 +509,7 @@ class _UpcomingSessionCard extends StatelessWidget {
             children: [
               Expanded(
                 child: GestureDetector(
-                  onTap: joinActive ? () {} : null,
+                  onTap: (joinActive && !_joiningCall) ? _joinCall : null,
                   child: Container(
                     padding:
                         const EdgeInsets.symmetric(vertical: 12),
@@ -491,27 +521,35 @@ class _UpcomingSessionCard extends StatelessWidget {
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.video_call_outlined,
-                            size: 16,
-                            color: joinActive
-                                ? AppColors.textWhite
-                                : AppColors.textSubtle),
-                        const SizedBox(width: 6),
-                        Text('Join',
-                            style: AppTextStyles.body.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: joinActive
-                                  ? AppColors.textWhite
-                                  : AppColors.textSubtle,
-                            )),
-                        const SizedBox(width: 4),
-                        Icon(Icons.arrow_forward,
-                            size: 14,
-                            color: joinActive
-                                ? AppColors.textWhite
-                                : AppColors.textSubtle),
-                      ],
+                      children: _joiningCall
+                          ? [
+                              const SizedBox(
+                                width: 16, height: 16,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2),
+                              ),
+                            ]
+                          : [
+                              Icon(Icons.video_call_outlined,
+                                  size: 16,
+                                  color: joinActive
+                                      ? AppColors.textWhite
+                                      : AppColors.textSubtle),
+                              const SizedBox(width: 6),
+                              Text('Join',
+                                  style: AppTextStyles.body.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: joinActive
+                                        ? AppColors.textWhite
+                                        : AppColors.textSubtle,
+                                  )),
+                              const SizedBox(width: 4),
+                              Icon(Icons.arrow_forward,
+                                  size: 14,
+                                  color: joinActive
+                                      ? AppColors.textWhite
+                                      : AppColors.textSubtle),
+                            ],
                     ),
                   ),
                 ),
@@ -519,7 +557,7 @@ class _UpcomingSessionCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: GestureDetector(
-                  onTap: onCancel,
+                  onTap: widget.onCancel,
                   child: Container(
                     padding:
                         const EdgeInsets.symmetric(vertical: 12),
