@@ -15,6 +15,7 @@ import '../../../bloc/session_list_bloc.dart';
 import '../../../bloc/session_list_event.dart';
 import '../../../bloc/session_list_state.dart';
 import '../../../data/session_repository.dart';
+import '../widgets/cancel_session_sheet.dart';
 import '../widgets/reschedule_session_sheet.dart';
 
 // ─── Screen (provides the BLoC) ───────────────────────────────────────────────
@@ -874,10 +875,19 @@ void _showSessionActions(BuildContext context, SessionModel session) {
                 size: 20, color: AppColors.error),
             label: 'Cancel Session',
             color: AppColors.error,
-            onTap: () {
+            onTap: () async {
               Navigator.of(sheetContext).pop();
-              AppSnackbar.showSuccess(
-                  context, 'Cancelling sessions is coming soon.');
+              final confirmed = await showModalBottomSheet<bool>(
+                context: context,
+                backgroundColor: Colors.transparent,
+                isScrollControlled: true,
+                builder: (_) => CancelSessionSheet(session: session),
+              );
+              if (confirmed == true && context.mounted) {
+                context
+                    .read<SessionListBloc>()
+                    .add(SessionCancelRequested(session.id));
+              }
             },
           ),
           const SizedBox(height: AppSpacing.xs),

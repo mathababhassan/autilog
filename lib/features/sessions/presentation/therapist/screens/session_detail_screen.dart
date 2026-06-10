@@ -14,6 +14,7 @@ import '../../../bloc/session_detail_bloc.dart';
 import '../../../bloc/session_detail_event.dart';
 import '../../../bloc/session_detail_state.dart';
 import '../../../data/session_repository.dart';
+import '../widgets/cancel_session_sheet.dart';
 import '../widgets/reschedule_session_sheet.dart';
 
 class SessionDetailScreen extends StatelessWidget {
@@ -244,8 +245,18 @@ class _LoadedBodyState extends State<_LoadedBody> {
             _SecondaryButton(
               label: 'Cancel',
               color: AppColors.error,
-              onPressed: () =>
-                  AppSnackbar.showError(context, 'Cancel is coming soon'),
+              onPressed: () async {
+                final bloc = context.read<SessionDetailBloc>();
+                final confirmed = await showModalBottomSheet<bool>(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  isScrollControlled: true,
+                  builder: (_) => CancelSessionSheet(session: session),
+                );
+                if (confirmed == true && context.mounted) {
+                  bloc.add(SessionDetailCancelRequested(sessionId: session.id));
+                }
+              },
             ),
           ],
         ],
