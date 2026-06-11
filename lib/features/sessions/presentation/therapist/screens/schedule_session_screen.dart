@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../../core/constants/routes.dart';
 import '../../../../../core/theme/theme.dart';
 import '../../../../../shared/models/child_model.dart';
 import '../../../../../shared/widgets/app_primary_button.dart';
@@ -93,7 +92,7 @@ void _showSuccessDialog(BuildContext context) {
     builder: (dialogContext) => _SuccessDialog(
       onClose: () {
         Navigator.of(dialogContext).pop();
-        context.go(Routes.therapistSessions);
+        context.pop();
       },
     ),
   );
