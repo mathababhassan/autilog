@@ -166,7 +166,6 @@ class _HomeHeader extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 16),
                           child: _StatsRow(
                             sessionsToday: homeState.sessionsToday.length,
-                            newLogs: homeState.newLogsCount,
                             urgentAlerts: homeState.urgentAlertsCount,
                           ),
                         );
@@ -218,12 +217,10 @@ class _HomeHeader extends StatelessWidget {
 class _StatsRow extends StatelessWidget {
   const _StatsRow({
     required this.sessionsToday,
-    required this.newLogs,
     required this.urgentAlerts,
   });
 
   final int sessionsToday;
-  final int newLogs;
   final int urgentAlerts;
 
   @override
@@ -231,8 +228,6 @@ class _StatsRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(child: _StatCard(value: '$sessionsToday', label: 'Sessions Today')),
-        const SizedBox(width: 8),
-        Expanded(child: _StatCard(value: '$newLogs', label: 'New Logs')),
         const SizedBox(width: 8),
         Expanded(child: _StatCard(value: '$urgentAlerts', label: 'Urgent Alerts')),
       ],
