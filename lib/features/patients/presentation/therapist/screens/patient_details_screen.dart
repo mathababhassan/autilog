@@ -7,8 +7,10 @@ import 'package:intl/intl.dart';
 import '../../../../../core/constants/routes.dart';
 import '../../../../../core/theme/theme.dart';
 import '../../../../../shared/models/child_model.dart';
+import '../../../../../shared/models/session_model.dart';
 import '../../../../../shared/widgets/app_snackbar.dart';
 import '../../../data/patient_repository.dart';
+import '../../../../sessions/data/session_repository.dart';
 import 'patient_details_screen.dart';
 import 'log_review_screen.dart';
 
@@ -45,6 +47,8 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   String _parentName = '';
   List<Map<String, dynamic>> _recentLogs = [];
   bool _loadingLogs = true;
+  List<SessionModel> _upcomingSessions = [];
+  bool _loadingSessions = true;
 
   @override
   void initState() {
@@ -57,7 +61,10 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   Future<void> _fetchData() async {
     // Skip all Firestore queries for deleted patients — paths no longer valid
     if (widget.args.isDeleted) {
-      setState(() => _loadingLogs = false);
+      setState(() {
+        _loadingLogs = false;
+        _loadingSessions = false;
+      });
       return;
     }
     try {
@@ -179,6 +186,19 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
         _loadingLogs = false;
       });
     }
+
+    try {
+      final now = DateTime.now();
+      final all = await SessionRepository().fetchSessionsForChild(
+        widget.args.patient.childId,
+      );
+      final upcoming = all
+          .where((s) => s.status == 'upcoming' && s.endTime.isAfter(now))
+          .toList()
+        ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+      if (mounted) setState(() => _upcomingSessions = upcoming);
+    } catch (_) {}
+    if (mounted) setState(() => _loadingSessions = false);
   }
 
   Future<void> _removePatient() async {
@@ -480,15 +500,23 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
               ))),
             const SizedBox(height: 20),
 
-            // ── Upcoming Sessions (placeholder) ───────────────────────────
+            // ── Upcoming Sessions ─────────────────────────────────────────
             _SectionTitle('Upcoming Sessions'),
             const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: AppColors.inputFill, borderRadius: BorderRadius.circular(12)),
-              child: Text('Session booking coming in Sprint 3.', style: AppTextStyles.caption.copyWith(color: AppColors.textSubtle), textAlign: TextAlign.center),
-            ),
+            if (_loadingSessions)
+              const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2))
+            else if (_upcomingSessions.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: AppColors.inputFill, borderRadius: BorderRadius.circular(12)),
+                child: Text('No upcoming sessions.', style: AppTextStyles.caption.copyWith(color: AppColors.textSubtle), textAlign: TextAlign.center),
+              )
+            else
+              ...(_upcomingSessions.map((session) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _UpcomingSessionRow(session: session),
+              ))),
             const SizedBox(height: 32),
 
             // ── Remove button ─────────────────────────────────────────────
@@ -676,6 +704,58 @@ class _LogRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _UpcomingSessionRow extends StatelessWidget {
+  final SessionModel session;
+  const _UpcomingSessionRow({required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = DateFormat('EEE, d MMM yyyy').format(session.scheduledAt);
+    final timeStr = DateFormat('h:mm a').format(session.scheduledAt);
+    final isVirtual = session.mode == 'Virtual';
+    final modeColor = isVirtual ? AppColors.secondary : AppColors.primary;
+    final modeBg = isVirtual ? AppColors.secondary20 : AppColors.primary20;
+
+    return GestureDetector(
+      onTap: () => context.push(Routes.sessionDetail, extra: session.id),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceDefault,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderInactive),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  session.type,
+                  style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$dateStr · $timeStr',
+                  style: AppTextStyles.caption.copyWith(color: AppColors.textSubtle),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(color: modeBg, borderRadius: BorderRadius.circular(20)),
+            child: Text(session.mode, style: AppTextStyles.tag.copyWith(color: modeColor, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
       ),
     );
   }
