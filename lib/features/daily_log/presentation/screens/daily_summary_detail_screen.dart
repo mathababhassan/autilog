@@ -30,6 +30,7 @@ class _DailySummaryDetailScreenState extends State<DailySummaryDetailScreen> {
   bool _loading = true;
   String? _therapistName;
   DateTime? _lastEdited;
+  Map<String, String> _questionTexts = {};
 
   @override
   void initState() {
@@ -52,12 +53,34 @@ class _DailySummaryDetailScreenState extends State<DailySummaryDetailScreen> {
         final data = doc.data()!;
         _summary = DailySummaryModel.fromJson({...data, 'childId': widget.childId});
         _lastEdited = (data['updatedAt'] as Timestamp?)?.toDate() ?? _summary!.date;
+        await _fetchTrackingQuestions();
         await _fetchTherapistName();
       }
     } catch (e) {
       debugPrint('Error fetching summary: $e');
     }
     setState(() => _loading = false);
+  }
+
+  Future<void> _fetchTrackingQuestions() async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('parents')
+          .doc(widget.parentId)
+          .collection('children')
+          .doc(widget.childId)
+          .collection('trackingQuestions')
+          .get();
+
+      final map = <String, String>{};
+      for (final doc in snap.docs) {
+        final text = doc.data()['questionText'] as String?;
+        if (text != null) map[doc.id] = text;
+      }
+      _questionTexts = map;
+    } catch (e) {
+      debugPrint('Error fetching tracking questions: $e');
+    }
   }
 
   Future<void> _fetchTherapistName() async {
@@ -239,7 +262,7 @@ class _DailySummaryDetailScreenState extends State<DailySummaryDetailScreen> {
             _Divider(),
 
             // ── THERAPIST QUESTIONS ───────────────────────────────────────────
-            if (s.hadScreenTime != null) ...[
+            if (s.customAnswers.isNotEmpty) ...[
               Row(
                 children: [
                   Container(width: 8, height: 8, decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.secondary)),
@@ -248,31 +271,27 @@ class _DailySummaryDetailScreenState extends State<DailySummaryDetailScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.secondary20,
-                  borderRadius: BorderRadius.circular(10),
+              ...s.customAnswers.entries.map((entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary20,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(child: Text(_questionTexts[entry.key] ?? entry.key, style: AppTextStyles.body)),
+                      Text(
+                        entry.value?.toString() ?? '-',
+                        style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(child: Text('Screen time before bed?', style: AppTextStyles.body)),
-                    Text(s.hadScreenTime == true ? 'Yes${s.screenTimeHours != null ? ' (${s.screenTimeHours}h)' : ''}' : 'No',
-                      style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-              _Divider(),
-            ],
-
-            // Medication
-            if (s.medicationTaken) ...[
-              _DetailRow(
-                label: 'Medication',
-                right: Text('Taken', style: AppTextStyles.body.copyWith(color: AppColors.success, fontWeight: FontWeight.w600)),
-              ),
+              )).toList(),
               _Divider(),
             ],
 

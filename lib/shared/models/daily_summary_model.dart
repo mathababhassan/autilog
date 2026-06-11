@@ -18,14 +18,11 @@ class DailySummaryModel extends Equatable {
   final String? lunchDetails;
   final String? dinnerDetails;
   final bool routineNormal;
-  final bool? hadScreenTime;
-  final double? screenTimeHours;
-  final bool medicationTaken;
   final String? notes;
   final String? createdBy;
   final String? therapistComments;
   final int? sleepHours;
-
+  final Map<String, dynamic> customAnswers; // NEW: for dynamic question answers
 
   const DailySummaryModel({
     required this.childId,
@@ -37,17 +34,15 @@ class DailySummaryModel extends Equatable {
     required this.breakfastEaten,
     required this.lunchEaten,
     required this.dinnerEaten,
-     this.breakfastDetails,   
+    this.breakfastDetails,   
     this.lunchDetails,      
     this.dinnerDetails,      
     required this.routineNormal,
-    this.hadScreenTime,
-    this.screenTimeHours,
-    required this.medicationTaken,
     this.notes,
     this.createdBy,
     this.therapistComments,
     this.sleepHours,
+    this.customAnswers = const {}, // Default to empty map
   });
 
   /// Convert to Firestore JSON
@@ -66,13 +61,11 @@ class DailySummaryModel extends Equatable {
       'lunchDetails': lunchDetails,            
       'dinnerDetails': dinnerDetails, 
       'routineNormal': routineNormal,
-      'hadScreenTime': hadScreenTime,
-      'screenTimeHours': screenTimeHours,
-      'medicationTaken': medicationTaken,
       'notes': notes,
       'createdBy': createdBy,
       'therapistComments': therapistComments,
       'sleepHours': sleepHours,
+      'customAnswers': customAnswers, // NEW: save dynamic answers
     };
   }
 
@@ -99,13 +92,11 @@ class DailySummaryModel extends Equatable {
       lunchDetails: json['lunchDetails'] as String?,        
       dinnerDetails: json['dinnerDetails'] as String?,        
       routineNormal: json['routineNormal'] as bool,
-      hadScreenTime: json['hadScreenTime'] as bool?,
-      screenTimeHours: (json['screenTimeHours'] as num?)?.toDouble(),
-      medicationTaken: json['medicationTaken'] as bool,
       notes: json['notes'] as String?,
       createdBy: json['createdBy'] as String?,
       therapistComments: json['therapistComments'] as String?,
       sleepHours: json['sleepHours'] as int?,
+      customAnswers: json['customAnswers'] as Map<String, dynamic>? ?? {}, // NEW
     );
   }
 
@@ -124,12 +115,10 @@ class DailySummaryModel extends Equatable {
         lunchDetails,        
         dinnerDetails,     
         routineNormal,
-        hadScreenTime,
-        screenTimeHours,
-        medicationTaken,
         notes,
         createdBy,
         therapistComments,
         sleepHours,
+        customAnswers, // NEW
       ];
 }

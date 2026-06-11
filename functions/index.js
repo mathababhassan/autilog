@@ -188,6 +188,7 @@ ${positiveMomentsJSON}
 
 Respond ONLY with this JSON (no markdown, no extra text):
 {
+  "summary": "2-3 sentence plain-language summary of this week's patterns across all logs referencing specific details like sleep, mood, routines, and incidents",
   "progressDirection": "improving|stable|needs_attention",
   "incidentPattern": "1-2 sentences describing the pattern of triggers and behaviors observed across recent incidents, referencing specific triggers or settings",
   "strategyTip1": "1 specific behavioral de-escalation or prevention strategy based on the incident data",
@@ -198,7 +199,9 @@ Respond ONLY with this JSON (no markdown, no extra text):
       const insights = await callGroq(GROQ_API_KEY.value(), prompt);
 
       await aiInsightsRef.set({
+        generatedAt: admin.firestore.FieldValue.serverTimestamp(),
         weeklyInsights: {
+          summary: insights.summary,
           progressDirection: insights.progressDirection,
           incidentPattern: insights.incidentPattern,
           strategyTip1: insights.strategyTip1,
@@ -300,6 +303,7 @@ ${positiveMomentsJSON}
 
 Respond ONLY with this JSON (no markdown, no extra text):
 {
+  "summary": "2-3 sentence plain-language summary of this week's patterns across all logs referencing specific details like sleep, mood, routines, and positive moments",
   "progressDirection": "improving|stable|needs_attention",
   "positiveMomentsHighlight": "1-2 sentences highlighting the positive trend or strength observed, referencing specific behaviors or settings",
   "strategyTip1": "1 specific tip to reinforce or build on the positive behaviors observed",
@@ -310,7 +314,9 @@ Respond ONLY with this JSON (no markdown, no extra text):
       const insights = await callGroq(GROQ_API_KEY.value(), prompt);
 
       await aiInsightsRef.set({
+        generatedAt: admin.firestore.FieldValue.serverTimestamp(),
         weeklyInsights: {
+          summary: insights.summary,
           progressDirection: insights.progressDirection,
           positiveMomentsHighlight: insights.positiveMomentsHighlight,
           strategyTip1: insights.strategyTip1,

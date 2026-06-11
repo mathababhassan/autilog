@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:autilog/shared/models/daily_summary_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../../../core/constants/routes.dart';
@@ -15,6 +14,24 @@ import '../widgets/sleep_details_sheet.dart';
 import '../widgets/summary_saved_dialog.dart';
 import '../../../../../core/theme/theme.dart';
 import '../widgets/meal_details_sheet.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dynamic Question Model
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _DynamicQuestion {
+  final String id;
+  final String questionText;
+  final String answerType;
+  final String status;
+
+  _DynamicQuestion({
+    required this.id,
+    required this.questionText,
+    required this.answerType,
+    required this.status,
+  });
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry point
@@ -56,7 +73,6 @@ class _DailySummaryView extends StatefulWidget {
   final String childName;
   final String parentId;
 
-
   const _DailySummaryView({
     required this.childId,
     required this.childName,
@@ -75,9 +91,9 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
   bool _breakfastEaten = false;
   bool _lunchEaten = false;
   bool _dinnerEaten = false;
-  String? _breakfastDetails; 
-  String? _lunchDetails;         
-  String? _dinnerDetails;         
+  String? _breakfastDetails;
+  String? _lunchDetails;
+  String? _dinnerDetails;
   bool? _routineNormal;
   bool? _hadScreenTime;
   final _screenTimeController = TextEditingController();
@@ -85,10 +101,16 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
   final _notesController = TextEditingController();
   String? _therapistName;
 
+  // Dynamic questions
+  List<_DynamicQuestion> _dynamicQuestions = [];
+  bool _loadingQuestions = true;
+  Map<String, dynamic> _questionAnswers = {};
+
   @override
   void initState() {
     super.initState();
     _fetchTherapistName();
+    _fetchTrackingQuestions();
   }
 
   @override
@@ -97,7 +119,39 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
     _notesController.dispose();
     super.dispose();
   }
-    
+
+  Future<void> _fetchTrackingQuestions() async {
+    setState(() => _loadingQuestions = true);
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('parents')
+          .doc(widget.parentId)
+          .collection('children')
+          .doc(widget.childId)
+          .collection('trackingQuestions')
+          .where('status', isEqualTo: 'active')
+          .get();
+
+      final questions = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return _DynamicQuestion(
+          id: doc.id,
+          questionText: data['questionText'] as String? ?? '',
+          answerType: data['answerType'] as String? ?? 'yes_no',
+          status: data['status'] as String? ?? 'active',
+        );
+      }).toList();
+
+      setState(() {
+        _dynamicQuestions = questions;
+        _loadingQuestions = false;
+      });
+    } catch (e) {
+      print('Error fetching questions: $e');
+      setState(() => _loadingQuestions = false);
+    }
+  }
 
   DateTime? _toDateTime(TimeOfDay? time) {
     if (time == null) return null;
@@ -105,102 +159,105 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
     return DateTime(now.year, now.month, now.day, time.hour, time.minute);
   }
 
-    void _submit() {
-    // Validate Sleep Rating
-    if (_sleepRating == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please rate how well your child slept')),
-      );
-      return;
-    }
+  void _submit() {
+  // Validate Sleep Rating
+  if (_sleepRating == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please rate how well your child slept')),
+    );
+    return;
+  }
 
-    // Validate Morning Mood
-    if (_moodRating == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please rate your child\'s morning mood')),
-      );
-      return;
-    }
+  // Validate Morning Mood
+  if (_moodRating == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please rate your child\'s morning mood')),
+    );
+    return;
+  }
 
-    // Validate Routine
-    if (_routineNormal == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please indicate if routine was normal')),
-      );
-      return;
-    }
+  // Validate Routine
+  if (_routineNormal == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please indicate if routine was normal')),
+    );
+    return;
+  }
 
-    // Validate at least one meal was marked Eaten (optional but recommended)
-    if (!_breakfastEaten && !_lunchEaten && !_dinnerEaten) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please maryk at least one meal as eaten')),
-      );
-      return;
-    }
+  // Validate at least one meal was marked Eaten
+  if (!_breakfastEaten && !_lunchEaten && !_dinnerEaten) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please mark at least one meal as eaten')),
+    );
+    return;
+  }
 
-    // Validate screen time question was answered
-    if (_hadScreenTime == null) {
+  // Validate dynamic questions (only if they exist)
+  for (final question in _dynamicQuestions) {
+    final answer = _questionAnswers[question.id];
+    
+    if (answer == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please answer if child had screen time 1 hour before bed')),
-      );
-      return;
-    }
-
-    // Validate screen time hours if parent said Yes
-    if (_hadScreenTime == true) {
-      final hoursText = _screenTimeController.text.trim();
-      if (hoursText.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter screen time hours')),
-        );
-        return;
-      }
-      final hours = double.tryParse(hoursText);
-      if (hours == null || hours <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a valid number of hours')),
-        );
-        return;
-      }
-    }
-
-    // Validate medication taken selection
-    if (_tookMedication == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please indicate if medication was taken')),
+        SnackBar(content: Text('Please answer: ${question.questionText}')),
       );
       return;
     }
     
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? widget.parentId;
-
-    final summary = DailySummaryModel(
-      childId: widget.childId,
-      date: DateTime.now(),
-      sleepRating: _sleepRating ?? Rating.average,
-      bedtime: _toDateTime(_bedtime),
-      wakeTime: _toDateTime(_wakeTime),
-      moodRating: _moodRating ?? Rating.average,
-      breakfastEaten: _breakfastEaten,
-      lunchEaten: _lunchEaten,
-      dinnerEaten: _dinnerEaten,
-      breakfastDetails: _breakfastDetails,   
-      lunchDetails: _lunchDetails,         
-      dinnerDetails: _dinnerDetails,     
-      routineNormal: _routineNormal ?? true,
-      hadScreenTime: _hadScreenTime,
-      screenTimeHours: _hadScreenTime == true
-          ? double.tryParse(_screenTimeController.text)
-          : null,
-      medicationTaken: _tookMedication ?? false,
-      notes: _notesController.text.trim().isEmpty
-          ? null
-          : _notesController.text.trim(),
-      createdBy: uid,
-    );
-
-    context.read<DailySummaryBloc>().add(SaveDailySummaryEvent(summary));
+    // Additional validation based on answer type
+    if (question.answerType == 'number' && answer is double && answer <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter a valid number for: ${question.questionText}')),
+      );
+      return;
+    }
+    
+    if (question.answerType == 'rating' && answer is int && (answer < 1 || answer > 5)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please select a valid rating for: ${question.questionText}')),
+      );
+      return;
+    }
+    
+    if (question.answerType == 'time' && answer is String && answer.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter a valid time for: ${question.questionText}')),
+      );
+      return;
+    }
+    
+    if (question.answerType == 'text' && answer is String && answer.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please provide an answer for: ${question.questionText}')),
+      );
+      return;
+    }
   }
+
+  final uid = FirebaseAuth.instance.currentUser?.uid ?? widget.parentId;
+
+  final summary = DailySummaryModel(
+    childId: widget.childId,
+    date: DateTime.now(),
+    sleepRating: _sleepRating ?? Rating.average,
+    bedtime: _toDateTime(_bedtime),
+    wakeTime: _toDateTime(_wakeTime),
+    moodRating: _moodRating ?? Rating.average,
+    breakfastEaten: _breakfastEaten,
+    lunchEaten: _lunchEaten,
+    dinnerEaten: _dinnerEaten,
+    breakfastDetails: _breakfastDetails,
+    lunchDetails: _lunchDetails,
+    dinnerDetails: _dinnerDetails,
+    routineNormal: _routineNormal ?? true,
+    notes: _notesController.text.trim().isEmpty
+        ? null
+        : _notesController.text.trim(),
+    createdBy: uid,
+    customAnswers: _questionAnswers,
+  );
+
+  context.read<DailySummaryBloc>().add(SaveDailySummaryEvent(summary));
+}
 
   void _showSleepDetails() {
     showModalBottomSheet(
@@ -224,38 +281,7 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
     );
   }
 
-  void _showMealDetails(String meal, String? currentDetails, Function(String?) onSave) {
-  final controller = TextEditingController(text: currentDetails);
-  showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: Text('$meal Details'),
-      content: TextField(
-        controller: controller,
-        maxLines: 3,
-        decoration: InputDecoration(
-          hintText: 'Add details about $meal...',
-          border: OutlineInputBorder(),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            onSave(controller.text.trim().isEmpty ? null : controller.text.trim());
-            Navigator.pop(context);
-          },
-          child: const Text('Save'),
-        ),
-      ],
-    ),
-  );
-}
-
-void _showAllMealDetails() {
+  void _showAllMealDetails() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -286,7 +312,7 @@ void _showAllMealDetails() {
       setState(() => _therapistName = 'Dr. Sara');
       return;
     }
-    
+
     try {
       final childDoc = await FirebaseFirestore.instance
           .collection('parents')
@@ -294,7 +320,7 @@ void _showAllMealDetails() {
           .collection('children')
           .doc(widget.childId)
           .get();
-      
+
       final linkedTherapistId = childDoc.data()?['linkedTherapistId'] as String?;
       if (linkedTherapistId != null && linkedTherapistId.isNotEmpty) {
         final therapistDoc = await FirebaseFirestore.instance
@@ -340,7 +366,7 @@ void _showAllMealDetails() {
         }
       },
       builder: (context, state) {
-      final isSaving = state is DailySummarySaving;
+        final isSaving = state is DailySummarySaving;
 
         return Scaffold(
           backgroundColor: const Color(0xFFF9F9F9),
@@ -409,9 +435,6 @@ void _showAllMealDetails() {
                       // ── Section 3: Meals ──────────────────────────────────
                       const _SectionTitle('Section 3: Meals'),
                       const SizedBox(height: 16),
-
-                      // FIX: Expanded is placed HERE in the Row,
-                      // not inside _MealCard itself.
                       Row(
                         children: [
                           Expanded(
@@ -462,49 +485,36 @@ void _showAllMealDetails() {
                       ),
                       const SizedBox(height: 28),
 
-                      // ── Therapist questions ───────────────────────────────
+                      // ── Dynamic Questions from Therapist ───────────────────
                       _SectionTitle('Added by ${_therapistName ?? "Dr. Sara"}'),
                       const SizedBox(height: 16),
-                      Text(
-                        'Did ${widget.childName} have screen time 1 hour before bed?',
-                        style: const TextStyle(
-                            fontSize: 14, color: Colors.black87),
-                      ),
-                      const SizedBox(height: 10),
-                      _YesNoRow(
-                        value: _hadScreenTime,
-                        onChanged: (v) =>
-                            setState(() => _hadScreenTime = v),
-                      ),
 
-                      // FIX: Screen-time hours input row — ElevatedButton
-                      // now has an explicit width via intrinsicWidth so it
-                      // never receives an unbounded or zero constraint inside
-                      // the Row alongside an Expanded TextField.
-                      if (_hadScreenTime == true) ...[
-                        const SizedBox(height: 12),
-                        const Text(
-                          'For how many hours (optional)?',
-                          style: TextStyle(
-                              fontSize: 13, color: Colors.black54),
-                        ),
-                        const SizedBox(height: 8),
-                        _ScreenTimeInputRow(
-                            controller: _screenTimeController),
-                      ],
+                      if (_loadingQuestions)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (_dynamicQuestions.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Text(
+                            'No custom questions added by your therapist yet.',
+                            style: TextStyle(fontSize: 14, color: Colors.black54),
+                          ),
+                        )
+                      else
+                        ..._dynamicQuestions.map((question) {
+                          return _DynamicQuestionWidget(
+                            question: question,
+                            childName: widget.childName,
+                            onAnswerChanged: (value) {
+                              setState(() {
+                                _questionAnswers[question.id] = value;
+                              });
+                            },
+                          );
+                        }).toList(),
 
-                      const SizedBox(height: 20),
-                      Text(
-                        'Did ${widget.childName} take medication today?',
-                        style: const TextStyle(
-                            fontSize: 14, color: Colors.black87),
-                      ),
-                      const SizedBox(height: 10),
-                      _YesNoRow(
-                        value: _tookMedication,
-                        onChanged: (v) =>
-                            setState(() => _tookMedication = v),
-                      ),
                       const SizedBox(height: 28),
 
                       // ── Save button ───────────────────────────────────────
@@ -555,7 +565,7 @@ void _showAllMealDetails() {
             onTap: (i) {
               if (i == 0) context.go(Routes.parentHome);
             },
-            selectedItemColor:  AppColors.primary,
+            selectedItemColor: AppColors.primary,
             unselectedItemColor: Colors.black38,
             type: BottomNavigationBarType.fixed,
             elevation: 12,
@@ -584,15 +594,259 @@ void _showAllMealDetails() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Screen-time input row (extracted widget)
-//
-// FIX: Previously the ElevatedButton sat inside a SizedBox with height only —
-// no width — next to an Expanded TextField. Flutter gave the button 0 or
-// negative available width, leaving its RenderBox in NEEDS-LAYOUT state and
-// triggering the hit-test crash.
-//
-// Solution: wrap the button in IntrinsicWidth so the Row can measure it
-// before allocating remaining space to the Expanded TextField.
+// Dynamic Question Widget
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _DynamicQuestionWidget extends StatelessWidget {
+  final _DynamicQuestion question;
+  final String childName;
+  final Function(dynamic) onAnswerChanged;
+
+  const _DynamicQuestionWidget({
+    required this.question,
+    required this.childName,
+    required this.onAnswerChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          question.questionText,
+          style: const TextStyle(fontSize: 14, color: Colors.black87),
+        ),
+        const SizedBox(height: 10),
+        _buildAnswerInput(),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildAnswerInput() {
+    switch (question.answerType) {
+      case 'yes_no':
+        return _DynamicYesNoRow(
+          onChanged: (value) => onAnswerChanged(value),
+        );
+      case 'number':
+        return _DynamicNumberInput(
+          onChanged: (value) => onAnswerChanged(value),
+        );
+      case 'text':
+        return _DynamicTextInput(
+          onChanged: (value) => onAnswerChanged(value),
+        );
+      case 'rating':
+        return _DynamicRatingInput(
+          onChanged: (value) => onAnswerChanged(value),
+        );
+      case 'time':
+        return _DynamicTimeInput(
+          onChanged: (value) => onAnswerChanged(value),
+        );
+      default:
+        return _DynamicYesNoRow(
+          onChanged: (value) => onAnswerChanged(value),
+        );
+    }
+  }
+}
+
+// ─── Dynamic Answer Input Widgets ───────────────────────────────────────────
+
+class _DynamicYesNoRow extends StatefulWidget {
+  final Function(bool) onChanged;
+
+  const _DynamicYesNoRow({required this.onChanged});
+
+  @override
+  State<_DynamicYesNoRow> createState() => _DynamicYesNoRowState();
+}
+
+class _DynamicYesNoRowState extends State<_DynamicYesNoRow> {
+  bool? _value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _DynamicYesNoChip(
+          label: 'Yes',
+          selected: _value == true,
+          onTap: () {
+            setState(() => _value = true);
+            widget.onChanged(true);
+          },
+        ),
+        const SizedBox(width: 12),
+        _DynamicYesNoChip(
+          label: 'No',
+          selected: _value == false,
+          onTap: () {
+            setState(() => _value = false);
+            widget.onChanged(false);
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _DynamicYesNoChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _DynamicYesNoChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary20 : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppColors.primary : const Color(0xFFE0E0E0),
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? AppColors.primary : const Color(0xFF1A1A1A),
+            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DynamicNumberInput extends StatelessWidget {
+  final Function(double?) onChanged;
+
+  const _DynamicNumberInput({required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        hintText: 'Enter a number',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      onChanged: (value) {
+        onChanged(double.tryParse(value));
+      },
+    );
+  }
+}
+
+class _DynamicTextInput extends StatelessWidget {
+  final Function(String) onChanged;
+
+  const _DynamicTextInput({required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      maxLines: 3,
+      decoration: InputDecoration(
+        hintText: 'Enter your answer...',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      onChanged: onChanged,
+    );
+  }
+}
+
+class _DynamicRatingInput extends StatefulWidget {
+  final Function(int) onChanged;
+
+  const _DynamicRatingInput({required this.onChanged});
+
+  @override
+  State<_DynamicRatingInput> createState() => _DynamicRatingInputState();
+}
+
+class _DynamicRatingInputState extends State<_DynamicRatingInput> {
+  int? _selectedRating;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: List.generate(5, (index) {
+        final rating = index + 1;
+        final isSelected = _selectedRating == rating;
+        return GestureDetector(
+          onTap: () {
+            setState(() => _selectedRating = rating);
+            widget.onChanged(rating);
+          },
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isSelected ? AppColors.primary20 : Colors.white,
+              border: Border.all(
+                color: isSelected ? AppColors.primary : const Color(0xFFE0E0E0),
+                width: isSelected ? 2 : 1,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                '$rating',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? AppColors.primary : Colors.black87,
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _DynamicTimeInput extends StatelessWidget {
+  final Function(String) onChanged;
+
+  const _DynamicTimeInput({required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      decoration: InputDecoration(
+        hintText: 'Enter time (e.g., 7:30 PM)',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      onChanged: onChanged,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Screen-time input row
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ScreenTimeInputRow extends StatelessWidget {
@@ -605,55 +859,32 @@ class _ScreenTimeInputRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // TextField takes all remaining space after the button is measured.
         Expanded(
           child: TextField(
             controller: controller,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
-              FilteringTextInputFormatter.allow(
-                RegExp(r'^\d+\.?\d{0,1}'),
-              ),
+              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
             ],
             decoration: InputDecoration(
               hintText: 'e.g. 1.5 hours',
-              hintStyle: const TextStyle(
-                color: Colors.black38,
-                fontSize: 13,
-              ),
+              hintStyle: const TextStyle(color: Colors.black38, fontSize: 13),
               filled: true,
               fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide:
-                    const BorderSide(color: Color(0xFFE0E0E0)),
-              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide:
-                    const BorderSide(color: Color(0xFFE0E0E0)),
+                borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
-                  width: 1.5,
-                ),
+                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
               ),
             ),
           ),
         ),
         const SizedBox(width: 10),
-
-        // FIX: IntrinsicWidth lets the Row measure the button's natural
-        // width first, so Expanded can correctly allocate the remainder.
-        // The old code used SizedBox(height: 48) with no width, leaving
-        // the button's render box permanently un-laid-out.
         IntrinsicWidth(
           child: SizedBox(
             height: 48,
@@ -662,13 +893,8 @@ class _ScreenTimeInputRow extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.secondary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 0,
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 elevation: 0,
               ),
               child: const Text('Ok'),
@@ -679,9 +905,8 @@ class _ScreenTimeInputRow extends StatelessWidget {
     );
   }
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Collapsing banner
+// Banner Delegate
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BannerDelegate extends SliverPersistentHeaderDelegate {
@@ -721,14 +946,12 @@ class _BannerDelegate extends SliverPersistentHeaderDelegate {
     final subtitleOpacity = (1 - progress / 0.4).clamp(0.0, 1.0);
 
     return ClipRRect(
-      borderRadius:
-        BorderRadius.vertical(bottom: Radius.circular(radius)),
-        child: Container(
+      borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius)),
+      child: Container(
         color: AppColors.primary,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Decorative circles — clipped by the Stack so no overflow
             Positioned(
               right: -20,
               top: 0,
@@ -753,8 +976,6 @@ class _BannerDelegate extends SliverPersistentHeaderDelegate {
                 ),
               ),
             ),
-
-            // Expanded subtitle (fades out as header collapses)
             if (subtitleOpacity > 0)
               Positioned(
                 left: 24,
@@ -785,8 +1006,6 @@ class _BannerDelegate extends SliverPersistentHeaderDelegate {
                   ),
                 ),
               ),
-
-            // Toolbar row (always visible)
             Positioned(
               left: 0,
               right: 0,
@@ -810,7 +1029,7 @@ class _BannerDelegate extends SliverPersistentHeaderDelegate {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Back to Home',
+                            '',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.9),
                               fontSize: 13,
@@ -840,7 +1059,7 @@ class _BannerDelegate extends SliverPersistentHeaderDelegate {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Section title
+// Section Title
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SectionTitle extends StatelessWidget {
@@ -861,7 +1080,7 @@ class _SectionTitle extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Rating row
+// Rating Row
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _RatingRow extends StatelessWidget {
@@ -901,9 +1120,7 @@ class _RatingRow extends StatelessWidget {
                       ? _colors[i].withOpacity(0.15)
                       : Colors.transparent,
                   border: Border.all(
-                    color: isSelected
-                        ? _colors[i]
-                        : Colors.transparent,
+                    color: isSelected ? _colors[i] : Colors.transparent,
                     width: 2,
                   ),
                 ),
@@ -920,9 +1137,7 @@ class _RatingRow extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   color: isSelected ? _colors[i] : Colors.black38,
-                  fontWeight: isSelected
-                      ? FontWeight.w600
-                      : FontWeight.normal,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
             ],
@@ -934,7 +1149,7 @@ class _RatingRow extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Sleep detail chips
+// Sleep Detail Chips
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SleepDetailChips extends StatelessWidget {
@@ -955,16 +1170,14 @@ class _SleepDetailChips extends StatelessWidget {
           Chip(
             label: Text('Bedtime: ${_fmt(bedtime!)}'),
             backgroundColor: AppColors.primary20,
-            labelStyle: const TextStyle(
-                fontSize: 12, color: AppColors.primary),
+            labelStyle: const TextStyle(fontSize: 12, color: AppColors.primary),
             side: const BorderSide(color: AppColors.primary),
           ),
         if (wakeTime != null)
           Chip(
             label: Text('Wake: ${_fmt(wakeTime!)}'),
             backgroundColor: AppColors.primary20,
-            labelStyle: const TextStyle(
-                fontSize: 12, color: AppColors.primary),
+            labelStyle: const TextStyle(fontSize: 12, color: AppColors.primary),
             side: const BorderSide(color: AppColors.primary),
           ),
       ],
@@ -973,7 +1186,7 @@ class _SleepDetailChips extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// +Add Details button
+// Add Details Button
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _AddDetailsButton extends StatelessWidget {
@@ -1007,13 +1220,7 @@ class _AddDetailsButton extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Meal card
-//
-// FIX: Removed the Expanded that was previously wrapping GestureDetector
-// inside this widget. Expanded is only valid as a direct child of Row/Column/
-// Flex. Placing it here caused "Expanded widgets must be placed inside a
-// Flex" assertions. Width is now provided by the caller via Expanded in the
-// parent Row.
+// Meal Card
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _MealCard extends StatelessWidget {
@@ -1029,20 +1236,15 @@ class _MealCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // GestureDetector is the root — no Expanded here.
     return GestureDetector(
       onTap: () => onToggle(!eaten),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-          color: eaten
-              ? AppColors.primary20
-              : Colors.white,
+        decoration: BoxDecoration(
+          color: eaten ? AppColors.primary20 : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: eaten
-                ? AppColors.primary
-                : const Color(0xFFE0E0E0),
+            color: eaten ? AppColors.primary : const Color(0xFFE0E0E0),
             width: eaten ? 1.5 : 1,
           ),
         ),
@@ -1054,9 +1256,7 @@ class _MealCard extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
-                color: eaten
-                    ? AppColors.primary
-                    : const Color(0xFF1A1A1A),
+                color: eaten ? AppColors.primary : const Color(0xFF1A1A1A),
               ),
             ),
             const SizedBox(height: 4),
@@ -1064,8 +1264,7 @@ class _MealCard extends StatelessWidget {
               eaten ? 'Eaten' : 'Skipped',
               style: TextStyle(
                 fontSize: 11,
-                color:
-                    eaten ? AppColors.primary : Colors.black38,
+                color: eaten ? AppColors.primary : Colors.black38,
               ),
             ),
           ],
@@ -1076,7 +1275,7 @@ class _MealCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Yes / No row
+// Yes / No Row
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _YesNoRow extends StatelessWidget {
@@ -1122,28 +1321,20 @@ class _YesNoChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
-                decoration: BoxDecoration(
-          color: selected
-              ? AppColors.primary20
-              : Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary20 : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected
-                ? AppColors.primary
-                : const Color(0xFFE0E0E0),
+            color: selected ? AppColors.primary : const Color(0xFFE0E0E0),
             width: selected ? 1.5 : 1,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected
-                ? AppColors.primary
-                : const Color(0xFF1A1A1A),
-            fontWeight:
-                selected ? FontWeight.w600 : FontWeight.normal,
+            color: selected ? AppColors.primary : const Color(0xFF1A1A1A),
+            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
       ),
