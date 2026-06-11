@@ -105,9 +105,10 @@ service cloud.firestore {
         }
 
         match /aiInsights/{doc} {
-          allow read, write: if isAuth() && isOwner(uid);
+          allow read: if canReadChildData(uid, childId);
+          allow write: if isAuth() && isOwner(uid);
         }
-
+        
         match /incidents/{incidentId} {
           allow read: if canReadChildData(uid, childId);
           allow write: if isAuth() && isOwner(uid);

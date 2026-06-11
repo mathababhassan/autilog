@@ -53,8 +53,9 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    // Use pre-passed parent name immediately (no flicker)
     _parentName = widget.args.parentName;
+    debugPrint('patient.parentId: ${widget.args.patient.parentId}');
+    debugPrint('patient.childId: ${widget.args.patient.childId}');
     _fetchData();
   }
 
@@ -416,12 +417,16 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                     .doc('current')
                     .snapshots(),
                 builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.secondary));
+                  }
                   if (!snapshot.hasData || !snapshot.data!.exists) {
                     return Text(
                       'No AI insights available yet. Insights unlock after 7 days of parent logging.',
                       style: AppTextStyles.caption.copyWith(color: AppColors.textSubtle),
                     );
                   }
+                  debugPrint('aiInsights data: ${snapshot.data!.data()}');
                   final data = snapshot.data!.data() as Map<String, dynamic>;
                   final isUnlocked = data['isUnlocked'] ?? false;
                   if (!isUnlocked) {
@@ -454,7 +459,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text(summary, style: AppTextStyles.caption, maxLines: 3, overflow: TextOverflow.ellipsis),
+                      Text(summary, style: AppTextStyles.caption),
                     ],
                   );
                 },
