@@ -607,7 +607,7 @@ class _DailySummaryLogsViewState extends State<_DailySummaryLogsView> {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
-                  children: ['All', 'This Week', 'Last 7 Days', 'Has Comment'].map((f) {
+                  children: ['All', 'This Week', 'Last 7 Days'].map((f) {
                     final active = _filter == f;
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
