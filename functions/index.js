@@ -635,11 +635,11 @@ exports.onPositiveMomentCreated = onPositiveMomentCreated;
 exports.onPositiveMomentUpdated = onPositiveMomentUpdated;
 exports.onPositiveMomentDeleted = onPositiveMomentDeleted;
 
-// ─── Notifications (A0) ───────────────────────────────────────────────
+// ─── Notifications ───────────────────────────────────────────────
 
 const { createNotification } = require("./notifications");
 
-// TEMPORARY — A0 verification only. Writes one notification to the caller's own
+// TEMPORARY — verification only. Writes one notification to the caller's own
 // inbox so you can confirm the document shape and the read/update/delete rules.
 // Remove once A1 (real comment trigger) lands.
 exports.debugCreateNotification = onCall(async (request) => {
@@ -650,7 +650,7 @@ exports.debugCreateNotification = onCall(async (request) => {
     role = "parent",
     type = "comment",
     title = "Test notification",
-    body = "Hello from the A0 record layer.",
+    message = "Hello from the A0 record layer.",
     target = null,
   } = request.data || {};
 
@@ -661,7 +661,7 @@ exports.debugCreateNotification = onCall(async (request) => {
     id,
     type,
     title,
-    body,
+    message,
     target,
   });
   return { ok: true, id, ...result };
