@@ -155,6 +155,17 @@ service cloud.firestore {
           allow write: if false;
         }
       }
+
+      // ── Notifications ────────────────────────────────────────────────────────
+      // Records are written by Cloud Functions only. The owner may flip `read`
+      // (and nothing else) and may delete to dismiss.
+      match /notifications/{notifId} {
+        allow read: if isAuth() && isOwner(uid);
+        allow update: if isAuth() && isOwner(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+        allow delete: if isAuth() && isOwner(uid);
+        allow create: if false;
+      }
     }
 
     // ── Therapists ────────────────────────────────────────────────────────────
@@ -178,6 +189,17 @@ service cloud.firestore {
           allow read: if isAuth() && isOwner(therapistId);
           allow write: if false;
         }
+      }
+
+      // ── Notifications ────────────────────────────────────────────────────────
+      // Records are written by Cloud Functions only. The owner may flip `read`
+      // (and nothing else) and may delete to dismiss.
+      match /notifications/{notifId} {
+        allow read: if isAuth() && isOwner(therapistId);
+        allow update: if isAuth() && isOwner(therapistId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+        allow delete: if isAuth() && isOwner(therapistId);
+        allow create: if false;
       }
     }
 
