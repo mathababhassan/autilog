@@ -154,6 +154,22 @@ class _TherapistProfileSheet extends StatelessWidget {
                 color: AppColors.dividerLight,
               ),
               _SheetRow(
+                icon: const Icon(Icons.settings_outlined,
+                    size: 20, color: AppColors.textMain),
+                label: 'Settings',
+                iconBoxColor: AppColors.inputFill,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  context.push(Routes.therapistSettings);
+                },
+              ),
+              const Divider(
+                height: 1,
+                indent: 22,
+                endIndent: 22,
+                color: AppColors.dividerLight,
+              ),
+              _SheetRow(
                 icon: SvgPicture.asset(
                   'assets/icons/shield_outline.svg',
                   width: 20,

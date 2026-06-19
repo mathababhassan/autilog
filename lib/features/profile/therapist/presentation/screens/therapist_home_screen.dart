@@ -12,6 +12,7 @@ import '../../../../../features/sessions/data/session_repository.dart';
 import '../../../../../shared/models/session_model.dart';
 import '../../../../../shared/widgets/app_primary_button.dart';
 import '../../../../../shared/widgets/app_snackbar.dart';
+import '../../../../../shared/widgets/notification_bell.dart';
 import '../../bloc/therapist_home_cubit.dart';
 import '../../bloc/therapist_home_state.dart';
 import '../../bloc/therapist_profile_bloc.dart';
@@ -132,17 +133,27 @@ class _HomeHeader extends StatelessWidget {
                               color: AppColors.textWhite,
                             )),
                       ]),
-                      GestureDetector(
-                        onTap: onAvatarTap,
-                        child: Container(
-                          width: 36, height: 36,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.22),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          NotificationBell(
+                            route: Routes.therapistNotifications,
+                            isTherapist: true,
                           ),
-                          child: const Icon(Icons.person_outline,
-                              color: AppColors.textWhite, size: 20),
-                        ),
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: onAvatarTap,
+                            child: Container(
+                              width: 36, height: 36,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(alpha: 0.22),
+                              ),
+                              child: const Icon(Icons.person_outline,
+                                  color: AppColors.textWhite, size: 20),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
