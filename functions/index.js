@@ -635,36 +635,14 @@ exports.onPositiveMomentCreated = onPositiveMomentCreated;
 exports.onPositiveMomentUpdated = onPositiveMomentUpdated;
 exports.onPositiveMomentDeleted = onPositiveMomentDeleted;
 
-// ─── Notifications ───────────────────────────────────────────────
+// ─── Comment Notifications (A1) ──────────────────────────────────────
 
-const { createNotification } = require("./notifications");
+const {
+  onDailySummaryCommentCreated,
+  onIncidentCommentCreated,
+  onPositiveMomentCommentCreated,
+} = require("./comment_notifications");
 
-// TEMPORARY — verification only. Writes one notification to the caller's own
-// inbox so you can confirm the document shape and the read/update/delete rules.
-// Remove once A1 (real comment trigger) lands.
-exports.debugCreateNotification = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "Sign in first.");
-  }
-  const {
-    role = "parent",
-    type = "comment",
-    title = "Test notification",
-    message = "Hello from the A0 record layer.",
-    // Defaults to a real nested-log target so the inbox can test tap-routing
-    // end-to-end. Pass `target: null` to write a notification with no deep-link.
-    target = { kind: "incident", id: "sample-log-id", childId: "sample-child-id" },
-  } = request.data || {};
-
-  const id = `debug_${Date.now()}`;
-  const result = await createNotification(db, {
-    role,
-    recipientId: request.auth.uid,
-    id,
-    type,
-    title,
-    message,
-    target,
-  });
-  return { ok: true, id, ...result };
-});
+exports.onDailySummaryCommentCreated = onDailySummaryCommentCreated;
+exports.onIncidentCommentCreated = onIncidentCommentCreated;
+exports.onPositiveMomentCommentCreated = onPositiveMomentCommentCreated;

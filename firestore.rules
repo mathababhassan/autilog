@@ -131,6 +131,14 @@ service cloud.firestore {
             && request.resource.data.createdAt == resource.data.createdAt
             && request.resource.data.type == resource.data.type;
           allow delete: if isAuth() && isOwner(uid);
+
+          // ── Comments on Positive Moments ──────────────────────────────────
+          match /comments/{commentId} {
+            allow read: if canReadChildData(uid, childId);
+            allow create: if isAuth() && isLinkedTherapist(childId);
+            allow update, delete: if isAuth() && isLinkedTherapist(childId)
+              && resource.data.therapistId == request.auth.uid;
+          }
         }
 
         // ── Tracking Questions ────────────────────────────────────────────────
