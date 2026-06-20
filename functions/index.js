@@ -656,3 +656,9 @@ const {
 
 exports.onSessionCreated = onSessionCreated;
 exports.onSessionUpdated = onSessionUpdated;
+
+// ─── Scheduled Notifications (A3) ────────────────────────────────────
+
+const { onSessionReminder } = require("./scheduled_notifications");
+
+exports.onSessionReminder = onSessionReminder;

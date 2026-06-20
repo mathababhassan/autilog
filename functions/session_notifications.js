@@ -21,23 +21,27 @@ function getDb() {
   return admin.firestore();
 }
 
+// "4:00 PM" from a Firestore Timestamp, in app-local time.
+function formatTime(ts) {
+  if (!ts || typeof ts.toDate !== "function") return "";
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(ts.toDate());
+}
+
 // "Wed 25 Jun at 4:00 PM" from a Firestore Timestamp.
 function formatWhen(ts) {
   if (!ts || typeof ts.toDate !== "function") return "";
-  const d = ts.toDate();
   const date = new Intl.DateTimeFormat("en-GB", {
     timeZone: TZ,
     weekday: "short",
     day: "numeric",
     month: "short",
-  }).format(d);
-  const time = new Intl.DateTimeFormat("en-US", {
-    timeZone: TZ,
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).format(d);
-  return `${date} at ${time}`;
+  }).format(ts.toDate());
+  return `${date} at ${formatTime(ts)}`;
 }
 
 async function nameOf(db, collection, uid, fallback) {
@@ -179,3 +183,8 @@ module.exports.onSessionUpdated = onDocumentUpdated(
   { document: "sessions/{sessionId}" },
   handleSessionUpdated
 );
+
+// Shared with scheduled_notifications.js (A3 session reminder).
+module.exports.notifyParty = notifyParty;
+module.exports.nameOf = nameOf;
+module.exports.formatTime = formatTime;
