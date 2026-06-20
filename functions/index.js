@@ -646,3 +646,13 @@ const {
 exports.onDailySummaryCommentCreated = onDailySummaryCommentCreated;
 exports.onIncidentCommentCreated = onIncidentCommentCreated;
 exports.onPositiveMomentCommentCreated = onPositiveMomentCommentCreated;
+
+// ─── Session Notifications (A2) ──────────────────────────────────────
+
+const {
+  onSessionCreated,
+  onSessionUpdated,
+} = require("./session_notifications");
+
+exports.onSessionCreated = onSessionCreated;
+exports.onSessionUpdated = onSessionUpdated;

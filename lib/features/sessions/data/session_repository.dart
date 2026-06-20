@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../shared/models/child_model.dart';
 import '../../../shared/models/session_model.dart';
 
@@ -110,6 +111,9 @@ class SessionRepository {
   Future<void> cancelSession(String sessionId, {String? reason}) async {
     await _firestore.collection('sessions').doc(sessionId).update({
       'status': 'cancelled',
+      // Records who cancelled so the notification trigger can route the alert to
+      // the other party (therapist cancel → notify parent, and vice versa).
+      'cancelledByUid': FirebaseAuth.instance.currentUser?.uid,
       if (reason != null && reason.isNotEmpty) 'cancelReason': reason,
     });
   }
