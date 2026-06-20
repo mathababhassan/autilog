@@ -71,6 +71,7 @@ async function callGroq(apiKey, prompt) {
       model: "llama-3.3-70b-versatile",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.4,
+      response_format: { type: "json_object" },
     }),
   });
   const data = await response.json();
@@ -264,6 +265,171 @@ Respond ONLY with this JSON (no markdown, no extra text):
     } catch (error) {
       console.error("Groq report summary failed:", error);
       throw new HttpsError("internal", "Failed to generate summary.");
+    }
+  }
+);
+
+// ─── NLP Quick Log — parseQuickLogText (callable) ─────────────────────
+// Takes { text, logType } where logType is "incident" | "positiveMoment".
+// Returns { logType, fields }. `fields` keys AND chip values match the
+// manual forms exactly, so the quick-log screen pre-selects chips and
+// fills controllers with zero translation.
+//
+// These option lists MUST stay in sync with the chip constants in
+// incident_form_screen.dart and positive_moment_form_screen.dart.
+
+const INCIDENT_TRIGGERS = [
+  "Routine Change", "Loud Environment", "Hunger", "Fatigue",
+  "Crowded Place", "Sensory Stimulus", "Transition",
+  "Social Demand", "School Related", "Unknown", "Other",
+];
+const INCIDENT_BEHAVIORS = [
+  "Meltdown", "Aggression", "Self-harm", "Repetitive Behavior",
+  "Withdrawal", "Refusal", "Other",
+];
+const INCIDENT_STRATEGIES = [
+  "Redirection", "Reward", "Ignore", "Comfort",
+  "Verbal Reassurance", "Sensory Tool", "Physical Comfort",
+  "Quiet Space", "Other",
+];
+const PM_SETTINGS = [
+  "Home", "School", "Public Place", "Social Visit",
+  "Therapy Session", "Other",
+];
+const PM_BEHAVIORS = [
+  "Social Interaction", "Communication", "Self-Regulation",
+  "Cooperation", "New Skill", "Other",
+];
+
+function _clampRating(v) {
+  const n = Math.round(Number(v));
+  if (!Number.isFinite(n)) return 3;
+  return Math.min(5, Math.max(1, n));
+}
+
+function _filterToAllowed(values, allowed) {
+  if (!Array.isArray(values)) return [];
+  const out = values.filter((v) => allowed.includes(v));
+  return out.length ? out : ["Other"];
+}
+
+function _normalizeTime(v) {
+  if (v === null || v === undefined) return null;
+  const n = Math.round(Number(v));
+  if (!Number.isFinite(n) || n < 0 || n > 1439) return null;
+  return n;
+}
+
+function _normalizeQuickLog(logType, raw) {
+  const r = raw || {};
+  if (logType === "incident") {
+    return {
+      time: _normalizeTime(r.time),
+      antecedentDescription: String(r.antecedentDescription || "").trim(),
+      antecedentTriggers: _filterToAllowed(r.antecedentTriggers, INCIDENT_TRIGGERS),
+      antecedentSeverity: _clampRating(r.antecedentSeverity),
+      behaviorDescription: String(r.behaviorDescription || "").trim(),
+      behaviorTypes: _filterToAllowed(r.behaviorTypes, INCIDENT_BEHAVIORS),
+      behaviorDuration: Math.max(0, Math.round(Number(r.behaviorDuration)) || 0),
+      behaviorSeverity: _clampRating(r.behaviorSeverity),
+      consequenceDescription: String(r.consequenceDescription || "").trim(),
+      strategies: _filterToAllowed(r.strategies, INCIDENT_STRATEGIES),
+      didItWork: r.didItWork === true,
+      effectiveness: _clampRating(r.effectiveness),
+    };
+  }
+  return {
+    time: _normalizeTime(r.time),
+    antecedentDescription: String(r.antecedentDescription || "").trim(),
+    setting: PM_SETTINGS.includes(r.setting) ? r.setting : "Other",
+    behaviorDescription: String(r.behaviorDescription || "").trim(),
+    behaviorTypes: _filterToAllowed(r.behaviorTypes, PM_BEHAVIORS),
+    positiveBehaviorRating: _clampRating(r.positiveBehaviorRating),
+    consequenceDescription: String(r.consequenceDescription || "").trim(),
+    effectiveness: _clampRating(r.effectiveness),
+  };
+}
+
+exports.parseQuickLogText = onCall(
+  { secrets: [GROQ_API_KEY] },
+  async (request) => {
+    // if (!request.auth) {
+    //   throw new HttpsError("unauthenticated", "Must be signed in.");
+    // }
+
+    const { text, logType } = request.data || {};
+
+    if (!text || typeof text !== "string" || text.trim().length === 0) {
+      throw new HttpsError("invalid-argument", "text is required.");
+    }
+    if (logType !== "incident" && logType !== "positiveMoment") {
+      throw new HttpsError(
+        "invalid-argument",
+        "logType must be 'incident' or 'positiveMoment'."
+      );
+    }
+
+    const ratingRubric = `Rating scale (integer 1-5):
+1 = very mild / barely noticeable
+2 = mild
+3 = moderate (use this as the default when the text is not specific enough)
+4 = significant
+5 = severe or intense (e.g. required intervention, or lasted a long time)`;
+
+    let schema;
+    if (logType === "incident") {
+      schema = `{
+  "time": integer minutes since midnight ONLY if an explicit clock time is stated (e.g. "3:30 PM" -> 930); use null if no clock time is mentioned, never 0,
+  "antecedentDescription": "what happened right before the behavior, one short sentence in the parent's words",
+  "antecedentTriggers": array of 1-3 values chosen ONLY from this exact list: ${JSON.stringify(INCIDENT_TRIGGERS)}. Guidance: "Routine Change" covers any disruption to the expected schedule or order of events (late arrival, skipped step, unexpected change of plans). Use "Unknown" only when the description gives no identifiable cause at all,
+  "antecedentSeverity": integer 1-5 for how strong the trigger was,
+  "behaviorDescription": "what the child did, one short sentence",
+  "behaviorTypes": array of 1-3 values chosen ONLY from this exact list: ${JSON.stringify(INCIDENT_BEHAVIORS)},
+  "behaviorDuration": integer DURATION IN SECONDS (e.g. "25 minutes" -> 1500); 0 if not mentioned,
+  "behaviorSeverity": integer 1-5 for how severe the behavior was,
+  "consequenceDescription": "how the parent responded, one short sentence",
+  "strategies": array of 1-3 values chosen ONLY from this exact list: ${JSON.stringify(INCIDENT_STRATEGIES)},
+  "didItWork": true only if the text indicates the response helped, otherwise false,
+  "effectiveness": integer 1-5 for how well the response worked (1 = no effect, 5 = fully resolved)
+}`;
+    } else {
+      schema = `{
+  "time": integer minutes since midnight ONLY if an explicit clock time is stated (e.g. "5:00 PM" -> 1020); use null if no clock time is mentioned, never 0,
+  "antecedentDescription": "what set up the positive moment, one short sentence",
+  "setting": a SINGLE value chosen ONLY from this exact list: ${JSON.stringify(PM_SETTINGS)},
+  "behaviorDescription": "the positive thing the child did, one short sentence",
+  "behaviorTypes": array of 1-3 values chosen ONLY from this exact list: ${JSON.stringify(PM_BEHAVIORS)},
+  "positiveBehaviorRating": integer 1-5 for how positive/strong the behavior was,
+  "consequenceDescription": "how the parent reinforced it, one short sentence",
+  "effectiveness": integer 1-5 for how well the reinforcement worked
+}`;
+    }
+
+    const prompt = `You are a clinical behavioral-logging assistant. A parent of a child with autism described a single ${logType === "incident" ? "behavioral incident" : "positive moment"} in their own words. Extract it into the structured ABC fields below.
+
+Parent's description:
+"""
+${text.trim()}
+"""
+
+${ratingRubric}
+
+Rules:
+- Base every field only on what the description actually says. Do not invent details.
+- For list and setting fields you MUST use only the exact strings provided; never invent new labels. If nothing fits, use "Other". For the trigger list you may use "Unknown" when the cause is unclear.
+- For any rating you cannot infer, use 3.
+- Keep description fields to one concise sentence each.
+
+Respond ONLY with a JSON object in exactly this shape (no markdown, no extra text):
+${schema}`;
+
+    try {
+      const raw = await callGroq(GROQ_API_KEY.value(), prompt);
+      const fields = _normalizeQuickLog(logType, raw);
+      return { logType, fields };
+    } catch (error) {
+      console.error("parseQuickLogText failed:", error);
+      throw new HttpsError("internal", "Failed to parse the log text.");
     }
   }
 );
