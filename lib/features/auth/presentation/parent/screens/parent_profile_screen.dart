@@ -317,42 +317,71 @@ class _ProfileHeader extends StatelessWidget {
       child: Column(
         children: [
           // ── Top bar ───────────────────────────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Stack(
+            alignment: Alignment.center,
             children: [
-              GestureDetector(
-                onTap: () => context.pop(),
-                child: const Icon(Icons.arrow_back_ios_new_rounded,
-                    color: Colors.white, size: 20),
+              // Title — centered across the full header width.
+              Center(
+                child: Text('My Profile',
+                    style: AppTextStyles.subtitle.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textWhite)),
               ),
-              Text('My Profile',
-                  style: AppTextStyles.subtitle.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textWhite)),
-              GestureDetector(
-                onTap: () => context.push(
-                  Routes.parentProfileEdit,
-                  extra: {
-                    'name': name,
-                    'phone': phone,
-                    'gender': gender,
-                    'email': email,
-                  },
-                ),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(20),
+              // Back (left) + actions (right), overlaid on the centered title.
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () => context.pop(),
+                    child: const Icon(Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white, size: 20),
                   ),
-                  child: Text(
-                    'Edit',
-                    style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textWhite,
-                        fontWeight: FontWeight.w700),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GestureDetector(
+                        onTap: () => context.push(Routes.parentSettings),
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.22),
+                          ),
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.settings_outlined,
+                              color: Colors.white, size: 20),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      GestureDetector(
+                        onTap: () => context.push(
+                          Routes.parentProfileEdit,
+                          extra: {
+                            'name': name,
+                            'phone': phone,
+                            'gender': gender,
+                            'email': email,
+                          },
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'Edit',
+                            style: AppTextStyles.caption.copyWith(
+                                color: AppColors.textWhite,
+                                fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                ],
               ),
             ],
           ),

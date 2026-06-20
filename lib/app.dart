@@ -100,6 +100,14 @@ class _AppView extends StatefulWidget {
   State<_AppView> createState() => _AppViewState();
 }
 
+/// Temporary placeholder for routes whose real screen isn't built yet
+/// (Notifications, Settings). Swap the route's builder for the real screen
+/// when it lands — entry points already point at the route.
+Widget _comingSoon(String title) => Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: const Center(child: Text('Coming soon')),
+    );
+
 Future<bool> _checkIfParentHasChildren(String parentId) async {
   try {
     final snapshot = await FirebaseFirestore.instance
@@ -383,6 +391,24 @@ class _AppViewState extends State<_AppView> {
             if (videoUrl == null) return const SizedBox.shrink();
             return VideoPlayerScreen(videoUrl: videoUrl);
           },
+        ),
+        // Placeholders — real screens (P-39 / T-35 / P-37 / Therapist Settings)
+        // land later; entry points already navigate to these routes.
+        GoRoute(
+          path: Routes.parentNotifications,
+          builder: (_, __) => _comingSoon('Notifications'),
+        ),
+        GoRoute(
+          path: Routes.therapistNotifications,
+          builder: (_, __) => _comingSoon('Notifications'),
+        ),
+        GoRoute(
+          path: Routes.parentSettings,
+          builder: (_, __) => _comingSoon('Settings'),
+        ),
+        GoRoute(
+          path: Routes.therapistSettings,
+          builder: (_, __) => _comingSoon('Settings'),
         ),
       ],
     );

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../../core/constants/routes.dart';
+import '../../../../../shared/widgets/notification_bell.dart';
 import '../../../../../features/incident_log/presentation/widgets/log_type_sheet.dart';
 import '../../../../../features/ai_insights/presentation/widgets/ai_insights_preview.dart';
 import '../../../../../features/log_history/presentation/screens/log_history_screen.dart';
@@ -224,12 +225,24 @@ class _DashboardTabState extends State<_DashboardTab> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              GestureDetector(
-                onTap: () => context.push(Routes.parentProfile),
-                child: CircleAvatar(
-                  backgroundColor: Colors.white.withOpacity(0.3),
-                  child: const Icon(Icons.person, color: Colors.white),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  NotificationBell(
+                    route: Routes.parentNotifications,
+                    isTherapist: false,
+                  ),
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: () => context.push(Routes.parentProfile),
+                    child: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Colors.white.withOpacity(0.3),
+                      child: const Icon(Icons.person,
+                          color: Colors.white, size: 20),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
