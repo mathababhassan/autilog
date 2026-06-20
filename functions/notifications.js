@@ -63,6 +63,22 @@ const NOTIFICATION_TYPES = new Set([
   "parentAccountRemoved",
 ]);
 
+// Allowed values for `target.kind` (the tap-routing destination) and the only
+// keys a `target` may contain. Validated on write so a stale field name (e.g. a
+// leftover `screen`/`sourceId`) or unknown kind fails loudly here instead of
+// silently producing a dead-end deep-link in the inbox.
+const TARGET_KINDS = new Set([
+  "session",
+  "incident",
+  "positiveMoment",
+  "dailySummary",
+  "aiInsights",
+  "logCreate",
+  "patient",
+  "linkRequest",
+]);
+const TARGET_KEYS = new Set(["kind", "id", "childId", "parentId"]);
+
 // Types that ALWAYS send and ignore every preference (safety). T-36 locks the
 // high-severity alert toggle ON; this enforces it server-side too.
 const ALWAYS_SEND = new Set(["highSeverityIncident"]);
@@ -122,6 +138,33 @@ function shouldNotify(role, recipientData, type) {
 }
 
 /**
+ * Validate a tap-routing target. Null/undefined is allowed (no deep-link).
+ * A non-null target must be a plain object with a known `kind` and only the
+ * permitted string keys — anything else throws.
+ *
+ * @param {Object|null|undefined} target
+ */
+function validateTarget(target) {
+  if (target == null) return;
+  if (typeof target !== "object" || Array.isArray(target)) {
+    throw new Error("createNotification: target must be a plain object or null");
+  }
+  if (!TARGET_KINDS.has(target.kind)) {
+    throw new Error(`createNotification: target.kind "${target.kind}" is not a known kind`);
+  }
+  for (const key of Object.keys(target)) {
+    if (!TARGET_KEYS.has(key)) {
+      throw new Error(`createNotification: unexpected target key "${key}"`);
+    }
+  }
+  for (const key of ["id", "childId", "parentId"]) {
+    if (target[key] != null && typeof target[key] !== "string") {
+      throw new Error(`createNotification: target.${key} must be a string`);
+    }
+  }
+}
+
+/**
  * Create one in-app notification record (idempotent). Caller is responsible for
  * checking shouldNotify() first for the recipient (both roles are gated).
  *
@@ -146,6 +189,7 @@ async function createNotification(db, params) {
   if (!NOTIFICATION_TYPES.has(type)) {
     throw new Error(`createNotification: unknown type "${type}"`);
   }
+  validateTarget(target);
 
   const ref = db.doc(`${collection}/${recipientId}/notifications/${id}`);
 
@@ -170,4 +214,4 @@ async function createNotification(db, params) {
   }
 }
 
-module.exports = { createNotification, shouldNotify, NOTIFICATION_TYPES };
+module.exports = { createNotification, shouldNotify, NOTIFICATION_TYPES, TARGET_KINDS };

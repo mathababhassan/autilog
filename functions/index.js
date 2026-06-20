@@ -651,7 +651,9 @@ exports.debugCreateNotification = onCall(async (request) => {
     type = "comment",
     title = "Test notification",
     message = "Hello from the A0 record layer.",
-    target = null,
+    // Defaults to a real nested-log target so the inbox can test tap-routing
+    // end-to-end. Pass `target: null` to write a notification with no deep-link.
+    target = { kind: "incident", id: "sample-log-id", childId: "sample-child-id" },
   } = request.data || {};
 
   const id = `debug_${Date.now()}`;
