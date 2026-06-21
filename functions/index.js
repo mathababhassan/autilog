@@ -666,3 +666,15 @@ const {
 
 exports.onSessionReminder = onSessionReminder;
 exports.onDailyLogReminder = onDailyLogReminder;
+
+// ─── Log Notifications — therapist alerts (A5) ───────────────────────
+
+const {
+  onIncidentLogged,
+  onPositiveMomentLogged,
+  onDailySummaryLogged,
+} = require("./log_notifications");
+
+exports.onIncidentLogged = onIncidentLogged;
+exports.onPositiveMomentLogged = onPositiveMomentLogged;
+exports.onDailySummaryLogged = onDailySummaryLogged;
