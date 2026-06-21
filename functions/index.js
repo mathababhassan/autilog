@@ -692,3 +692,13 @@ exports.onWeeklyAiInsights = onWeeklyAiInsights;
 const { onLinkRequestCreated } = require("./link_notifications");
 
 exports.onLinkRequestCreated = onLinkRequestCreated;
+
+// ─── Removal Notifications (A8) ──────────────────────────────────────
+
+const {
+  onPatientStatusChanged,
+  onPatientRemoved,
+} = require("./removal_notifications");
+
+exports.onPatientStatusChanged = onPatientStatusChanged;
+exports.onPatientRemoved = onPatientRemoved;

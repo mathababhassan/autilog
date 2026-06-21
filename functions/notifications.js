@@ -61,6 +61,7 @@ const NOTIFICATION_TYPES = new Set([
   // lifecycle (recipient = therapist)
   "childRemoved",
   "parentAccountRemoved",
+  "accessRevoked",
 ]);
 
 // Allowed values for `target.kind` (the tap-routing destination) and the only

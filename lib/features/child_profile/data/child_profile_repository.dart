@@ -178,6 +178,22 @@ class ChildProfileRepository {
     required String childId,
     required String therapistId,
   }) async {
+    final patientRef = _firestore
+        .collection('therapists')
+        .doc(therapistId)
+        .collection('patients')
+        .doc(childId);
+
+    // Stamp the actor + time BEFORE deleting so the onDelete notification trigger
+    // can (a) tell a parent revocation from a therapist self-removal, and (b) make
+    // the notification id unique per revocation (a re-link then re-revoke
+    // re-notifies). Must be a separate commit — a same-batch update+delete hides
+    // the field from the delete event.
+    await patientRef.update({
+      'removedBy': 'parent',
+      'removedAt': FieldValue.serverTimestamp(),
+    });
+
     // Mirror the therapist-side removePatient: drop both link records atomically.
     final batch = _firestore.batch();
 
@@ -191,14 +207,22 @@ class ChildProfileRepository {
           .doc(therapistId),
     );
 
-    batch.delete(
-      _firestore
-          .collection('therapists')
-          .doc(therapistId)
-          .collection('patients')
-          .doc(childId),
-    );
+    batch.delete(patientRef);
 
-    await batch.commit();
+    try {
+      await batch.commit();
+    } catch (e) {
+      // Delete failed after the stamp — roll the marker back so the record isn't
+      // left flagged while the therapist still has access. A retry then runs clean.
+      try {
+        await patientRef.update({
+          'removedBy': FieldValue.delete(),
+          'removedAt': FieldValue.delete(),
+        });
+      } catch (_) {
+        // Best-effort rollback; surface the original failure regardless.
+      }
+      rethrow;
+    }
   }
 }
