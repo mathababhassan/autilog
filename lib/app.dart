@@ -53,6 +53,9 @@ import 'features/auth/presentation/parent/screens/parent_edit_profile_screen.dar
 import 'features/auth/presentation/parent/screens/child_edit_screen.dart';
 import 'features/patients/presentation/therapist/screens/log_review_screen.dart';
 import 'features/profile/therapist/presentation/screens/therapist_reports_screen.dart';
+import 'features/incident_log/presentation/screens/quick_log_screen.dart';
+import 'features/incident_log/presentation/screens/quick_log_incident_review_screen.dart';
+import 'features/incident_log/presentation/screens/quick_log_positive_moment_review_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class App extends StatelessWidget {
@@ -382,6 +385,44 @@ class _AppViewState extends State<_AppView> {
             final args = state.extra as PositiveMomentDetailArgs?;
             if (args == null) return const SizedBox.shrink();
             return PositiveMomentDetailScreen(args: args);
+          },
+        ),
+        GoRoute(
+          path: Routes.quickLogIncident,
+          builder: (context, state) {
+            final args = state.extra as QuickLogArgs?;
+            if (args == null) return const SizedBox.shrink();
+            return QuickLogScreen(args: args);
+          },
+        ),
+        GoRoute(
+          path: Routes.quickLogPositiveMoment,
+          builder: (context, state) {
+            final args = state.extra as QuickLogArgs?;
+            if (args == null) return const SizedBox.shrink();
+            return QuickLogScreen(args: args);
+          },
+        ),
+        GoRoute(
+          path: Routes.quickLogIncidentReview,
+          builder: (context, state) {
+            final m = state.extra as Map<String, dynamic>? ?? {};
+            return QuickLogIncidentReviewScreen(
+              patientId: m['patientId'] as String? ?? '',
+              patientName: m['patientName'] as String? ?? '',
+              fields: m['fields'] as Map<String, dynamic>? ?? {},
+            );
+          },
+        ),
+        GoRoute(
+          path: Routes.quickLogPositiveMomentReview,
+          builder: (context, state) {
+            final m = state.extra as Map<String, dynamic>? ?? {};
+            return QuickLogPositiveMomentReviewScreen(
+              patientId: m['patientId'] as String? ?? '',
+              patientName: m['patientName'] as String? ?? '',
+              fields: m['fields'] as Map<String, dynamic>? ?? {},
+            );
           },
         ),
         GoRoute(

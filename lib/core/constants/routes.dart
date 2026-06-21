@@ -37,6 +37,10 @@ abstract final class Routes {
 
   static const String dailySummary = '/parent/log/daily-summary';
 
+  static const String quickLogIncident = '/parent/log/quick-incident';
+  static const String quickLogIncidentReview = '/parent/log/quick-incident-review';
+  static const String quickLogPositiveMoment = '/parent/log/quick-positive-moment';
+  static const String quickLogPositiveMomentReview = '/parent/log/quick-positive-moment-review';
   static const String positiveMomentForm = '/parent/log/positive_moment';
   static const String positiveMomentDetail = '/parent/log/positive_moment_detail';
   static const String dailySummaryDetail = '/parent/log/daily-summary-detail';
