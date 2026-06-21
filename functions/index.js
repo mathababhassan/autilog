@@ -662,6 +662,7 @@ exports.onSessionUpdated = onSessionUpdated;
 const {
   onSessionReminder,
   onDailyLogReminder,
+  onWeeklyAiInsights,
 } = require("./scheduled_notifications");
 
 exports.onSessionReminder = onSessionReminder;
@@ -678,3 +679,10 @@ const {
 exports.onIncidentLogged = onIncidentLogged;
 exports.onPositiveMomentLogged = onPositiveMomentLogged;
 exports.onDailySummaryLogged = onDailySummaryLogged;
+
+// ─── AI Insights Notifications (A6) ──────────────────────────────────
+
+const { onAiInsightsReady } = require("./ai_notifications");
+
+exports.onAiInsightsReady = onAiInsightsReady;
+exports.onWeeklyAiInsights = onWeeklyAiInsights;

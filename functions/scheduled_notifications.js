@@ -14,6 +14,7 @@
 const admin = require("firebase-admin");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { notifyParty, nameOf, formatTime } = require("./session_notifications");
+const { notifyInsightsReady } = require("./ai_notifications");
 const { createNotification, shouldNotify } = require("./notifications");
 
 const REMINDER_LEAD_MIN = 30;
@@ -159,4 +160,61 @@ async function handleDailyLogReminders() {
 module.exports.onDailyLogReminder = onSchedule(
   { schedule: "0 20 * * *", timeZone: "Asia/Kuala_Lumpur" },
   handleDailyLogReminders
+);
+
+// ── Weekly AI-insights refresh ───────────────────────────────────────────────
+// Monday 9 AM local: nudge parents + therapists that this week's insights are
+// ready to review, for every child whose insights are unlocked. The run date
+// stamps the idempotency key so it fires at most once per child per week.
+
+async function handleWeeklyAiInsights() {
+  const db = getDb();
+  const { yyyymmdd } = localDayBounds();
+
+  let parents;
+  try {
+    parents = await db.collection("parents").get();
+  } catch (err) {
+    console.error("[weeklyAi] failed to list parents:", err);
+    return;
+  }
+
+  let sent = 0;
+  for (const parentDoc of parents.docs) {
+    const parentId = parentDoc.id;
+
+    let children;
+    try {
+      children = await db.collection(`parents/${parentId}/children`).get();
+    } catch (err) {
+      console.error(`[weeklyAi] failed to list children for parent=${parentId}:`, err);
+      continue;
+    }
+
+    for (const childDoc of children.docs) {
+      const childId = childDoc.id;
+      try {
+        const insights = await db
+          .doc(`parents/${parentId}/children/${childId}/aiInsights/current`)
+          .get();
+        if (insights.data()?.isUnlocked !== true) continue; // not ready yet
+
+        await notifyInsightsReady(db, {
+          parentId,
+          childId,
+          idSuffix: `weekly_${childId}_${yyyymmdd}`,
+        });
+        sent += 1;
+      } catch (err) {
+        console.error(`[weeklyAi] failed for parent=${parentId} child=${childId}:`, err);
+      }
+    }
+  }
+
+  console.log(`[weeklyAi] processed ${sent} child(ren) for ${yyyymmdd}`);
+}
+
+module.exports.onWeeklyAiInsights = onSchedule(
+  { schedule: "0 9 * * 1", timeZone: "Asia/Kuala_Lumpur" },
+  handleWeeklyAiInsights
 );
