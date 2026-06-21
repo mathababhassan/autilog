@@ -101,7 +101,7 @@ class AuthRepository {
     await _firestore.collection('linkRequests').add({
       'parentId': parentId,
       'childId': childId,
-      'therapistEmail': therapistEmail.trim().toLowerCase(),
+      'therapistEmail': therapistEmail.trim(),
       'status': 'pending',
       'createdAt': FieldValue.serverTimestamp(),
     });

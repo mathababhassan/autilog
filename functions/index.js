@@ -686,3 +686,9 @@ const { onAiInsightsReady } = require("./ai_notifications");
 
 exports.onAiInsightsReady = onAiInsightsReady;
 exports.onWeeklyAiInsights = onWeeklyAiInsights;
+
+// ─── Link Request Notifications (A7) ─────────────────────────────────
+
+const { onLinkRequestCreated } = require("./link_notifications");
+
+exports.onLinkRequestCreated = onLinkRequestCreated;
