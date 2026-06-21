@@ -659,6 +659,10 @@ exports.onSessionUpdated = onSessionUpdated;
 
 // ─── Scheduled Notifications (A3) ────────────────────────────────────
 
-const { onSessionReminder } = require("./scheduled_notifications");
+const {
+  onSessionReminder,
+  onDailyLogReminder,
+} = require("./scheduled_notifications");
 
 exports.onSessionReminder = onSessionReminder;
+exports.onDailyLogReminder = onDailyLogReminder;

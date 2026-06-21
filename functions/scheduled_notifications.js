@@ -6,12 +6,22 @@
 // the next 30 min and remind BOTH the parent and the therapist. The reminder is
 // idempotent via the deterministic id `sessionReminder_{sessionId}`, so a
 // session appearing in two consecutive windows is reminded only once per party.
+//
+// — Daily-log reminder: once a day at 8 PM local time, nudge each parent who
+// hasn't logged a daily summary for a child today. Idempotent via the id
+// `dailyLogReminder_{childId}_{yyyymmdd}`.
 
 const admin = require("firebase-admin");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { notifyParty, nameOf, formatTime } = require("./session_notifications");
+const { createNotification, shouldNotify } = require("./notifications");
 
 const REMINDER_LEAD_MIN = 30;
+
+// App-local timezone (Asia/Kuala_Lumpur, no DST). This offset bounds "today" and
+// MUST stay in sync with the `timeZone` of the onDailyLogReminder schedule below
+// — change both together, or the cutoff and the day window will disagree.
+const LOCAL_TZ_OFFSET_HOURS = 8;
 
 function getDb() {
   return admin.firestore();
@@ -70,4 +80,83 @@ async function handleSessionReminders() {
 module.exports.onSessionReminder = onSchedule(
   { schedule: "every 15 minutes" },
   handleSessionReminders
+);
+
+// ── Daily-log reminder ───────────────────────────────────────────────────────
+
+// Start/end Timestamps of "today" in app-local time, plus a yyyymmdd stamp for
+// the idempotency key.
+function localDayBounds(now = new Date()) {
+  const offsetMs = LOCAL_TZ_OFFSET_HOURS * 60 * 60 * 1000;
+  const local = new Date(now.getTime() + offsetMs);
+  const y = local.getUTCFullYear();
+  const m = local.getUTCMonth();
+  const d = local.getUTCDate();
+  const startMs = Date.UTC(y, m, d) - offsetMs; // local midnight, expressed in UTC
+  return {
+    startTs: admin.firestore.Timestamp.fromMillis(startMs),
+    endTs: admin.firestore.Timestamp.fromMillis(startMs + 24 * 60 * 60 * 1000),
+    yyyymmdd: `${y}${String(m + 1).padStart(2, "0")}${String(d).padStart(2, "0")}`,
+  };
+}
+
+async function handleDailyLogReminders() {
+  const db = getDb();
+  const { startTs, endTs, yyyymmdd } = localDayBounds();
+
+  let parents;
+  try {
+    parents = await db.collection("parents").get();
+  } catch (err) {
+    console.error("[dailyLog] failed to list parents:", err);
+    return;
+  }
+  let reminded = 0;
+
+  for (const parentDoc of parents.docs) {
+    const parentId = parentDoc.id;
+    // Gate once per parent — a muted parent skips all child reads.
+    if (!shouldNotify("parent", parentDoc.data(), "dailyLogReminder")) continue;
+
+    let children;
+    try {
+      children = await db.collection(`parents/${parentId}/children`).get();
+    } catch (err) {
+      console.error(`[dailyLog] failed to list children for parent=${parentId}:`, err);
+      continue;
+    }
+    for (const childDoc of children.docs) {
+      const childId = childDoc.id;
+      const childName = childDoc.data()?.name || "your child";
+      try {
+        const logged = await db
+          .collection(`parents/${parentId}/children/${childId}/dailySummaries`)
+          .where("date", ">=", startTs)
+          .where("date", "<", endTs)
+          .limit(1)
+          .get();
+        if (!logged.empty) continue; // already logged today
+
+        const { created } = await createNotification(db, {
+          role: "parent",
+          recipientId: parentId,
+          id: `dailyLogReminder_${childId}_${yyyymmdd}`,
+          type: "dailyLogReminder",
+          title: "Daily log reminder",
+          message: `You haven't logged a daily summary for ${childName} yet.`,
+          target: { kind: "logCreate", childId },
+        });
+        if (created) reminded += 1;
+      } catch (err) {
+        console.error(`[dailyLog] failed for parent=${parentId} child=${childId}:`, err);
+      }
+    }
+  }
+
+  console.log(`[dailyLog] sent ${reminded} reminder(s) for ${yyyymmdd}`);
+}
+
+module.exports.onDailyLogReminder = onSchedule(
+  { schedule: "0 20 * * *", timeZone: "Asia/Kuala_Lumpur" },
+  handleDailyLogReminders
 );
