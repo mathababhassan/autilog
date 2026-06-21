@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/services/push_service.dart';
 import '../../../shared/models/therapist_model.dart';
 import '../../../shared/models/user_model.dart';
 
@@ -168,6 +169,9 @@ class AuthRepository {
 
   // ── Logout ────────────────────────────────────────────────────────────────
   Future<void> logout() async {
+    // Drop this device's push token while still authenticated, so the user
+    // stops receiving pushes (and another user on this device doesn't inherit).
+    await PushService.instance.unregister();
     await _auth.signOut();
   }
 

@@ -62,6 +62,7 @@ async function handleLinkRequestCreated(event) {
       title: "New patient link request",
       message: `${parentName} wants to link ${childName} to your caseload.`,
       target: { kind: "linkRequest", id: requestId },
+      recipientData: therapistDoc.data(),
     });
     console.log(`[linkRequest] therapist=${therapistId} request=${requestId} created=${created}`);
   } catch (err) {

@@ -146,6 +146,7 @@ async function handleDailyLogReminders() {
           title: "Daily log reminder",
           message: `You haven't logged a daily summary for ${childName} yet.`,
           target: { kind: "logCreate", childId },
+          recipientData: parentDoc.data(),
         });
         if (created) reminded += 1;
       } catch (err) {

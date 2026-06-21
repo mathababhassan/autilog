@@ -165,6 +165,72 @@ function validateTarget(target) {
   }
 }
 
+// FCM error codes meaning a token is permanently dead → prune it from the user.
+const DEAD_TOKEN_CODES = new Set([
+  "messaging/registration-token-not-registered",
+  "messaging/invalid-registration-token",
+  "messaging/invalid-argument",
+]);
+
+/**
+ * Best-effort FCM push to all of the recipient's registered devices. The inbox
+ * record is already written by the time this runs, so this never throws —
+ * a push failure must not change createNotification's result. Tokens that FCM
+ * reports as permanently invalid are pruned from the user's `fcmTokens`.
+ *
+ * @param {FirebaseFirestore.Firestore} db
+ * @param {string} collection   'parents' | 'therapists'
+ * @param {string} recipientId
+ * @param {Object} content      { type, title, message, target }
+ * @param {string} notifId      the notification doc id (for client dedupe/routing)
+ */
+async function sendPush(db, collection, recipientId, content, notifId, recipientData) {
+  try {
+    const ref = db.doc(`${collection}/${recipientId}`);
+    // Reuse the recipient doc the caller already fetched for prefs gating, when
+    // available, to avoid a duplicate read.
+    const tokens = recipientData
+      ? recipientData.fcmTokens
+      : (await ref.get()).data()?.fcmTokens;
+    if (!Array.isArray(tokens) || tokens.length === 0) {
+      console.log(`[push] ${collection}/${recipientId} type=${content.type} — no tokens, skipped`);
+      return;
+    }
+
+    const res = await admin.messaging().sendEachForMulticast({
+      tokens,
+      notification: {
+        title: content.title || "",
+        body: content.message || "",
+      },
+      data: {
+        type: content.type || "",
+        notifId: notifId || "",
+        target: JSON.stringify(content.target || null),
+      },
+    });
+
+    console.log(
+      `[push] ${collection}/${recipientId} type=${content.type} tokens=${tokens.length} sent=${res.successCount} failed=${res.failureCount}`
+    );
+
+    const dead = [];
+    res.responses.forEach((r, i) => {
+      if (!r.success && DEAD_TOKEN_CODES.has(r.error && r.error.code)) {
+        dead.push(tokens[i]);
+      }
+    });
+    if (dead.length) {
+      await ref.set(
+        { fcmTokens: admin.firestore.FieldValue.arrayRemove(...dead) },
+        { merge: true }
+      );
+    }
+  } catch (err) {
+    console.error(`[push] send failed for ${collection}/${recipientId}:`, err);
+  }
+}
+
 /**
  * Create one in-app notification record (idempotent). Caller is responsible for
  * checking shouldNotify() first for the recipient (both roles are gated).
@@ -178,10 +244,12 @@ function validateTarget(target) {
  * @param {string} params.title
  * @param {string} params.message
  * @param {Object|null} [params.target]          tap-routing map (see contract)
+ * @param {Object|null} [params.recipientData]   recipient doc data if the caller
+ *   already fetched it (for prefs gating) — lets the push step skip a re-read
  * @returns {Promise<{created: boolean}>}  created=false means a duplicate fire
  */
 async function createNotification(db, params) {
-  const { role, recipientId, id, type, title, message, target = null } = params;
+  const { role, recipientId, id, type, title, message, target = null, recipientData = null } = params;
 
   const collection = ROLE_COLLECTIONS[role];
   if (!collection) throw new Error(`createNotification: unknown role "${role}"`);
@@ -205,14 +273,15 @@ async function createNotification(db, params) {
 
   try {
     await ref.create(payload);
-    // ── A9 (push) seam ─────────────────────────────────────────────────────────
-    // When FCM token storage exists, look up the recipient's token(s) and send
-    // the push HERE. Every call site gets push for free, with no changes.
-    return { created: true };
   } catch (err) {
     if (err.code === ALREADY_EXISTS) return { created: false };
     throw err;
   }
+
+  // Record is written; now fan the push out to the recipient's devices.
+  // Best-effort — a push failure never affects the result.
+  await sendPush(db, collection, recipientId, { type, title, message, target }, id, recipientData);
+  return { created: true };
 }
 
 module.exports = { createNotification, shouldNotify, NOTIFICATION_TYPES, TARGET_KINDS };

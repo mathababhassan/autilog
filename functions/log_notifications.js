@@ -78,6 +78,7 @@ async function handleLogCreated(logCollection, event) {
           title,
           message,
           target,
+          recipientData: therapistSnap.data(),
         });
         console.log(`[log] therapist=${therapistId} ${type} log=${logId} created=${created}`);
       } catch (err) {

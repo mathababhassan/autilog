@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/constants/routes.dart';
+import 'core/services/push_service.dart';
 import 'core/theme/theme.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/data/auth_repository.dart';
@@ -141,6 +142,25 @@ class _AppViewState extends State<_AppView> {
     if (authState is AuthAuthenticated) {
       context.read<AuthRepository>().logout();
     }
+  }
+
+  /// Called when a push notification is tapped. For now it brings the user into
+  /// their home; per-target deep-linking (decode data['target'] JSON → route)
+  /// can be added once the notifications inbox and per-screen args are settled.
+  Map<String, dynamic>? _pendingNotification;
+
+  void _handleNotificationOpen(Map<String, dynamic> data) {
+    final authState = _authBloc.state;
+    if (authState is! AuthAuthenticated) {
+      // Tapped from a terminated state before auth resolved — replay on login.
+      _pendingNotification = data;
+      return;
+    }
+    _router.go(
+      authState.user.role == 'therapist'
+          ? Routes.therapistHome
+          : Routes.parentHome,
+    );
   }
 
   @override
@@ -386,6 +406,9 @@ class _AppViewState extends State<_AppView> {
         ),
       ],
     );
+
+    // Wire push handlers after _router exists — tap navigation uses it.
+    PushService.instance.attachHandlers(onOpen: _handleNotificationOpen);
   }
 
   @override
@@ -401,11 +424,31 @@ class _AppViewState extends State<_AppView> {
     return Listener(
       onPointerDown: (_) => _resetInactivityTimer(),
       onPointerMove: (_) => _resetInactivityTimer(),
-      child: MaterialApp.router(
-        title: 'AutiLog',
-        theme: AppTheme.light,
-        routerConfig: _router,
-        debugShowCheckedModeBanner: false,
+      child: BlocListener<AuthBloc, AuthState>(
+        // Register this device for push once, on each login transition.
+        listenWhen: (prev, curr) =>
+            curr is AuthAuthenticated && prev is! AuthAuthenticated,
+        listener: (context, state) {
+          if (state is AuthAuthenticated) {
+            PushService.instance.register(
+              uid: state.user.userId,
+              role: state.user.role,
+            );
+            // Replay a notification tapped before auth had resolved.
+            final pending = _pendingNotification;
+            if (pending != null) {
+              _pendingNotification = null;
+              _handleNotificationOpen(pending);
+            }
+          }
+        },
+        child: MaterialApp.router(
+          title: 'AutiLog',
+          theme: AppTheme.light,
+          routerConfig: _router,
+          scaffoldMessengerKey: PushService.instance.messengerKey,
+          debugShowCheckedModeBanner: false,
+        ),
       ),
     );
   }

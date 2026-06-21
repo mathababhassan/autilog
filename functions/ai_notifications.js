@@ -34,6 +34,7 @@ async function notifyInsightsReady(db, { parentId, childId, idSuffix }) {
         title,
         message,
         target: { kind: "aiInsights", childId },
+        recipientData: parentSnap.data(),
       });
     }
   } catch (err) {
@@ -57,6 +58,7 @@ async function notifyInsightsReady(db, { parentId, childId, idSuffix }) {
         title,
         message,
         target: { kind: "aiInsights", childId, parentId },
+        recipientData: therapistSnap.data(),
       });
     } catch (err) {
       console.error(`[aiInsight] failed for therapist=${therapistId} child=${childId}:`, err);

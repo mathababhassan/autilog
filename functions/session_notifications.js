@@ -65,6 +65,7 @@ async function notifyParty(db, { role, recipientId, prefsType, id, title, messag
     title,
     message,
     target: { kind: "session", id: sessionId },
+    recipientData: snap.data(),
   });
   console.log(`[session] role=${role} recipient=${recipientId} session=${sessionId} type=${prefsType} created=${created}`);
 }

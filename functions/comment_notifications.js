@@ -73,6 +73,7 @@ async function handleCommentCreated(logCollection, event) {
         childId,
         parentId,
       },
+      recipientData: parentSnap.data(),
     });
     console.log(`[comment] parent=${parentId} comment=${commentId} created=${created}`);
   } catch (err) {
