@@ -125,6 +125,20 @@ class ChildProfileRepository {
       throw Exception('A request is already pending for this child.');
     }
 
+    // Enforce one therapist per child: block a new request if the child is
+    // already linked to a therapist.
+    final linkedSnap = await _firestore
+        .collection('parents')
+        .doc(parentId)
+        .collection('children')
+        .doc(childId)
+        .collection('linkedTherapists')
+        .limit(1)
+        .get();
+    if (linkedSnap.docs.isNotEmpty) {
+      throw Exception('This child is already linked to a therapist.');
+    }
+
     // Denormalize child/parent display info onto the request. While a request
     // is pending the therapist cannot read the child or parent docs (rules
     // only grant that once the link is accepted), so the pending-requests list
