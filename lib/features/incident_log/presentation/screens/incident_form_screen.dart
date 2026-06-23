@@ -6,12 +6,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../../../../core/theme/theme.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
 import '../../bloc/incident_form_cubit.dart';
 import '../../bloc/incident_form_state.dart';
 import '../../data/incident_repository.dart';
+import '../../data/quick_log_repository.dart';
 import '../widgets/incident_saved_dialog.dart';
 
 // ── Chip options (from Figma frame 882:4124) ─────────────────────────────────
@@ -106,6 +108,15 @@ class _IncidentFormViewState extends State<_IncidentFormView> {
   final _antecedentKey = GlobalKey();
   final _behaviorKey = GlobalKey();
   final _consequenceKey = GlobalKey();
+
+  int _tab = 0; // 0 = Manual, 1 = Quick Log
+
+  void _prefillControllers(Map<String, dynamic> fields) {
+    _antecedentCtrl.text = fields['antecedentDescription'] as String? ?? '';
+    _behaviorCtrl.text = fields['behaviorDescription'] as String? ?? '';
+    _consequenceCtrl.text = fields['consequenceDescription'] as String? ?? '';
+    context.read<IncidentFormCubit>().prefillFromQuickLog(fields);
+  }
 
   @override
   void initState() {
@@ -224,32 +235,48 @@ class _IncidentFormViewState extends State<_IncidentFormView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const _TabRow(),
-                        const SizedBox(height: AppSpacing.lg),
-                        _DateTimeRow(state: state),
-                        const SizedBox(height: AppSpacing.lg),
-                        _AntecedentCard(
-                          key: _antecedentKey,
-                          state: state,
-                          controller: _antecedentCtrl,
-                        ),
-                        const SizedBox(height: AppSpacing.xl2),
-                        _BehaviorCard(
-                          key: _behaviorKey,
-                          state: state,
-                          patientName: widget.patientName,
-                          controller: _behaviorCtrl,
-                        ),
-                        const SizedBox(height: AppSpacing.xl2),
-                        _ConsequenceCard(
-                          key: _consequenceKey,
-                          state: state,
-                          controller: _consequenceCtrl,
+                        _TabRow(
+                          selected: _tab,
+                          onTabChanged: (t) => setState(() => _tab = t),
                         ),
                         const SizedBox(height: AppSpacing.lg),
-                        _VideoSection(state: state),
-                        const SizedBox(height: AppSpacing.lg),
-                        _SaveButton(state: state),
+                        if (_tab == 0) ...[
+                          _DateTimeRow(state: state),
+                          const SizedBox(height: AppSpacing.lg),
+                          _AntecedentCard(
+                            key: _antecedentKey,
+                            state: state,
+                            controller: _antecedentCtrl,
+                          ),
+                          const SizedBox(height: AppSpacing.xl2),
+                          _BehaviorCard(
+                            key: _behaviorKey,
+                            state: state,
+                            patientName: widget.patientName,
+                            controller: _behaviorCtrl,
+                          ),
+                          const SizedBox(height: AppSpacing.xl2),
+                          _ConsequenceCard(
+                            key: _consequenceKey,
+                            state: state,
+                            controller: _consequenceCtrl,
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          _VideoSection(state: state),
+                          const SizedBox(height: AppSpacing.lg),
+                          _SaveButton(state: state),
+                        ] else ...[
+                          _IncidentQuickLogTab(
+                            patientName: widget.patientName,
+                            antecedentCtrl: _antecedentCtrl,
+                            behaviorCtrl: _behaviorCtrl,
+                            consequenceCtrl: _consequenceCtrl,
+                            antecedentKey: _antecedentKey,
+                            behaviorKey: _behaviorKey,
+                            consequenceKey: _consequenceKey,
+                            onPrefill: _prefillControllers,
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -340,7 +367,9 @@ class _TopBar extends StatelessWidget {
 // ── Tab row ───────────────────────────────────────────────────────────────────
 
 class _TabRow extends StatelessWidget {
-  const _TabRow();
+  const _TabRow({required this.selected, required this.onTabChanged});
+  final int selected;
+  final ValueChanged<int> onTabChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -353,49 +382,61 @@ class _TabRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 7),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceDefault,
-                borderRadius: BorderRadius.circular(50),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.edit_outlined,
-                    size: 13,
-                    color: AppColors.textMain,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Manual',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textMain,
+            child: GestureDetector(
+              onTap: () => onTabChanged(0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 7),
+                decoration: BoxDecoration(
+                  color: selected == 0 ? AppColors.surfaceDefault : Colors.transparent,
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.edit_outlined,
+                      size: 13,
+                      color: selected == 0 ? AppColors.textMain : AppColors.textPlaceholder,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Text(
+                      'Manual',
+                      style: AppTextStyles.caption.copyWith(
+                        color: selected == 0 ? AppColors.textMain : AppColors.textPlaceholder,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          // TODO(sprint-next): wire up Quick Log tab — placeholder only for now
           Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.flash_on_outlined,
-                  size: 13,
-                  color: AppColors.textPlaceholder,
+            child: GestureDetector(
+              onTap: () => onTabChanged(1),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 7),
+                decoration: BoxDecoration(
+                  color: selected == 1 ? AppColors.surfaceDefault : Colors.transparent,
+                  borderRadius: BorderRadius.circular(50),
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  'Quick Log',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textPlaceholder,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.mic_outlined,
+                      size: 13,
+                      color: selected == 1 ? AppColors.textMain : AppColors.textPlaceholder,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Quick Log',
+                      style: AppTextStyles.caption.copyWith(
+                        color: selected == 1 ? AppColors.textMain : AppColors.textPlaceholder,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -1301,6 +1342,352 @@ class _VideoRow extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Quick Log Tab ─────────────────────────────────────────────────────────────
+
+class _IncidentQuickLogTab extends StatefulWidget {
+  const _IncidentQuickLogTab({
+    required this.patientName,
+    required this.antecedentCtrl,
+    required this.behaviorCtrl,
+    required this.consequenceCtrl,
+    required this.antecedentKey,
+    required this.behaviorKey,
+    required this.consequenceKey,
+    required this.onPrefill,
+  });
+
+  final String patientName;
+  final TextEditingController antecedentCtrl;
+  final TextEditingController behaviorCtrl;
+  final TextEditingController consequenceCtrl;
+  final GlobalKey antecedentKey;
+  final GlobalKey behaviorKey;
+  final GlobalKey consequenceKey;
+  final void Function(Map<String, dynamic> fields) onPrefill;
+
+  @override
+  State<_IncidentQuickLogTab> createState() => _IncidentQuickLogTabState();
+}
+
+class _IncidentQuickLogTabState extends State<_IncidentQuickLogTab> {
+  final _descCtrl = TextEditingController();
+  final _repo = QuickLogRepository();
+  final stt.SpeechToText _speech = stt.SpeechToText();
+
+  bool _micAvailable = false;
+  bool _isListening = false;
+  bool _analysing = false;
+  bool _analysed = false;
+  bool _rawExpanded = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _speech.initialize(
+      onError: (_) => setState(() => _isListening = false),
+      onStatus: (s) {
+        if (s == 'done' || s == 'notListening') {
+          setState(() => _isListening = false);
+        }
+      },
+    ).then((ok) {
+      if (mounted) setState(() => _micAvailable = ok);
+    });
+  }
+
+  @override
+  void dispose() {
+    _speech.stop();
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggleMic() async {
+    if (_isListening) {
+      await _speech.stop();
+      setState(() => _isListening = false);
+      return;
+    }
+    if (!_micAvailable) {
+      AppSnackbar.showError(context, 'Microphone not available.');
+      return;
+    }
+    setState(() => _isListening = true);
+    await _speech.listen(
+      onResult: (r) => setState(() {
+        _descCtrl.text = r.recognizedWords;
+        _descCtrl.selection =
+            TextSelection.collapsed(offset: _descCtrl.text.length);
+      }),
+      listenFor: const Duration(seconds: 60),
+      pauseFor: const Duration(seconds: 4),
+      localeId: 'en_US',
+    );
+  }
+
+  Future<void> _analyse() async {
+    final text = _descCtrl.text.trim();
+    if (text.isEmpty) {
+      AppSnackbar.showError(context, 'Please describe what happened first.');
+      return;
+    }
+    if (_isListening) {
+      await _speech.stop();
+      setState(() => _isListening = false);
+    }
+    setState(() => _analysing = true);
+    try {
+      final fields = await _repo.parseText(text: text, logType: 'incident');
+      if (!mounted) return;
+      widget.onPrefill(fields);
+      setState(() {
+        _analysed = true;
+        _analysing = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        AppSnackbar.showError(context, 'Could not analyse. Please try again.');
+        setState(() => _analysing = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<IncidentFormCubit>().state;
+
+    if (!_analysed) {
+      return _buildInputView(state);
+    }
+    return _buildPrefillView(state);
+  }
+
+  Widget _buildInputView(IncidentFormState state) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _DateTimeRow(state: state),
+        const SizedBox(height: AppSpacing.lg),
+        Text(
+          'Describe what happened in your own words',
+          style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          'Speak or type — our AI will extract the key details',
+          style: AppTextStyles.caption.copyWith(color: AppColors.textPlaceholder),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        TextField(
+          controller: _descCtrl,
+          minLines: 5,
+          maxLines: 8,
+          style: AppTextStyles.body,
+          decoration: InputDecoration(
+            hintText: "e.g. 'Zara had a meltdown at school pickup when the routine changed...'",
+            hintStyle: AppTextStyles.body.copyWith(color: const Color(0xFFB3B3B3)),
+            contentPadding: const EdgeInsets.all(AppSpacing.md),
+            filled: true,
+            fillColor: AppColors.surfaceDefault,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+              borderSide: const BorderSide(color: AppColors.borderInactive),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+              borderSide: BorderSide(
+                color: _isListening ? AppColors.secondaryOrange : AppColors.primary,
+                width: 2,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl2),
+        Row(
+          children: [
+            const Expanded(child: Divider(color: AppColors.borderInactive)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: Text('or', style: AppTextStyles.caption.copyWith(color: AppColors.textPlaceholder)),
+            ),
+            const Expanded(child: Divider(color: AppColors.borderInactive)),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xl2),
+        Center(
+          child: GestureDetector(
+            onTap: _analysing ? null : _toggleMic,
+            child: Column(
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _isListening
+                        ? AppColors.secondaryOrange
+                        : AppColors.inputFill,
+                  ),
+                  child: Icon(
+                    _isListening ? Icons.stop_rounded : Icons.mic_outlined,
+                    size: 28,
+                    color: _isListening ? Colors.white : AppColors.textPlaceholder,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  _isListening ? 'Tap to stop' : 'Tap to record',
+                  style: AppTextStyles.caption.copyWith(
+                    color: _isListening
+                        ? AppColors.secondaryOrange
+                        : AppColors.textPlaceholder,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl2),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            onPressed: _analysing ? null : _analyse,
+            icon: _analysing
+                ? const SizedBox(
+                    width: 16, height: 16,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Icon(Icons.auto_awesome, size: 16, color: Colors.white),
+            label: Text(
+              _analysing ? 'Analysing...' : 'Analyse with AI',
+              style: AppTextStyles.body.copyWith(
+                  color: Colors.white, fontWeight: FontWeight.w700),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              disabledBackgroundColor: AppColors.inputFill,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSpacing.pillRadius)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPrefillView(IncidentFormState state) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Pre-filled banner
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8F4F8),
+            borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.auto_awesome, color: Color(0xFF5BA4CF), size: 18),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pre-filled from your description',
+                      style: AppTextStyles.caption.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF2C7BB6)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'We turned what you said into the fields below. Please review and edit anything that\'s off before saving.',
+                      style: AppTextStyles.caption.copyWith(
+                          color: const Color(0xFF4A90B8), height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        // Collapsible raw description
+        GestureDetector(
+          onTap: () => setState(() => _rawExpanded = !_rawExpanded),
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceDefault,
+              border: Border.all(color: AppColors.borderInactive),
+              borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Your description',
+                        style: AppTextStyles.caption.copyWith(
+                            fontWeight: FontWeight.w700)),
+                    Icon(
+                      _rawExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      size: 18,
+                      color: AppColors.textPlaceholder,
+                    ),
+                  ],
+                ),
+                if (_rawExpanded) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    '"${_descCtrl.text}"',
+                    style: AppTextStyles.body.copyWith(
+                        color: AppColors.textPlaceholder,
+                        fontStyle: FontStyle.italic,
+                        height: 1.5),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _DateTimeRow(state: state),
+        const SizedBox(height: AppSpacing.lg),
+        _AntecedentCard(
+          key: widget.antecedentKey,
+          state: state,
+          controller: widget.antecedentCtrl,
+        ),
+        const SizedBox(height: AppSpacing.xl2),
+        _BehaviorCard(
+          key: widget.behaviorKey,
+          state: state,
+          patientName: widget.patientName,
+          controller: widget.behaviorCtrl,
+        ),
+        const SizedBox(height: AppSpacing.xl2),
+        _ConsequenceCard(
+          key: widget.consequenceKey,
+          state: state,
+          controller: widget.consequenceCtrl,
+        ),
+        const SizedBox(height: AppSpacing.xl2),
+        _VideoSection(state: state),
+        const SizedBox(height: AppSpacing.lg),
+        _SaveButton(state: state),
+      ],
     );
   }
 }

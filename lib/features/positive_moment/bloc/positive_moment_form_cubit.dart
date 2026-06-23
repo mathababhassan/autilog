@@ -216,6 +216,23 @@ class PositiveMomentFormCubit extends Cubit<PositiveMomentFormState> {
     }
   }
 
+  void prefillFromQuickLog(Map<String, dynamic> fields) {
+    final timeInt = fields['time'] as int?;
+    final time = timeInt != null
+        ? TimeOfDay(hour: timeInt ~/ 60, minute: timeInt % 60)
+        : state.time;
+    emit(state.copyWith(
+      time: time,
+      antecedentDescription: fields['antecedentDescription'] as String? ?? '',
+      setting: fields['setting'] as String? ?? 'Home',
+      behaviorDescription: fields['behaviorDescription'] as String? ?? '',
+      behaviorTypes: List<String>.from(fields['behaviorTypes'] ?? []),
+      positiveBehaviorRating: (fields['positiveBehaviorRating'] as int?) ?? 3,
+      consequenceDescription: fields['consequenceDescription'] as String? ?? '',
+      effectiveness: (fields['effectiveness'] as int?) ?? 3,
+    ));
+  }
+
   void reset() => emit(PositiveMomentFormState.initial());
 
   bool _isValid() =>

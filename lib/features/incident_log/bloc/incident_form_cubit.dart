@@ -150,6 +150,28 @@ class IncidentFormCubit extends Cubit<IncidentFormState> {
     }
   }
 
+  void prefillFromQuickLog(Map<String, dynamic> fields) {
+    final timeInt = fields['time'] as int?;
+    final time = timeInt != null
+        ? TimeOfDay(hour: timeInt ~/ 60, minute: timeInt % 60)
+        : state.time;
+    final durationSeconds = (fields['behaviorDuration'] as int?) ?? 0;
+    emit(state.copyWith(
+      time: time,
+      antecedentDescription: fields['antecedentDescription'] as String? ?? '',
+      antecedentTriggers: List<String>.from(fields['antecedentTriggers'] ?? []),
+      antecedentSeverity: (fields['antecedentSeverity'] as int?) ?? 3,
+      behaviorDescription: fields['behaviorDescription'] as String? ?? '',
+      behaviorTypes: List<String>.from(fields['behaviorTypes'] ?? []),
+      behaviorDuration: Duration(seconds: durationSeconds),
+      behaviorSeverity: (fields['behaviorSeverity'] as int?) ?? 3,
+      consequenceDescription: fields['consequenceDescription'] as String? ?? '',
+      strategies: List<String>.from(fields['strategies'] ?? []),
+      didItWork: fields['didItWork'] as bool? ?? false,
+      effectiveness: (fields['effectiveness'] as int?) ?? 3,
+    ));
+  }
+
   void reset() => emit(IncidentFormState.initial());
 
   // ── Private helpers ──────────────────────────────────────────────────────
