@@ -800,3 +800,71 @@ const {
 exports.onPositiveMomentCreated = onPositiveMomentCreated;
 exports.onPositiveMomentUpdated = onPositiveMomentUpdated;
 exports.onPositiveMomentDeleted = onPositiveMomentDeleted;
+
+// ─── Comment Notifications (A1) ──────────────────────────────────────
+
+const {
+  onDailySummaryCommentCreated,
+  onIncidentCommentCreated,
+  onPositiveMomentCommentCreated,
+} = require("./comment_notifications");
+
+exports.onDailySummaryCommentCreated = onDailySummaryCommentCreated;
+exports.onIncidentCommentCreated = onIncidentCommentCreated;
+exports.onPositiveMomentCommentCreated = onPositiveMomentCommentCreated;
+
+// ─── Session Notifications (A2) ──────────────────────────────────────
+
+const {
+  onSessionCreated,
+  onSessionUpdated,
+} = require("./session_notifications");
+
+exports.onSessionCreated = onSessionCreated;
+exports.onSessionUpdated = onSessionUpdated;
+
+// ─── Scheduled Notifications (A3) ────────────────────────────────────
+
+const {
+  onSessionReminder,
+  onDailyLogReminder,
+  onWeeklyAiInsights,
+} = require("./scheduled_notifications");
+
+exports.onSessionReminder = onSessionReminder;
+exports.onDailyLogReminder = onDailyLogReminder;
+
+// ─── Log Notifications — therapist alerts (A5) ───────────────────────
+
+const {
+  onIncidentLogged,
+  onPositiveMomentLogged,
+  onDailySummaryLogged,
+} = require("./log_notifications");
+
+exports.onIncidentLogged = onIncidentLogged;
+exports.onPositiveMomentLogged = onPositiveMomentLogged;
+exports.onDailySummaryLogged = onDailySummaryLogged;
+
+// ─── AI Insights Notifications (A6) ──────────────────────────────────
+
+const { onAiInsightsReady } = require("./ai_notifications");
+
+exports.onAiInsightsReady = onAiInsightsReady;
+exports.onWeeklyAiInsights = onWeeklyAiInsights;
+
+// ─── Link Request Notifications (A7) ─────────────────────────────────
+
+const { onLinkRequestCreated } = require("./link_notifications");
+
+exports.onLinkRequestCreated = onLinkRequestCreated;
+
+// ─── Removal Notifications (A8) ──────────────────────────────────────
+
+const {
+  onPatientStatusChanged,
+  onPatientRemoved,
+} = require("./removal_notifications");
+
+exports.onPatientStatusChanged = onPatientStatusChanged;
+exports.onPatientRemoved = onPatientRemoved;
