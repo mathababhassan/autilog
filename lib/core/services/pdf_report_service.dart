@@ -249,8 +249,13 @@ class PdfReportService {
     return pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.center,
       children: [
-        pw.Container(width: 4, height: 20, color: color,
-            decoration: const pw.BoxDecoration(borderRadius: pw.BorderRadius.all(pw.Radius.circular(2)))),
+        pw.Container(
+          width: 4, height: 20,
+          decoration: pw.BoxDecoration(
+            color: color,
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)),
+          ),
+        ),
         pw.SizedBox(width: 8),
         pw.Text(
           title,
