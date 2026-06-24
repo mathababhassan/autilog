@@ -47,41 +47,37 @@ class PdfReportService {
         margin: pw.EdgeInsets.zero,
         header: (ctx) => _header(ctx, childName, from, to),
         footer: (ctx) => _footer(ctx),
-        build: (ctx) => [
-          pw.Padding(
-            padding: const pw.EdgeInsets.symmetric(horizontal: 32),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.SizedBox(height: 20),
-                _summaryBar(incidents, positiveMoments),
-                pw.SizedBox(height: 28),
-                if (incidents.isNotEmpty) ...[
-                  _sectionHeading('Behavioral Incidents', _red, incidents.length),
-                  pw.SizedBox(height: 10),
-                  ...incidents.map(_incidentCard),
-                  pw.SizedBox(height: 28),
-                ],
-                if (positiveMoments.isNotEmpty) ...[
-                  _sectionHeading('Positive Moments', _teal, positiveMoments.length),
-                  pw.SizedBox(height: 10),
-                  ...positiveMoments.map(_positiveMomentCard),
-                ],
-                if (incidents.isEmpty && positiveMoments.isEmpty)
-                  pw.Center(
-                    child: pw.Padding(
-                      padding: const pw.EdgeInsets.symmetric(vertical: 40),
-                      child: pw.Text(
-                        'No logs found for this period.',
-                        style: pw.TextStyle(color: _grey2, fontSize: 12),
-                      ),
-                    ),
-                  ),
-                pw.SizedBox(height: 32),
-              ],
-            ),
-          ),
-        ],
+        build: (ctx) {
+          pw.Widget pad(pw.Widget w) =>
+              pw.Padding(padding: const pw.EdgeInsets.symmetric(horizontal: 32), child: w);
+
+          final items = <pw.Widget>[
+            pw.SizedBox(height: 20),
+            pad(_summaryBar(incidents, positiveMoments)),
+            pw.SizedBox(height: 28),
+          ];
+          if (incidents.isNotEmpty) {
+            items.add(pad(_sectionHeading('Behavioral Incidents', _red, incidents.length)));
+            items.add(pw.SizedBox(height: 10));
+            for (final inc in incidents) items.add(pad(_incidentCard(inc)));
+            items.add(pw.SizedBox(height: 28));
+          }
+          if (positiveMoments.isNotEmpty) {
+            items.add(pad(_sectionHeading('Positive Moments', _teal, positiveMoments.length)));
+            items.add(pw.SizedBox(height: 10));
+            for (final m in positiveMoments) items.add(pad(_positiveMomentCard(m)));
+          }
+          if (incidents.isEmpty && positiveMoments.isEmpty) {
+            items.add(pad(pw.Center(
+              child: pw.Padding(
+                padding: const pw.EdgeInsets.symmetric(vertical: 40),
+                child: pw.Text('No logs found for this period.', style: pw.TextStyle(color: _grey2, fontSize: 12)),
+              ),
+            )));
+          }
+          items.add(pw.SizedBox(height: 32));
+          return items;
+        },
       ),
     );
 
@@ -114,53 +110,46 @@ class PdfReportService {
         margin: pw.EdgeInsets.zero,
         header: (ctx) => _practiceHeader(ctx, from, to),
         footer: (ctx) => _footer(ctx),
-        build: (ctx) => [
-          pw.Padding(
-            padding: const pw.EdgeInsets.symmetric(horizontal: 32),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.SizedBox(height: 20),
-                // Practice summary stats
-                _summaryBar2(totalIncidents, totalMoments, avgSleep, topTrigger),
-                pw.SizedBox(height: 20),
-                // AI summary
-                if (aiSummary.isNotEmpty) ...[
-                  _practiceAISection(aiSummary, aiFocus),
-                  pw.SizedBox(height: 20),
-                ],
-                // Trigger breakdown
-                if (triggerCounts.isNotEmpty) ...[
-                  _sectionHeading('Top Triggers', _orange, triggerCounts.length),
-                  pw.SizedBox(height: 10),
-                  _triggerTable(triggerCounts),
-                  pw.SizedBox(height: 24),
-                ],
-                // Per-patient breakdowns
-                ...patients.where((p) => p.incidents.isNotEmpty || p.positiveMoments.isNotEmpty).map((p) => pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    _patientDivider(p.childName, p.incidents.length, p.positiveMoments.length),
-                    pw.SizedBox(height: 10),
-                    if (p.incidents.isNotEmpty) ...[
-                      _sectionHeading('Behavioral Incidents', _red, p.incidents.length),
-                      pw.SizedBox(height: 8),
-                      ...p.incidents.map(_incidentCard),
-                      pw.SizedBox(height: 16),
-                    ],
-                    if (p.positiveMoments.isNotEmpty) ...[
-                      _sectionHeading('Positive Moments', _teal, p.positiveMoments.length),
-                      pw.SizedBox(height: 8),
-                      ...p.positiveMoments.map(_positiveMomentCard),
-                      pw.SizedBox(height: 24),
-                    ],
-                  ],
-                )),
-                pw.SizedBox(height: 32),
-              ],
-            ),
-          ),
-        ],
+        build: (ctx) {
+          pw.Widget pad(pw.Widget w) =>
+              pw.Padding(padding: const pw.EdgeInsets.symmetric(horizontal: 32), child: w);
+
+          final items = <pw.Widget>[
+            pw.SizedBox(height: 20),
+            pad(_summaryBar2(totalIncidents, totalMoments, avgSleep, topTrigger)),
+            pw.SizedBox(height: 20),
+            if (aiSummary.isNotEmpty) ...[
+              pad(_practiceAISection(aiSummary, aiFocus)),
+              pw.SizedBox(height: 20),
+            ],
+            if (triggerCounts.isNotEmpty) ...[
+              pad(_sectionHeading('Top Triggers', _orange, triggerCounts.length)),
+              pw.SizedBox(height: 10),
+              pad(_triggerTable(triggerCounts)),
+              pw.SizedBox(height: 24),
+            ],
+          ];
+
+          for (final p in patients.where((p) => p.incidents.isNotEmpty || p.positiveMoments.isNotEmpty)) {
+            items.add(pad(_patientDivider(p.childName, p.incidents.length, p.positiveMoments.length)));
+            items.add(pw.SizedBox(height: 10));
+            if (p.incidents.isNotEmpty) {
+              items.add(pad(_sectionHeading('Behavioral Incidents', _red, p.incidents.length)));
+              items.add(pw.SizedBox(height: 8));
+              for (final inc in p.incidents) items.add(pad(_incidentCard(inc)));
+              items.add(pw.SizedBox(height: 16));
+            }
+            if (p.positiveMoments.isNotEmpty) {
+              items.add(pad(_sectionHeading('Positive Moments', _teal, p.positiveMoments.length)));
+              items.add(pw.SizedBox(height: 8));
+              for (final m in p.positiveMoments) items.add(pad(_positiveMomentCard(m)));
+              items.add(pw.SizedBox(height: 24));
+            }
+          }
+
+          items.add(pw.SizedBox(height: 32));
+          return items;
+        },
       ),
     );
 
