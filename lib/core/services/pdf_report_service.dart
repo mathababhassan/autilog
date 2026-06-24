@@ -9,6 +9,16 @@ import '../../shared/models/positive_moment_model.dart';
 class PdfReportService {
   static final _dateFmt = DateFormat('d MMM yyyy');
 
+  // Brand colours
+  static const _orange = PdfColor(0.976, 0.451, 0.086);
+  static const _teal   = PdfColor(0.059, 0.631, 0.580);
+  static const _red    = PdfColor(0.937, 0.267, 0.267);
+  static const _blue   = PdfColor(0.231, 0.510, 0.965);
+  static const _green  = PdfColor(0.133, 0.773, 0.369);
+  static const _grey1  = PdfColor(0.96, 0.96, 0.96);
+  static const _grey2  = PdfColor(0.4, 0.4, 0.4);
+  static const _grey3  = PdfColor(0.7, 0.7, 0.7);
+
   static Future<void> exportReport({
     required String childName,
     required DateTime from,
@@ -21,263 +31,453 @@ class PdfReportService {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
-        header: (_) => _buildHeader(childName, from, to),
-        footer: (ctx) => _buildFooter(ctx),
+        margin: pw.EdgeInsets.zero,
+        header: (ctx) => _header(ctx, childName, from, to),
+        footer: (ctx) => _footer(ctx),
         build: (ctx) => [
-          _summarySection(incidents, positiveMoments),
-          pw.SizedBox(height: 24),
-          if (incidents.isNotEmpty) ...[
-            _sectionTitle('Behavioral Incidents'),
-            pw.SizedBox(height: 8),
-            ...incidents.map(_incidentCard),
-            pw.SizedBox(height: 24),
-          ],
-          if (positiveMoments.isNotEmpty) ...[
-            _sectionTitle('Positive Moments'),
-            pw.SizedBox(height: 8),
-            ...positiveMoments.map(_positiveMomentCard),
-          ],
-          if (incidents.isEmpty && positiveMoments.isEmpty)
-            pw.Center(
-              child: pw.Text(
-                'No logs found for this period.',
-                style: const pw.TextStyle(color: PdfColors.grey600),
-              ),
+          pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 32),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.SizedBox(height: 20),
+                _summaryBar(incidents, positiveMoments),
+                pw.SizedBox(height: 28),
+                if (incidents.isNotEmpty) ...[
+                  _sectionHeading('Behavioral Incidents', _red, incidents.length),
+                  pw.SizedBox(height: 10),
+                  ...incidents.map(_incidentCard),
+                  pw.SizedBox(height: 28),
+                ],
+                if (positiveMoments.isNotEmpty) ...[
+                  _sectionHeading('Positive Moments', _teal, positiveMoments.length),
+                  pw.SizedBox(height: 10),
+                  ...positiveMoments.map(_positiveMomentCard),
+                ],
+                if (incidents.isEmpty && positiveMoments.isEmpty)
+                  pw.Center(
+                    child: pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 40),
+                      child: pw.Text(
+                        'No logs found for this period.',
+                        style: pw.TextStyle(color: _grey2, fontSize: 12),
+                      ),
+                    ),
+                  ),
+                pw.SizedBox(height: 32),
+              ],
             ),
+          ),
         ],
       ),
     );
 
     await Printing.layoutPdf(
       onLayout: (_) async => pdf.save(),
-      name: 'AutiLog_${childName.replaceAll(' ', '_')}_${_dateFmt.format(from)}-${_dateFmt.format(to)}.pdf',
+      name: 'AutiLog_${childName.replaceAll(' ', '_')}_${_dateFmt.format(from)}_to_${_dateFmt.format(to)}.pdf',
     );
   }
 
-  static pw.Widget _buildHeader(String childName, DateTime from, DateTime to) {
+  // ── Header ───────────────────────────────────────────────────────────────────
+
+  static pw.Widget _header(pw.Context ctx, String childName, DateTime from, DateTime to) {
+    final isFirstPage = ctx.pageNumber == 1;
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          children: [
-            pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
+        // Orange top strip
+        pw.Container(
+          width: double.infinity,
+          color: _orange,
+          padding: const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+          child: pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                'AutiLog',
+                style: pw.TextStyle(
+                  fontSize: 22,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.white,
+                ),
+              ),
+              pw.Text(
+                'Behavioural Progress Report',
+                style: pw.TextStyle(fontSize: 11, color: PdfColors.white),
+              ),
+            ],
+          ),
+        ),
+        if (isFirstPage) ...[
+          pw.Container(
+            width: double.infinity,
+            color: const PdfColor(0.996, 0.937, 0.914),
+            padding: const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 10),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text(
-                  'AutiLog Report',
-                  style: pw.TextStyle(
-                    fontSize: 20,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColor.fromHex('#F97316'),
-                  ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      childName,
+                      style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold),
+                    ),
+                    pw.SizedBox(height: 2),
+                    pw.Text(
+                      'Period: ${_dateFmt.format(from)} to ${_dateFmt.format(to)}',
+                      style: pw.TextStyle(fontSize: 10, color: _grey2),
+                    ),
+                  ],
                 ),
-                pw.SizedBox(height: 4),
                 pw.Text(
-                  childName,
-                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
-                ),
-                pw.Text(
-                  '${_dateFmt.format(from)} – ${_dateFmt.format(to)}',
-                  style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600),
+                  'Generated: ${_dateFmt.format(DateTime.now())}',
+                  style: pw.TextStyle(fontSize: 10, color: _grey2),
                 ),
               ],
             ),
-            pw.Text(
-              'Generated ${_dateFmt.format(DateTime.now())}',
-              style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey500),
+          ),
+        ] else ...[
+          pw.Container(
+            width: double.infinity,
+            color: const PdfColor(0.996, 0.937, 0.914),
+            padding: const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 6),
+            child: pw.Text(
+              '$childName  |  ${_dateFmt.format(from)} to ${_dateFmt.format(to)}',
+              style: pw.TextStyle(fontSize: 9, color: _grey2),
             ),
-          ],
-        ),
-        pw.SizedBox(height: 8),
-        pw.Divider(color: PdfColors.grey300),
-        pw.SizedBox(height: 4),
+          ),
+        ],
+        pw.SizedBox(height: 2),
       ],
     );
   }
 
-  static pw.Widget _buildFooter(pw.Context ctx) {
-    return pw.Column(
-      children: [
-        pw.Divider(color: PdfColors.grey300),
-        pw.SizedBox(height: 4),
-        pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          children: [
-            pw.Text('AutiLog — Confidential', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
-            pw.Text('Page ${ctx.pageNumber} of ${ctx.pagesCount}', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
-          ],
-        ),
-      ],
+  // ── Footer ───────────────────────────────────────────────────────────────────
+
+  static pw.Widget _footer(pw.Context ctx) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.fromLTRB(32, 8, 32, 12),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text('CONFIDENTIAL — For clinical use only', style: pw.TextStyle(fontSize: 8, color: _grey3)),
+          pw.Text('Page ${ctx.pageNumber} of ${ctx.pagesCount}', style: pw.TextStyle(fontSize: 8, color: _grey3)),
+        ],
+      ),
     );
   }
 
-  static pw.Widget _summarySection(
+  // ── Summary bar ──────────────────────────────────────────────────────────────
+
+  static pw.Widget _summaryBar(
     List<IncidentModel> incidents,
     List<PositiveMomentModel> moments,
   ) {
-    final topTrigger = _topTrigger(incidents);
     final avgSeverity = incidents.isEmpty
-        ? 0.0
-        : incidents.map((e) => e.behaviorSeverity).reduce((a, b) => a + b) /
-            incidents.length;
+        ? '--'
+        : (incidents.map((e) => e.behaviorSeverity).reduce((a, b) => a + b) /
+                incidents.length)
+            .toStringAsFixed(1);
+    final topTrigger = _topTrigger(incidents);
+    final workedCount = incidents.where((i) => i.didItWork).length;
 
     return pw.Container(
-      padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
-        color: PdfColor.fromHex('#FFF7ED'),
         borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
-        border: pw.Border.all(color: PdfColor.fromHex('#FDBA74'), width: 0.5),
+        border: pw.Border.all(color: _grey3, width: 0.5),
       ),
       child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
         children: [
-          _statBox('Total Incidents', '${incidents.length}'),
-          _statBox('Positive Moments', '${moments.length}'),
-          _statBox('Avg Severity', avgSeverity == 0 ? '--' : avgSeverity.toStringAsFixed(1)),
-          _statBox('Top Trigger', topTrigger),
+          _statCell('${incidents.length}', 'Incidents', _red, leftRounded: true),
+          _divider(),
+          _statCell('${moments.length}', 'Positive Moments', _teal),
+          _divider(),
+          _statCell(avgSeverity, 'Avg Severity', _orange),
+          _divider(),
+          _statCell('$workedCount/${incidents.length}', 'Strategy Worked', _blue),
+          _divider(),
+          _statCell(topTrigger, 'Top Trigger', _grey2, rightRounded: true),
         ],
       ),
     );
   }
 
-  static pw.Widget _statBox(String label, String value) {
-    return pw.Column(
+  static pw.Widget _divider() => pw.Container(width: 0.5, height: 56, color: _grey3);
+
+  static pw.Widget _statCell(
+    String value,
+    String label,
+    PdfColor color, {
+    bool leftRounded = false,
+    bool rightRounded = false,
+  }) {
+    return pw.Expanded(
+      child: pw.Container(
+        padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: pw.BoxDecoration(
+          color: _grey1,
+          borderRadius: pw.BorderRadius.only(
+            topLeft: leftRounded ? const pw.Radius.circular(8) : pw.Radius.zero,
+            bottomLeft: leftRounded ? const pw.Radius.circular(8) : pw.Radius.zero,
+            topRight: rightRounded ? const pw.Radius.circular(8) : pw.Radius.zero,
+            bottomRight: rightRounded ? const pw.Radius.circular(8) : pw.Radius.zero,
+          ),
+        ),
+        child: pw.Column(
+          children: [
+            pw.Text(
+              value,
+              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: color),
+              textAlign: pw.TextAlign.center,
+            ),
+            pw.SizedBox(height: 3),
+            pw.Text(
+              label,
+              style: pw.TextStyle(fontSize: 8, color: _grey2),
+              textAlign: pw.TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Section heading ───────────────────────────────────────────────────────────
+
+  static pw.Widget _sectionHeading(String title, PdfColor color, int count) {
+    return pw.Row(
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
       children: [
-        pw.Text(value, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-        pw.SizedBox(height: 2),
-        pw.Text(label, style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+        pw.Container(width: 4, height: 20, color: color,
+            decoration: const pw.BoxDecoration(borderRadius: pw.BorderRadius.all(pw.Radius.circular(2)))),
+        pw.SizedBox(width: 8),
+        pw.Text(
+          title,
+          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.SizedBox(width: 8),
+        pw.Container(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: pw.BoxDecoration(
+            color: color,
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
+          ),
+          child: pw.Text(
+            '$count',
+            style: pw.TextStyle(fontSize: 9, color: PdfColors.white, fontWeight: pw.FontWeight.bold),
+          ),
+        ),
       ],
     );
   }
 
-  static pw.Widget _sectionTitle(String title) {
-    return pw.Text(
-      title,
-      style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
-    );
-  }
+  // ── Incident card ─────────────────────────────────────────────────────────────
 
   static pw.Widget _incidentCard(IncidentModel i) {
-    final timeStr =
-        '${i.time.hour.toString().padLeft(2, '0')}:${i.time.minute.toString().padLeft(2, '0')}';
-    final duration = i.behaviorDuration.inMinutes > 0
-        ? '${i.behaviorDuration.inMinutes}m'
-        : '${i.behaviorDuration.inSeconds}s';
+    final timeStr = '${i.time.hour.toString().padLeft(2, '0')}:${i.time.minute.toString().padLeft(2, '0')}';
+    final duration = i.behaviorDuration.inSeconds == 0
+        ? 'Unknown duration'
+        : i.behaviorDuration.inMinutes > 0
+            ? '${i.behaviorDuration.inMinutes} min'
+            : '${i.behaviorDuration.inSeconds} sec';
 
     return pw.Container(
-      margin: const pw.EdgeInsets.only(bottom: 10),
-      padding: const pw.EdgeInsets.all(10),
+      margin: const pw.EdgeInsets.only(bottom: 12),
       decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.grey300),
         borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+        border: pw.Border.all(color: _grey3, width: 0.5),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Text(
-                _dateFmt.format(i.date),
-                style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
+          // Card header
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: const pw.BoxDecoration(
+              color: PdfColor(0.99, 0.95, 0.95),
+              borderRadius: pw.BorderRadius.only(
+                topLeft: pw.Radius.circular(6),
+                topRight: pw.Radius.circular(6),
               ),
-              pw.Text(
-                '$timeStr  ·  $duration  ·  Severity ${i.behaviorSeverity}/5',
-                style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
-              ),
-            ],
-          ),
-          pw.SizedBox(height: 6),
-          _abcRow('A', i.antecedentDescription, i.antecedentTriggers),
-          pw.SizedBox(height: 4),
-          _abcRow('B', i.behaviorDescription, i.behaviorTypes),
-          pw.SizedBox(height: 4),
-          _abcRow('C', i.consequenceDescription, i.strategies),
-          if (i.therapistFeedback?.comment != null) ...[
-            pw.SizedBox(height: 6),
-            pw.Text(
-              'Therapist note: ${i.therapistFeedback!.comment}',
-              style: pw.TextStyle(
-                  fontSize: 9,
-                  color: PdfColors.grey700,
-                  fontStyle: pw.FontStyle.italic),
             ),
-          ],
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Row(
+                  children: [
+                    pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: pw.BoxDecoration(
+                        color: _red,
+                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                      ),
+                      child: pw.Text('INCIDENT', style: pw.TextStyle(fontSize: 8, color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
+                    ),
+                    pw.SizedBox(width: 8),
+                    pw.Text(_dateFmt.format(i.date), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+                pw.Row(
+                  children: [
+                    pw.Text('$timeStr  |  $duration  |  ', style: pw.TextStyle(fontSize: 9, color: _grey2)),
+                    pw.Text('Severity: ${i.behaviorSeverity}/5', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _red)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // ABC body
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(12),
+            child: pw.Column(
+              children: [
+                _abcRow('A', 'Antecedent', i.antecedentDescription, i.antecedentTriggers, _blue),
+                pw.SizedBox(height: 8),
+                _abcRow('B', 'Behavior', i.behaviorDescription, i.behaviorTypes, _red),
+                pw.SizedBox(height: 8),
+                _abcRow('C', 'Consequence', i.consequenceDescription, i.strategies, _green),
+                if (i.therapistFeedback?.comment != null) ...[
+                  pw.SizedBox(height: 8),
+                  pw.Container(
+                    width: double.infinity,
+                    padding: const pw.EdgeInsets.all(8),
+                    decoration: pw.BoxDecoration(
+                      color: const PdfColor(0.95, 0.95, 1.0),
+                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                      border: pw.Border.all(color: _blue, width: 0.5),
+                    ),
+                    child: pw.Row(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text('Therapist Note:  ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _blue)),
+                        pw.Expanded(
+                          child: pw.Text(
+                            i.therapistFeedback!.comment,
+                            style: pw.TextStyle(fontSize: 9, color: _grey2, fontStyle: pw.FontStyle.italic),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
+
+  // ── Positive moment card ──────────────────────────────────────────────────────
 
   static pw.Widget _positiveMomentCard(PositiveMomentModel m) {
     return pw.Container(
-      margin: const pw.EdgeInsets.only(bottom: 10),
-      padding: const pw.EdgeInsets.all(10),
+      margin: const pw.EdgeInsets.only(bottom: 12),
       decoration: pw.BoxDecoration(
-        color: PdfColor.fromHex('#F0FDF4'),
-        border: pw.Border.all(color: PdfColor.fromHex('#86EFAC'), width: 0.5),
         borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+        border: pw.Border.all(color: _grey3, width: 0.5),
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Text(
-                _dateFmt.format(m.date),
-                style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: const pw.BoxDecoration(
+              color: PdfColor(0.93, 0.98, 0.95),
+              borderRadius: pw.BorderRadius.only(
+                topLeft: pw.Radius.circular(6),
+                topRight: pw.Radius.circular(6),
               ),
-              pw.Text(
-                '${m.setting}  ·  Rating ${m.positiveBehaviorRating}/5',
-                style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
-              ),
-            ],
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Row(
+                  children: [
+                    pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: pw.BoxDecoration(
+                        color: _teal,
+                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                      ),
+                      child: pw.Text('POSITIVE', style: pw.TextStyle(fontSize: 8, color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
+                    ),
+                    pw.SizedBox(width: 8),
+                    pw.Text(_dateFmt.format(m.date), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+                pw.Row(
+                  children: [
+                    pw.Text('${m.setting}  |  ', style: pw.TextStyle(fontSize: 9, color: _grey2)),
+                    pw.Text('Rating: ${m.positiveBehaviorRating}/5', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _teal)),
+                  ],
+                ),
+              ],
+            ),
           ),
-          pw.SizedBox(height: 6),
-          _abcRow('A', m.antecedentDescription, []),
-          pw.SizedBox(height: 4),
-          _abcRow('B', m.behaviorDescription, m.behaviorTypes),
-          pw.SizedBox(height: 4),
-          _abcRow('C', m.consequenceDescription, []),
+          pw.Padding(
+            padding: const pw.EdgeInsets.all(12),
+            child: pw.Column(
+              children: [
+                _abcRow('A', 'Antecedent', m.antecedentDescription, [], _blue),
+                pw.SizedBox(height: 8),
+                _abcRow('B', 'Behavior', m.behaviorDescription, m.behaviorTypes, _teal),
+                pw.SizedBox(height: 8),
+                _abcRow('C', 'Consequence', m.consequenceDescription, [], _green),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  static pw.Widget _abcRow(String label, String description, List<String> chips) {
+  // ── ABC row ───────────────────────────────────────────────────────────────────
+
+  static pw.Widget _abcRow(String letter, String fullLabel, String description, List<String> chips, PdfColor color) {
     return pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Container(
-          width: 18,
-          height: 18,
-          alignment: pw.Alignment.center,
-          decoration: pw.BoxDecoration(
-            color: label == 'A'
-                ? PdfColor.fromHex('#DBEAFE')
-                : label == 'B'
-                    ? PdfColor.fromHex('#FEE2E2')
-                    : PdfColor.fromHex('#DCFCE7'),
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-          ),
-          child: pw.Text(
-            label,
-            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
-          ),
+        pw.Column(
+          children: [
+            pw.Container(
+              width: 22,
+              height: 22,
+              alignment: pw.Alignment.center,
+              decoration: pw.BoxDecoration(
+                color: color,
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+              ),
+              child: pw.Text(letter, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+            ),
+          ],
         ),
-        pw.SizedBox(width: 6),
+        pw.SizedBox(width: 8),
         pw.Expanded(
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
+              pw.Text(fullLabel, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: color)),
+              pw.SizedBox(height: 2),
               if (description.isNotEmpty)
-                pw.Text(description, style: const pw.TextStyle(fontSize: 10)),
+                pw.Text(description, style: pw.TextStyle(fontSize: 10, color: PdfColors.black)),
               if (chips.isNotEmpty)
-                pw.Text(
-                  chips.join(' · '),
-                  style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(top: 3),
+                  child: pw.Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: chips.map((c) => pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: pw.BoxDecoration(
+                        color: PdfColor(color.red * 0.15 + 0.85, color.green * 0.15 + 0.85, color.blue * 0.15 + 0.85),
+                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
+                        border: pw.Border.all(color: color, width: 0.5),
+                      ),
+                      child: pw.Text(c, style: pw.TextStyle(fontSize: 8, color: color, fontWeight: pw.FontWeight.bold)),
+                    )).toList(),
+                  ),
                 ),
             ],
           ),
