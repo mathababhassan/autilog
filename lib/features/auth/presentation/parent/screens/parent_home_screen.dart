@@ -9,6 +9,8 @@ import '../../../../../shared/widgets/notification_bell.dart';
 import '../../../../../features/incident_log/presentation/widgets/log_type_sheet.dart';
 import '../../../../../features/ai_insights/presentation/widgets/ai_insights_preview.dart';
 import '../../../../../features/log_history/presentation/screens/log_history_screen.dart';
+import '../../../../../features/sessions/data/session_repository.dart';
+import '../../../../../shared/models/session_model.dart';
 
 class ParentHomeScreen extends StatefulWidget {
   const ParentHomeScreen({super.key});
@@ -90,6 +92,38 @@ class _DashboardTab extends StatefulWidget {
 
 class _DashboardTabState extends State<_DashboardTab> {
   String? _selectedChildId;
+
+  Future<SessionModel?> _fetchNextSession(String childId) async {
+    try {
+      final now = DateTime.now();
+      final sessions = await SessionRepository().fetchSessionsForChild(childId);
+      final upcoming = sessions
+          .where((s) => s.status == 'upcoming' && s.scheduledAt.isAfter(now))
+          .toList()
+        ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+      return upcoming.isEmpty ? null : upcoming.first;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _weekday(DateTime d) {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return days[d.weekday - 1];
+  }
+
+  String _month(DateTime d) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[d.month - 1];
+  }
+
+  String _formatTime(DateTime d) {
+    final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final m = d.minute.toString().padLeft(2, '0');
+    final period = d.hour < 12 ? 'AM' : 'PM';
+    return '$h:$m $period';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -525,20 +559,37 @@ class _DashboardTabState extends State<_DashboardTab> {
                     snap.hasData ? snap.data!.docs.length : 0;
                 return _SummaryCard(
                   title: 'Logs This Week',
-                  value: '$count / 7',
+                  value: '$count',
                   subtitle: count >= 7
                       ? 'Full week logged ✓'
-                      : 'days logged',
+                      : 'days logged this week',
                 );
               },
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: _SummaryCard(
-              title: 'Upcoming Session',
-              value: 'Thu 12 Jun',
-              subtitle: '2:00 PM',
+            child: FutureBuilder<SessionModel?>(
+              future: _fetchNextSession(childId),
+              builder: (context, snap) {
+                if (!snap.hasData) {
+                  return _SummaryCard(
+                    title: 'Upcoming Session',
+                    value: '—',
+                    subtitle: snap.connectionState == ConnectionState.waiting
+                        ? 'Loading...'
+                        : 'No sessions scheduled',
+                  );
+                }
+                final s = snap.data!;
+                final dateStr = '${_weekday(s.scheduledAt)} ${s.scheduledAt.day} ${_month(s.scheduledAt)}';
+                final timeStr = _formatTime(s.scheduledAt);
+                return _SummaryCard(
+                  title: 'Upcoming Session',
+                  value: dateStr,
+                  subtitle: timeStr,
+                );
+              },
             ),
           ),
         ],
@@ -551,15 +602,6 @@ class _DashboardTabState extends State<_DashboardTab> {
     final base = db.collection('parents').doc(uid).collection('children').doc(childId);
     final dateFormat = DateFormat('EEE d MMM');
 
-    Stream<List<Map<String, dynamic>>> activityStream() async* {
-      await for (final _ in Stream.periodic(const Duration(seconds: 0), (i) => i).take(1)
-          .asyncExpand((_) => base.collection('dailySummaries')
-              .orderBy('createdAt', descending: true)
-              .limit(3)
-              .snapshots())) {
-        yield [];
-      }
-    }
 
     // Stream that merges the 3 subcollections and re-emits on any change
     final summariesStream = base.collection('dailySummaries')

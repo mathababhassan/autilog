@@ -13,6 +13,7 @@ import '../../bloc/positive_moment_detail_state.dart';
 import '../../data/positive_moment_repository.dart';
 import '../../positive_moment_route_args.dart';
 import '../../../../core/constants/routes.dart';
+import '../../../../shared/widgets/therapist_comments_section.dart';
 
 // ─── Args ─────────────────────────────────────────────────────
 
@@ -144,6 +145,8 @@ class _PositiveMomentDetailViewState extends State<_PositiveMomentDetailView> {
     return _LoadedBody(
       moment: loaded.moment,
       childName: loaded.childName,
+      childId: widget.args.childId,
+      parentId: widget.args.parentId ?? FirebaseAuth.instance.currentUser?.uid ?? '',
       showTherapistSection: loaded.linkedTherapistId != null,
       isDeleting:
           loaded.actionStatus == PositiveMomentDetailActionStatus.deleting,
@@ -295,6 +298,8 @@ class _LoadedBody extends StatelessWidget {
   const _LoadedBody({
     required this.moment,
     required this.childName,
+    required this.childId,
+    required this.parentId,
     required this.showTherapistSection,
     required this.isDeleting,
     required this.onDelete,
@@ -303,6 +308,8 @@ class _LoadedBody extends StatelessWidget {
 
   final PositiveMomentModel moment;
   final String childName;
+  final String childId;
+  final String parentId;
   final bool showTherapistSection;
   final bool isDeleting;
   final VoidCallback onDelete;
@@ -397,14 +404,16 @@ class _LoadedBody extends StatelessWidget {
             _VideoCard(videoUrl: moment.videoUrl!),
           ],
 
-          if (showTherapistSection) ...[
-            const SizedBox(height: AppSpacing.lg),
-            _TherapistFeedbackCard(feedback: moment.therapistFeedback),
-          ],
+          const SizedBox(height: AppSpacing.lg),
+          TherapistCommentsSection(
+            parentId: parentId,
+            childId: childId,
+            logCollection: 'positiveMoments',
+            logId: moment.id,
+          ),
 
           const SizedBox(height: AppSpacing.lg),
           _LogFooter(updatedAt: moment.updatedAt),
-          const SizedBox(height: AppSpacing.lg),
 
           _ActionButtons(
             isDeleting: isDeleting,

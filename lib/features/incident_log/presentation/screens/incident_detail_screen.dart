@@ -13,6 +13,7 @@ import '../../bloc/incident_detail_bloc.dart';
 import '../../bloc/incident_detail_event.dart';
 import '../../bloc/incident_detail_state.dart';
 import '../../data/incident_repository.dart';
+import '../../../../shared/widgets/therapist_comments_section.dart';
 
 // ─── Args ─────────────────────────────────────────────────────
 
@@ -372,13 +373,16 @@ class _LoadedBody extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
           ],
 
-          if (child.linkedTherapistId != null) ...[
-            _TherapistFeedbackCard(feedback: incident.therapistFeedback),
-            const SizedBox(height: AppSpacing.lg),
-          ],
+          TherapistCommentsSection(
+            parentId: child.parentId,
+            childId: child.childId,
+            logCollection: 'incidents',
+            logId: incident.id,
+          ),
+          const SizedBox(height: AppSpacing.lg),
 
           _LogFooter(updatedAt: incident.updatedAt),
-          const SizedBox(height: AppSpacing.lg),
+          
           if (isLocked) ...[
             const LockedStateBadge(),
             const SizedBox(height: AppSpacing.lg),

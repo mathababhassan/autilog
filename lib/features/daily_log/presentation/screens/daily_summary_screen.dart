@@ -100,6 +100,8 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
   bool? _tookMedication;
   final _notesController = TextEditingController();
   String? _therapistName;
+  bool _checkingExisting = true;
+  bool _alreadyLogged = false;
 
   // Dynamic questions
   List<_DynamicQuestion> _dynamicQuestions = [];
@@ -109,6 +111,7 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
   @override
   void initState() {
     super.initState();
+    _checkAlreadyLogged();
     _fetchTherapistName();
     _fetchTrackingQuestions();
   }
@@ -118,6 +121,34 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
     _screenTimeController.dispose();
     _notesController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkAlreadyLogged() async {
+    try {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+
+      final snap = await FirebaseFirestore.instance
+          .collection('parents')
+          .doc(widget.parentId)
+          .collection('children')
+          .doc(widget.childId)
+          .collection('dailySummaries')
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where('date', isLessThan: Timestamp.fromDate(endOfDay))
+          .limit(1)
+          .get();
+
+      if (mounted) {
+        setState(() {
+          _alreadyLogged = snap.docs.isNotEmpty;
+          _checkingExisting = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _checkingExisting = false);
+    }
   }
 
   Future<void> _fetchTrackingQuestions() async {
@@ -342,6 +373,73 @@ class _DailySummaryViewState extends State<_DailySummaryView> {
     final today = DateTime.now();
     final formattedDate = DateFormat('EEEE, d MMMM').format(today);
     final topPadding = MediaQuery.of(context).padding.top;
+
+    if (_checkingExisting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          );
+        }
+
+        if (_alreadyLogged) {
+          return Scaffold(
+            backgroundColor: const Color(0xFFF9F9F9),
+            body: SafeArea(
+              child: Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + 16, 24, 24),
+                    color: AppColors.primary,
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => context.canPop() ? context.pop() : context.go(Routes.parentHome),
+                          child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text('Daily Summary', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  const Icon(Icons.check_circle_outline_rounded, size: 72, color: AppColors.primary),
+                  const SizedBox(height: 20),
+                  Text(
+                    "Already logged today!",
+                    style: AppTextStyles.heading1.copyWith(color: AppColors.textMain),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: Text(
+                      "You've already submitted ${widget.childName}'s daily summary for today. Come back tomorrow!",
+                      style: AppTextStyles.body.copyWith(color: AppColors.textSubtle),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () => context.canPop() ? context.pop() : context.go(Routes.parentHome),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          elevation: 0,
+                        ),
+                        child: const Text('Back to Home', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                ],
+              ),
+            ),
+          );
+        }
 
     return BlocConsumer<DailySummaryBloc, DailySummaryState>(
       listener: (context, state) {

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../../core/constants/routes.dart';
 import '../../../../../core/theme/theme.dart';
 import '../../../../../shared/models/daily_summary_model.dart';
+import '../../../../../shared/widgets/therapist_comments_section.dart';
 
 class DailySummaryDetailScreen extends StatefulWidget {
   final String summaryId;
@@ -295,39 +296,14 @@ class _DailySummaryDetailScreenState extends State<DailySummaryDetailScreen> {
               _Divider(),
             ],
 
-            // Therapist comment
-            if (s.therapistComments != null && s.therapistComments!.isNotEmpty) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.secondary20,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 16,
-                          backgroundColor: AppColors.secondary,
-                          child: Text(
-                            _therapistName?.isNotEmpty == true ? _therapistName![0].toUpperCase() : 'T',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(_therapistName ?? 'Therapist', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(s.therapistComments!, style: AppTextStyles.body),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
+            // Therapist comments (subcollection)
+            TherapistCommentsSection(
+              parentId: widget.parentId,
+              childId: widget.childId,
+              logCollection: 'dailySummaries',
+              logId: widget.summaryId,
+            ),
+            const SizedBox(height: 16),
 
             // Notes
             if (s.notes != null && s.notes!.isNotEmpty) ...[

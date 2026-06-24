@@ -14,6 +14,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../shared/models/child_model.dart';
 import '../../../incident_log/presentation/screens/incident_detail_screen.dart';
 import '../../../positive_moment/presentation/screens/positive_moment_detail_screen.dart';
+import '../../../patients/presentation/therapist/screens/log_review_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry points — one for each role, both delegate to _NotificationsView
@@ -90,11 +91,13 @@ class _NotificationsViewState extends State<_NotificationsView> {
 
     switch (n.targetType) {
       case NotificationTargetType.session:
+        if (n.targetId?.isNotEmpty == true) {
+          context.push(Routes.sessionDetail, extra: n.targetId);
+        }
       case NotificationTargetType.appointment:
         if (n.targetId?.isNotEmpty == true) {
           context.push(Routes.sessionDetail, extra: n.targetId);
         }
-
       case NotificationTargetType.log:
         if (childId.isEmpty || logId.isEmpty) return;
 
@@ -114,36 +117,44 @@ class _NotificationsViewState extends State<_NotificationsView> {
         if (!mounted) return;
 
         final kind = n.rawTargetKind ?? '';
-        if (kind == 'incident') {
-          final child = ChildModel(
-            childId: childId,
-            parentId: parentId,
-            name: childName,
-            dateOfBirth: DateTime(2000),
-            diagnosisType: '',
-            severityLevel: 1,
-          );
-          context.push(Routes.incidentDetail,
-              extra: IncidentDetailArgs(incidentId: logId, child: child));
-        } else if (kind == 'dailySummary') {
-          context.push(Routes.dailySummaryDetail, extra: {
-            'summaryId': logId,
-            'parentId': parentId,
-            'childId': childId,
-            'childName': childName,
-          });
-        } else if (kind == 'positiveMoment') {
-          context.push(Routes.positiveMomentDetail,
-              extra: PositiveMomentDetailArgs(
-                momentId: logId,
-                childId: childId,
-                childName: childName,
-                parentId: parentId,
-              ));
-        } else {
-          context.push(Routes.logHistory, extra: childId);
-        }
 
+        if (widget.isTherapist) {
+          context.push(Routes.logReview, extra: LogReviewArgs(
+            parentId: parentId,
+            childId: childId,
+            childName: childName,
+            initialTab: kind == 'incident' ? 1 : 0,
+          ));
+        } else {
+          if (kind == 'incident') {
+            final child = ChildModel(
+              childId: childId,
+              parentId: parentId,
+              name: childName,
+              diagnosisType: '',
+              severityLevel: 1,
+            );
+            context.push(Routes.incidentDetail,
+                extra: IncidentDetailArgs(incidentId: logId, child: child));
+          } else if (kind == 'dailySummary') {
+            context.push(Routes.dailySummaryDetail, extra: {
+              'summaryId': logId,
+              'parentId': parentId,
+              'childId': childId,
+              'childName': childName,
+            });
+          } else if (kind == 'positiveMoment') {
+            context.push(Routes.positiveMomentDetail,
+                extra: PositiveMomentDetailArgs(
+                  momentId: logId,
+                  childId: childId,
+                  childName: childName,
+                  parentId: parentId,
+                ));
+          } else {
+            context.push(Routes.logHistory, extra: childId);
+          }
+        }
       case NotificationTargetType.unknown:
         break;
     }
