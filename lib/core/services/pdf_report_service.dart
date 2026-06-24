@@ -19,17 +19,15 @@ class PatientReportData {
 }
 
 class PdfReportService {
-  static final _dateFmt = DateFormat('d MMM yyyy');
+  static final _dateFmt  = DateFormat('d MMM yyyy');
+  // Minimal palette — one accent, rest greyscale
+  static const _accent   = PdfColor(0.976, 0.451, 0.086); // brand orange
+  static const _ink      = PdfColor(0.15, 0.15, 0.15);    // near-black body text
+  static const _muted    = PdfColor(0.45, 0.45, 0.45);    // captions
+  static const _rule     = PdfColor(0.82, 0.82, 0.82);    // divider lines
+  static const _rowAlt   = PdfColor(0.97, 0.97, 0.97);    // table alt row
 
-  // Brand colours
-  static const _orange = PdfColor(0.976, 0.451, 0.086);
-  static const _teal   = PdfColor(0.059, 0.631, 0.580);
-  static const _red    = PdfColor(0.937, 0.267, 0.267);
-  static const _blue   = PdfColor(0.231, 0.510, 0.965);
-  static const _green  = PdfColor(0.133, 0.773, 0.369);
-  static const _grey1  = PdfColor(0.96, 0.96, 0.96);
-  static const _grey2  = PdfColor(0.4, 0.4, 0.4);
-  static const _grey3  = PdfColor(0.7, 0.7, 0.7);
+  // ── Per-patient report ───────────────────────────────────────────────────────
 
   static Future<void> exportReport({
     required String childName,
@@ -44,38 +42,52 @@ class PdfReportService {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         maxPages: 200,
-        margin: pw.EdgeInsets.zero,
-        header: (ctx) => _header(ctx, childName, from, to),
-        footer: (ctx) => _footer(ctx),
+        margin: const pw.EdgeInsets.symmetric(horizontal: 48, vertical: 36),
+        header: (ctx) => _pageHeader(ctx, 'Behavioural Progress Report', childName, from, to),
+        footer: (ctx) => _pageFooter(ctx),
         build: (ctx) {
-          pw.Widget pad(pw.Widget w) =>
-              pw.Padding(padding: const pw.EdgeInsets.symmetric(horizontal: 32), child: w);
-
           final items = <pw.Widget>[
-            pw.SizedBox(height: 20),
-            pad(_summaryBar(incidents, positiveMoments)),
-            pw.SizedBox(height: 28),
+            pw.SizedBox(height: 16),
+            _statsRow([
+              _Stat('${incidents.length}', 'Incidents logged'),
+              _Stat('${positiveMoments.length}', 'Positive moments'),
+              _Stat(_avgSeverity(incidents), 'Avg severity (1–5)'),
+              _Stat(_topTrigger(incidents), 'Most common trigger'),
+            ]),
+            pw.SizedBox(height: 24),
           ];
+
           if (incidents.isNotEmpty) {
-            items.add(pad(_sectionHeading('Behavioral Incidents', _red, incidents.length)));
-            items.add(pw.SizedBox(height: 10));
-            for (final inc in incidents) items.add(pad(_incidentCard(inc)));
-            items.add(pw.SizedBox(height: 28));
+            items.add(_sectionTitle('Behavioural Incidents'));
+            items.add(pw.SizedBox(height: 8));
+            items.add(_incidentTableHeader());
+            bool alt = false;
+            for (final inc in incidents) {
+              items.add(_incidentTableRow(inc, alt));
+              alt = !alt;
+            }
+            items.add(pw.SizedBox(height: 8));
+            items.add(_dividerLine());
+            items.add(pw.SizedBox(height: 20));
           }
+
           if (positiveMoments.isNotEmpty) {
-            items.add(pad(_sectionHeading('Positive Moments', _teal, positiveMoments.length)));
-            items.add(pw.SizedBox(height: 10));
-            for (final m in positiveMoments) items.add(pad(_positiveMomentCard(m)));
+            items.add(_sectionTitle('Positive Moments'));
+            items.add(pw.SizedBox(height: 8));
+            items.add(_momentTableHeader());
+            bool alt = false;
+            for (final m in positiveMoments) {
+              items.add(_momentTableRow(m, alt));
+              alt = !alt;
+            }
+            items.add(pw.SizedBox(height: 8));
+            items.add(_dividerLine());
           }
+
           if (incidents.isEmpty && positiveMoments.isEmpty) {
-            items.add(pad(pw.Center(
-              child: pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(vertical: 40),
-                child: pw.Text('No logs found for this period.', style: pw.TextStyle(color: _grey2, fontSize: 12)),
-              ),
-            )));
+            items.add(_emptyNote('No log entries found for this period.'));
           }
-          items.add(pw.SizedBox(height: 32));
+
           return items;
         },
       ),
@@ -102,52 +114,85 @@ class PdfReportService {
   }) async {
     final pdf = pw.Document();
     final totalMoments = patients.fold<int>(0, (s, p) => s + p.positiveMoments.length);
+    final activePatients = patients.where((p) => p.incidents.isNotEmpty || p.positiveMoments.isNotEmpty).toList();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         maxPages: 200,
-        margin: pw.EdgeInsets.zero,
-        header: (ctx) => _practiceHeader(ctx, from, to),
-        footer: (ctx) => _footer(ctx),
+        margin: const pw.EdgeInsets.symmetric(horizontal: 48, vertical: 36),
+        header: (ctx) => _pageHeader(ctx, 'Practice Progress Report', 'All Patients', from, to),
+        footer: (ctx) => _pageFooter(ctx),
         build: (ctx) {
-          pw.Widget pad(pw.Widget w) =>
-              pw.Padding(padding: const pw.EdgeInsets.symmetric(horizontal: 32), child: w);
-
           final items = <pw.Widget>[
-            pw.SizedBox(height: 20),
-            pad(_summaryBar2(totalIncidents, totalMoments, avgSleep, topTrigger)),
-            pw.SizedBox(height: 20),
-            if (aiSummary.isNotEmpty) ...[
-              pad(_practiceAISection(aiSummary, aiFocus)),
-              pw.SizedBox(height: 20),
-            ],
-            if (triggerCounts.isNotEmpty) ...[
-              pad(_sectionHeading('Top Triggers', _orange, triggerCounts.length)),
-              pw.SizedBox(height: 10),
-              pad(_triggerTable(triggerCounts)),
-              pw.SizedBox(height: 24),
-            ],
+            pw.SizedBox(height: 16),
+            _statsRow([
+              _Stat('$totalIncidents', 'Total incidents'),
+              _Stat('$totalMoments', 'Positive moments'),
+              _Stat(avgSleep > 0 ? avgSleep.toStringAsFixed(1) : '--', 'Avg sleep (hrs)'),
+              _Stat(topTrigger.isEmpty ? '--' : topTrigger, 'Top trigger'),
+            ]),
+            pw.SizedBox(height: 24),
           ];
 
-          for (final p in patients.where((p) => p.incidents.isNotEmpty || p.positiveMoments.isNotEmpty)) {
-            items.add(pad(_patientDivider(p.childName, p.incidents.length, p.positiveMoments.length)));
-            items.add(pw.SizedBox(height: 10));
-            if (p.incidents.isNotEmpty) {
-              items.add(pad(_sectionHeading('Behavioral Incidents', _red, p.incidents.length)));
-              items.add(pw.SizedBox(height: 8));
-              for (final inc in p.incidents) items.add(pad(_incidentCard(inc)));
-              items.add(pw.SizedBox(height: 16));
+          if (aiSummary.isNotEmpty) {
+            items.add(_sectionTitle('AI Practice Summary'));
+            items.add(pw.SizedBox(height: 8));
+            items.add(_textBlock(aiSummary));
+            if (aiFocus.isNotEmpty) {
+              items.add(pw.SizedBox(height: 6));
+              items.add(_labeledLine('Recommended focus', aiFocus));
             }
-            if (p.positiveMoments.isNotEmpty) {
-              items.add(pad(_sectionHeading('Positive Moments', _teal, p.positiveMoments.length)));
-              items.add(pw.SizedBox(height: 8));
-              for (final m in p.positiveMoments) items.add(pad(_positiveMomentCard(m)));
-              items.add(pw.SizedBox(height: 24));
-            }
+            items.add(pw.SizedBox(height: 20));
+            items.add(_dividerLine());
+            items.add(pw.SizedBox(height: 20));
           }
 
-          items.add(pw.SizedBox(height: 32));
+          if (triggerCounts.isNotEmpty) {
+            items.add(_sectionTitle('Trigger Frequency'));
+            items.add(pw.SizedBox(height: 8));
+            items.add(_triggerTable(triggerCounts));
+            items.add(pw.SizedBox(height: 20));
+            items.add(_dividerLine());
+            items.add(pw.SizedBox(height: 20));
+          }
+
+          for (final p in activePatients) {
+            items.add(_patientSectionHeader(p.childName, p.incidents.length, p.positiveMoments.length));
+            items.add(pw.SizedBox(height: 10));
+
+            if (p.incidents.isNotEmpty) {
+              items.add(_subsectionTitle('Behavioural Incidents'));
+              items.add(pw.SizedBox(height: 6));
+              items.add(_incidentTableHeader());
+              bool alt = false;
+              for (final inc in p.incidents) {
+                items.add(_incidentTableRow(inc, alt));
+                alt = !alt;
+              }
+              items.add(pw.SizedBox(height: 10));
+            }
+
+            if (p.positiveMoments.isNotEmpty) {
+              items.add(_subsectionTitle('Positive Moments'));
+              items.add(pw.SizedBox(height: 6));
+              items.add(_momentTableHeader());
+              bool alt = false;
+              for (final m in p.positiveMoments) {
+                items.add(_momentTableRow(m, alt));
+                alt = !alt;
+              }
+              items.add(pw.SizedBox(height: 10));
+            }
+
+            items.add(_dividerLine());
+            items.add(pw.SizedBox(height: 20));
+          }
+
+          if (activePatients.isEmpty) {
+            items.add(_emptyNote('No log entries found for any patient in this period.'));
+          }
+
           return items;
         },
       ),
@@ -159,574 +204,338 @@ class PdfReportService {
     );
   }
 
-  static pw.Widget _practiceHeader(pw.Context ctx, DateTime from, DateTime to) {
-    final isFirstPage = ctx.pageNumber == 1;
+  // ── Page chrome ───────────────────────────────────────────────────────────────
+
+  static pw.Widget _pageHeader(pw.Context ctx, String reportType, String subject, DateTime from, DateTime to) {
+    final isFirst = ctx.pageNumber == 1;
+    if (isFirst) {
+      return pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              pw.Text('AutiLog', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: _accent)),
+              pw.Text('CONFIDENTIAL', style: pw.TextStyle(fontSize: 8, color: _muted, letterSpacing: 1.2)),
+            ],
+          ),
+          pw.SizedBox(height: 4),
+          pw.Container(width: double.infinity, height: 1, color: _accent),
+          pw.SizedBox(height: 8),
+          pw.Text(reportType, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: _ink)),
+          pw.SizedBox(height: 2),
+          pw.Row(
+            children: [
+              pw.Text(subject, style: pw.TextStyle(fontSize: 11, color: _muted)),
+              pw.Text('   ·   ', style: pw.TextStyle(color: _rule)),
+              pw.Text('${_dateFmt.format(from)} – ${_dateFmt.format(to)}', style: pw.TextStyle(fontSize: 11, color: _muted)),
+              pw.Spacer(),
+              pw.Text('Generated ${_dateFmt.format(DateTime.now())}', style: pw.TextStyle(fontSize: 9, color: _muted)),
+            ],
+          ),
+          pw.SizedBox(height: 12),
+          pw.Container(width: double.infinity, height: 0.5, color: _rule),
+        ],
+      );
+    }
+    // Continuation pages — compact
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Container(
-          width: double.infinity,
-          color: _orange,
-          padding: const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-          child: pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Text('AutiLog', style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
-              pw.Text('Practice Progress Report', style: pw.TextStyle(fontSize: 11, color: PdfColors.white)),
-            ],
-          ),
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text('AutiLog  ·  $reportType', style: pw.TextStyle(fontSize: 9, color: _muted)),
+            pw.Text('$subject  ·  ${_dateFmt.format(from)} – ${_dateFmt.format(to)}', style: pw.TextStyle(fontSize: 9, color: _muted)),
+          ],
         ),
-        if (isFirstPage)
-          pw.Container(
-            width: double.infinity,
-            color: const PdfColor(0.996, 0.937, 0.914),
-            padding: const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 10),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text(
-                  'Period: ${_dateFmt.format(from)} to ${_dateFmt.format(to)}',
-                  style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
-                ),
-                pw.Text('Generated: ${_dateFmt.format(DateTime.now())}', style: pw.TextStyle(fontSize: 10, color: _grey2)),
-              ],
-            ),
-          )
-        else
-          pw.Container(
-            width: double.infinity,
-            color: const PdfColor(0.996, 0.937, 0.914),
-            padding: const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 6),
-            child: pw.Text(
-              '${_dateFmt.format(from)} to ${_dateFmt.format(to)}',
-              style: pw.TextStyle(fontSize: 9, color: _grey2),
-            ),
-          ),
-        pw.SizedBox(height: 2),
+        pw.SizedBox(height: 4),
+        pw.Container(width: double.infinity, height: 0.5, color: _rule),
+        pw.SizedBox(height: 12),
       ],
     );
   }
 
-  static pw.Widget _summaryBar2(int incidents, int moments, double avgSleep, String topTrigger) {
-    return pw.Container(
-      decoration: pw.BoxDecoration(
-        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
-        border: pw.Border.all(color: _grey3, width: 0.5),
-      ),
-      child: pw.Row(
-        children: [
-          _statCell('$incidents', 'Total Incidents', _red, leftRounded: true),
-          _divider(),
-          _statCell('$moments', 'Positive Moments', _teal),
-          _divider(),
-          _statCell(avgSleep > 0 ? avgSleep.toStringAsFixed(1) : '--', 'Avg Sleep', _blue),
-          _divider(),
-          _statCell(topTrigger, 'Top Trigger', _orange, rightRounded: true),
-        ],
-      ),
+  static pw.Widget _pageFooter(pw.Context ctx) {
+    return pw.Column(
+      children: [
+        pw.Container(width: double.infinity, height: 0.5, color: _rule),
+        pw.SizedBox(height: 6),
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text('For clinical use only. Not for distribution.', style: pw.TextStyle(fontSize: 8, color: _muted)),
+            pw.Text('Page ${ctx.pageNumber} of ${ctx.pagesCount}', style: pw.TextStyle(fontSize: 8, color: _muted)),
+          ],
+        ),
+      ],
     );
   }
 
-  static pw.Widget _practiceAISection(String summary, String focus) {
+  // ── Layout primitives ─────────────────────────────────────────────────────────
+
+  static pw.Widget _statsRow(List<_Stat> stats) {
     return pw.Container(
-      padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
-        color: const PdfColor(0.90, 0.96, 0.96),
-        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
-        border: pw.Border.all(color: _teal, width: 0.5),
+        border: pw.Border.all(color: _rule, width: 0.5),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
       ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Text('AI Practice Summary', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: _teal)),
-          pw.SizedBox(height: 6),
-          pw.Text(summary, style: pw.TextStyle(fontSize: 10, color: PdfColors.black, lineSpacing: 3)),
-          if (focus.isNotEmpty) ...[
-            pw.SizedBox(height: 8),
-            pw.Container(
-              padding: const pw.EdgeInsets.all(8),
+      child: pw.Row(
+        children: stats.asMap().entries.map((e) {
+          final isLast = e.key == stats.length - 1;
+          return pw.Expanded(
+            child: pw.Container(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: pw.BoxDecoration(
-                color: PdfColors.white,
-                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                border: isLast ? null : pw.Border(right: pw.BorderSide(color: _rule, width: 0.5)),
               ),
-              child: pw.Row(
+              child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text('Focus Area:  ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _orange)),
-                  pw.Expanded(child: pw.Text(focus, style: pw.TextStyle(fontSize: 9, color: _grey2))),
+                  pw.Text(e.value.value, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: _ink)),
+                  pw.SizedBox(height: 2),
+                  pw.Text(e.value.label, style: pw.TextStyle(fontSize: 8, color: _muted)),
                 ],
               ),
             ),
-          ],
-        ],
+          );
+        }).toList(),
       ),
     );
   }
 
-  static pw.Widget _triggerTable(Map<String, int> triggerCounts) {
-    final sorted = triggerCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    final top = sorted.take(6).toList();
-    final maxVal = top.isEmpty ? 1 : top.first.value;
-    return pw.Column(
-      children: top.map((e) {
-        final fraction = maxVal == 0 ? 0.0 : e.value / maxVal;
-        return pw.Padding(
-          padding: const pw.EdgeInsets.only(bottom: 6),
-          child: pw.Row(
-            children: [
-              pw.SizedBox(width: 110, child: pw.Text(e.key, style: pw.TextStyle(fontSize: 9))),
-              pw.SizedBox(width: 8),
-              pw.Expanded(
-                child: pw.LayoutBuilder(
-                  builder: (ctx, constraints) => pw.Stack(
-                    children: [
-                      pw.Container(height: 14, decoration: pw.BoxDecoration(color: _grey1, borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)))),
-                      pw.Container(
-                        width: (constraints?.maxWidth ?? 200) * fraction,
-                        height: 14,
-                        decoration: pw.BoxDecoration(color: _orange, borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4))),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              pw.SizedBox(width: 8),
-              pw.Text('${e.value}', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  static pw.Widget _patientDivider(String name, int incidents, int moments) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: pw.BoxDecoration(
-        color: const PdfColor(0.95, 0.95, 0.95),
-        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
-      ),
-      child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-        children: [
-          pw.Text(name, style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
-          pw.Text('$incidents incidents  |  $moments positive moments', style: pw.TextStyle(fontSize: 9, color: _grey2)),
-        ],
-      ),
-    );
-  }
-
-  // ── Header ───────────────────────────────────────────────────────────────────
-
-  static pw.Widget _header(pw.Context ctx, String childName, DateTime from, DateTime to) {
-    final isFirstPage = ctx.pageNumber == 1;
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        // Orange top strip
-        pw.Container(
-          width: double.infinity,
-          color: _orange,
-          padding: const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-          child: pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            children: [
-              pw.Text(
-                'AutiLog',
-                style: pw.TextStyle(
-                  fontSize: 22,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.white,
-                ),
-              ),
-              pw.Text(
-                'Behavioural Progress Report',
-                style: pw.TextStyle(fontSize: 11, color: PdfColors.white),
-              ),
-            ],
-          ),
-        ),
-        if (isFirstPage) ...[
-          pw.Container(
-            width: double.infinity,
-            color: const PdfColor(0.996, 0.937, 0.914),
-            padding: const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 10),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      childName,
-                      style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold),
-                    ),
-                    pw.SizedBox(height: 2),
-                    pw.Text(
-                      'Period: ${_dateFmt.format(from)} to ${_dateFmt.format(to)}',
-                      style: pw.TextStyle(fontSize: 10, color: _grey2),
-                    ),
-                  ],
-                ),
-                pw.Text(
-                  'Generated: ${_dateFmt.format(DateTime.now())}',
-                  style: pw.TextStyle(fontSize: 10, color: _grey2),
-                ),
-              ],
-            ),
-          ),
-        ] else ...[
-          pw.Container(
-            width: double.infinity,
-            color: const PdfColor(0.996, 0.937, 0.914),
-            padding: const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 6),
-            child: pw.Text(
-              '$childName  |  ${_dateFmt.format(from)} to ${_dateFmt.format(to)}',
-              style: pw.TextStyle(fontSize: 9, color: _grey2),
-            ),
-          ),
-        ],
-        pw.SizedBox(height: 2),
-      ],
-    );
-  }
-
-  // ── Footer ───────────────────────────────────────────────────────────────────
-
-  static pw.Widget _footer(pw.Context ctx) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.fromLTRB(32, 8, 32, 12),
-      child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-        children: [
-          pw.Text('CONFIDENTIAL — For clinical use only', style: pw.TextStyle(fontSize: 8, color: _grey3)),
-          pw.Text('Page ${ctx.pageNumber} of ${ctx.pagesCount}', style: pw.TextStyle(fontSize: 8, color: _grey3)),
-        ],
-      ),
-    );
-  }
-
-  // ── Summary bar ──────────────────────────────────────────────────────────────
-
-  static pw.Widget _summaryBar(
-    List<IncidentModel> incidents,
-    List<PositiveMomentModel> moments,
-  ) {
-    final avgSeverity = incidents.isEmpty
-        ? '--'
-        : (incidents.map((e) => e.behaviorSeverity).reduce((a, b) => a + b) /
-                incidents.length)
-            .toStringAsFixed(1);
-    final topTrigger = _topTrigger(incidents);
-    final workedCount = incidents.where((i) => i.didItWork).length;
-
-    return pw.Container(
-      decoration: pw.BoxDecoration(
-        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
-        border: pw.Border.all(color: _grey3, width: 0.5),
-      ),
-      child: pw.Row(
-        children: [
-          _statCell('${incidents.length}', 'Incidents', _red, leftRounded: true),
-          _divider(),
-          _statCell('${moments.length}', 'Positive Moments', _teal),
-          _divider(),
-          _statCell(avgSeverity, 'Avg Severity', _orange),
-          _divider(),
-          _statCell('$workedCount/${incidents.length}', 'Strategy Worked', _blue),
-          _divider(),
-          _statCell(topTrigger, 'Top Trigger', _grey2, rightRounded: true),
-        ],
-      ),
-    );
-  }
-
-  static pw.Widget _divider() => pw.Container(width: 0.5, height: 56, color: _grey3);
-
-  static pw.Widget _statCell(
-    String value,
-    String label,
-    PdfColor color, {
-    bool leftRounded = false,
-    bool rightRounded = false,
-  }) {
-    return pw.Expanded(
-      child: pw.Container(
-        padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: pw.BoxDecoration(
-          color: _grey1,
-          borderRadius: pw.BorderRadius.only(
-            topLeft: leftRounded ? const pw.Radius.circular(8) : pw.Radius.zero,
-            bottomLeft: leftRounded ? const pw.Radius.circular(8) : pw.Radius.zero,
-            topRight: rightRounded ? const pw.Radius.circular(8) : pw.Radius.zero,
-            bottomRight: rightRounded ? const pw.Radius.circular(8) : pw.Radius.zero,
-          ),
-        ),
-        child: pw.Column(
-          children: [
-            pw.Text(
-              value,
-              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: color),
-              textAlign: pw.TextAlign.center,
-            ),
-            pw.SizedBox(height: 3),
-            pw.Text(
-              label,
-              style: pw.TextStyle(fontSize: 8, color: _grey2),
-              textAlign: pw.TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Section heading ───────────────────────────────────────────────────────────
-
-  static pw.Widget _sectionHeading(String title, PdfColor color, int count) {
+  static pw.Widget _sectionTitle(String title) {
     return pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.center,
       children: [
-        pw.Container(
-          width: 4, height: 20,
-          decoration: pw.BoxDecoration(
-            color: color,
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)),
-          ),
-        ),
-        pw.SizedBox(width: 8),
-        pw.Text(
-          title,
-          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
-        ),
-        pw.SizedBox(width: 8),
-        pw.Container(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: pw.BoxDecoration(
-            color: color,
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
-          ),
-          child: pw.Text(
-            '$count',
-            style: pw.TextStyle(fontSize: 9, color: PdfColors.white, fontWeight: pw.FontWeight.bold),
-          ),
-        ),
+        pw.Container(width: 3, height: 14, color: _accent),
+        pw.SizedBox(width: 7),
+        pw.Text(title.toUpperCase(), style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: _ink, letterSpacing: 0.8)),
       ],
     );
   }
 
-  // ── Incident card ─────────────────────────────────────────────────────────────
+  static pw.Widget _subsectionTitle(String title) {
+    return pw.Text(title, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _muted, letterSpacing: 0.4));
+  }
 
-  static pw.Widget _incidentCard(IncidentModel i) {
+  static pw.Widget _dividerLine() =>
+      pw.Container(width: double.infinity, height: 0.5, color: _rule);
+
+  static pw.Widget _textBlock(String text) {
+    return pw.Text(text, style: pw.TextStyle(fontSize: 10, color: _ink, lineSpacing: 3));
+  }
+
+  static pw.Widget _labeledLine(String label, String value) {
+    return pw.Row(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text('$label:  ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _ink)),
+        pw.Expanded(child: pw.Text(value, style: pw.TextStyle(fontSize: 9, color: _muted))),
+      ],
+    );
+  }
+
+  static pw.Widget _emptyNote(String msg) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 24),
+      child: pw.Text(msg, style: pw.TextStyle(fontSize: 10, color: _muted, fontStyle: pw.FontStyle.italic)),
+    );
+  }
+
+  static pw.Widget _patientSectionHeader(String name, int incidents, int moments) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: pw.BoxDecoration(
+        color: _rowAlt,
+        border: pw.Border(left: pw.BorderSide(color: _accent, width: 3)),
+      ),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(name, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: _ink)),
+          pw.Text('$incidents incident${incidents == 1 ? '' : 's'}   $moments positive moment${moments == 1 ? '' : 's'}',
+              style: pw.TextStyle(fontSize: 9, color: _muted)),
+        ],
+      ),
+    );
+  }
+
+  // ── Incident table ────────────────────────────────────────────────────────────
+
+  static pw.Widget _incidentTableHeader() {
+    return pw.Container(
+      color: _ink,
+      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      child: pw.Row(
+        children: [
+          pw.SizedBox(width: 68, child: _th('Date')),
+          pw.SizedBox(width: 40, child: _th('Time')),
+          pw.SizedBox(width: 36, child: _th('Sev.')),
+          pw.SizedBox(width: 50, child: _th('Duration')),
+          pw.Expanded(child: _th('Antecedent')),
+          pw.Expanded(child: _th('Behavior')),
+          pw.Expanded(child: _th('Consequence')),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _incidentTableRow(IncidentModel i, bool alt) {
     final timeStr = '${i.time.hour.toString().padLeft(2, '0')}:${i.time.minute.toString().padLeft(2, '0')}';
-    final duration = i.behaviorDuration.inSeconds == 0
-        ? 'Unknown duration'
+    final dur = i.behaviorDuration.inSeconds == 0
+        ? '—'
         : i.behaviorDuration.inMinutes > 0
             ? '${i.behaviorDuration.inMinutes} min'
             : '${i.behaviorDuration.inSeconds} sec';
 
     return pw.Container(
-      margin: const pw.EdgeInsets.only(bottom: 12),
-      decoration: pw.BoxDecoration(
-        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
-        border: pw.Border.all(color: _grey3, width: 0.5),
-      ),
-      child: pw.Column(
+      color: alt ? _rowAlt : PdfColors.white,
+      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          // Card header
-          pw.Container(
-            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: const pw.BoxDecoration(
-              color: PdfColor(0.99, 0.95, 0.95),
-              borderRadius: pw.BorderRadius.only(
-                topLeft: pw.Radius.circular(6),
-                topRight: pw.Radius.circular(6),
-              ),
-            ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Row(
-                  children: [
-                    pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: pw.BoxDecoration(
-                        color: _red,
-                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                      ),
-                      child: pw.Text('INCIDENT', style: pw.TextStyle(fontSize: 8, color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
-                    ),
-                    pw.SizedBox(width: 8),
-                    pw.Text(_dateFmt.format(i.date), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-                  ],
-                ),
-                pw.Row(
-                  children: [
-                    pw.Text('$timeStr  |  $duration  |  ', style: pw.TextStyle(fontSize: 9, color: _grey2)),
-                    pw.Text('Severity: ${i.behaviorSeverity}/5', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _red)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          // ABC body
-          pw.Padding(
-            padding: const pw.EdgeInsets.all(12),
-            child: pw.Column(
-              children: [
-                _abcRow('A', 'Antecedent', i.antecedentDescription, i.antecedentTriggers, _blue),
-                pw.SizedBox(height: 8),
-                _abcRow('B', 'Behavior', i.behaviorDescription, i.behaviorTypes, _red),
-                pw.SizedBox(height: 8),
-                _abcRow('C', 'Consequence', i.consequenceDescription, i.strategies, _green),
-                if (i.therapistFeedback?.comment != null) ...[
-                  pw.SizedBox(height: 8),
-                  pw.Container(
-                    width: double.infinity,
-                    padding: const pw.EdgeInsets.all(8),
-                    decoration: pw.BoxDecoration(
-                      color: const PdfColor(0.95, 0.95, 1.0),
-                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                      border: pw.Border.all(color: _blue, width: 0.5),
-                    ),
-                    child: pw.Row(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text('Therapist Note:  ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _blue)),
-                        pw.Expanded(
-                          child: pw.Text(
-                            i.therapistFeedback!.comment,
-                            style: pw.TextStyle(fontSize: 9, color: _grey2, fontStyle: pw.FontStyle.italic),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+          pw.SizedBox(width: 68, child: _td(_dateFmt.format(i.date))),
+          pw.SizedBox(width: 40, child: _td(timeStr)),
+          pw.SizedBox(width: 36, child: _td('${i.behaviorSeverity}/5')),
+          pw.SizedBox(width: 50, child: _td(dur)),
+          pw.Expanded(child: _tdMulti(i.antecedentDescription, i.antecedentTriggers)),
+          pw.Expanded(child: _tdMulti(i.behaviorDescription, i.behaviorTypes)),
+          pw.Expanded(child: _tdMulti(i.consequenceDescription, i.strategies)),
         ],
       ),
     );
   }
 
-  // ── Positive moment card ──────────────────────────────────────────────────────
+  // ── Positive moment table ─────────────────────────────────────────────────────
 
-  static pw.Widget _positiveMomentCard(PositiveMomentModel m) {
+  static pw.Widget _momentTableHeader() {
     return pw.Container(
-      margin: const pw.EdgeInsets.only(bottom: 12),
-      decoration: pw.BoxDecoration(
-        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
-        border: pw.Border.all(color: _grey3, width: 0.5),
-      ),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
+      color: _ink,
+      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      child: pw.Row(
         children: [
-          pw.Container(
-            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: const pw.BoxDecoration(
-              color: PdfColor(0.93, 0.98, 0.95),
-              borderRadius: pw.BorderRadius.only(
-                topLeft: pw.Radius.circular(6),
-                topRight: pw.Radius.circular(6),
-              ),
-            ),
-            child: pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Row(
-                  children: [
-                    pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: pw.BoxDecoration(
-                        color: _teal,
-                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                      ),
-                      child: pw.Text('POSITIVE', style: pw.TextStyle(fontSize: 8, color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
-                    ),
-                    pw.SizedBox(width: 8),
-                    pw.Text(_dateFmt.format(m.date), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-                  ],
-                ),
-                pw.Row(
-                  children: [
-                    pw.Text('${m.setting}  |  ', style: pw.TextStyle(fontSize: 9, color: _grey2)),
-                    pw.Text('Rating: ${m.positiveBehaviorRating}/5', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _teal)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          pw.Padding(
-            padding: const pw.EdgeInsets.all(12),
-            child: pw.Column(
-              children: [
-                _abcRow('A', 'Antecedent', m.antecedentDescription, [], _blue),
-                pw.SizedBox(height: 8),
-                _abcRow('B', 'Behavior', m.behaviorDescription, m.behaviorTypes, _teal),
-                pw.SizedBox(height: 8),
-                _abcRow('C', 'Consequence', m.consequenceDescription, [], _green),
-              ],
-            ),
-          ),
+          pw.SizedBox(width: 68, child: _th('Date')),
+          pw.SizedBox(width: 40, child: _th('Time')),
+          pw.SizedBox(width: 40, child: _th('Rating')),
+          pw.SizedBox(width: 60, child: _th('Setting')),
+          pw.Expanded(child: _th('Antecedent')),
+          pw.Expanded(child: _th('Behavior')),
+          pw.Expanded(child: _th('Consequence')),
         ],
       ),
     );
   }
 
-  // ── ABC row ───────────────────────────────────────────────────────────────────
+  static pw.Widget _momentTableRow(PositiveMomentModel m, bool alt) {
+    final h = (m.timeMinutes ~/ 60).toString().padLeft(2, '0');
+    final min = (m.timeMinutes % 60).toString().padLeft(2, '0');
+    final timeStr = '$h:$min';
+    return pw.Container(
+      color: alt ? _rowAlt : PdfColors.white,
+      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.SizedBox(width: 68, child: _td(_dateFmt.format(m.date))),
+          pw.SizedBox(width: 40, child: _td(timeStr)),
+          pw.SizedBox(width: 40, child: _td('${m.positiveBehaviorRating}/5')),
+          pw.SizedBox(width: 60, child: _td(m.setting)),
+          pw.Expanded(child: _td(m.antecedentDescription)),
+          pw.Expanded(child: _tdMulti(m.behaviorDescription, m.behaviorTypes)),
+          pw.Expanded(child: _td(m.consequenceDescription)),
+        ],
+      ),
+    );
+  }
 
-  static pw.Widget _abcRow(String letter, String fullLabel, String description, List<String> chips, PdfColor color) {
-    return pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Column(
+  // ── Trigger table ─────────────────────────────────────────────────────────────
+
+  static pw.Widget _triggerTable(Map<String, int> triggerCounts) {
+    final sorted = triggerCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final top = sorted.take(8).toList();
+    final maxVal = top.isEmpty ? 1 : top.first.value;
+
+    final rows = <pw.Widget>[
+      pw.Container(
+        color: _ink,
+        padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        child: pw.Row(
           children: [
-            pw.Container(
-              width: 22,
-              height: 22,
-              alignment: pw.Alignment.center,
-              decoration: pw.BoxDecoration(
-                color: color,
-                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-              ),
-              child: pw.Text(letter, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
-            ),
+            pw.Expanded(flex: 3, child: _th('Trigger')),
+            pw.Expanded(flex: 5, child: _th('Frequency')),
+            pw.SizedBox(width: 30, child: _th('Count')),
           ],
         ),
-        pw.SizedBox(width: 8),
-        pw.Expanded(
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(fullLabel, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: color)),
-              pw.SizedBox(height: 2),
-              if (description.isNotEmpty)
-                pw.Text(description, style: pw.TextStyle(fontSize: 10, color: PdfColors.black)),
-              if (chips.isNotEmpty)
-                pw.Padding(
-                  padding: const pw.EdgeInsets.only(top: 3),
-                  child: pw.Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: chips.map((c) => pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: pw.BoxDecoration(
-                        color: PdfColor(color.red * 0.15 + 0.85, color.green * 0.15 + 0.85, color.blue * 0.15 + 0.85),
-                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
-                        border: pw.Border.all(color: color, width: 0.5),
-                      ),
-                      child: pw.Text(c, style: pw.TextStyle(fontSize: 8, color: color, fontWeight: pw.FontWeight.bold)),
-                    )).toList(),
-                  ),
+      ),
+    ];
+
+    bool alt = false;
+    for (final e in top) {
+      final fraction = maxVal == 0 ? 0.0 : e.value / maxVal;
+      rows.add(pw.Container(
+        color: alt ? _rowAlt : PdfColors.white,
+        padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        child: pw.Row(
+          children: [
+            pw.Expanded(flex: 3, child: _td(e.key)),
+            pw.Expanded(
+              flex: 5,
+              child: pw.LayoutBuilder(
+                builder: (ctx, constraints) => pw.Stack(
+                  children: [
+                    pw.Container(height: 10, color: _rule),
+                    pw.Container(
+                      width: (constraints?.maxWidth ?? 200) * fraction,
+                      height: 10,
+                      color: _accent,
+                    ),
+                  ],
                 ),
-            ],
-          ),
+              ),
+            ),
+            pw.SizedBox(width: 30, child: _td('${e.value}', center: true)),
+          ],
         ),
+      ));
+      alt = !alt;
+    }
+
+    return pw.Column(children: rows);
+  }
+
+  // ── Table cell helpers ────────────────────────────────────────────────────────
+
+  static pw.Widget _th(String text) => pw.Text(
+        text,
+        style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+      );
+
+  static pw.Widget _td(String text, {bool center = false}) => pw.Text(
+        text.isEmpty ? '—' : text,
+        style: pw.TextStyle(fontSize: 8, color: _ink),
+        textAlign: center ? pw.TextAlign.center : pw.TextAlign.left,
+      );
+
+  static pw.Widget _tdMulti(String description, List<String> tags) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        if (description.isNotEmpty)
+          pw.Text(description, style: pw.TextStyle(fontSize: 8, color: _ink)),
+        if (tags.isNotEmpty)
+          pw.Text(tags.join(', '), style: pw.TextStyle(fontSize: 7, color: _muted)),
       ],
     );
+  }
+
+  // ── Utilities ─────────────────────────────────────────────────────────────────
+
+  static String _avgSeverity(List<IncidentModel> incidents) {
+    if (incidents.isEmpty) return '--';
+    final avg = incidents.map((e) => e.behaviorSeverity).reduce((a, b) => a + b) / incidents.length;
+    return avg.toStringAsFixed(1);
   }
 
   static String _topTrigger(List<IncidentModel> incidents) {
@@ -740,4 +549,10 @@ class PdfReportService {
     if (counts.isEmpty) return '--';
     return counts.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
   }
+}
+
+class _Stat {
+  final String value;
+  final String label;
+  const _Stat(this.value, this.label);
 }
