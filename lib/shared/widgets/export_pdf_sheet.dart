@@ -145,9 +145,11 @@ class _ExportPdfSheetState extends State<ExportPdfSheet> {
         incidents: incidents,
         positiveMoments: moments,
       );
-    } catch (e) {
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('PDF export error: $e\n$st');
       if (mounted) {
-        AppSnackbar.showError(context, 'Could not generate report. Please try again.');
+        AppSnackbar.showError(context, 'Error: $e');
         setState(() => _generating = false);
       }
     }
