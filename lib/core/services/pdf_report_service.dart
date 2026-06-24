@@ -6,6 +6,18 @@ import 'package:printing/printing.dart';
 import '../../shared/models/incident_model.dart';
 import '../../shared/models/positive_moment_model.dart';
 
+class PatientReportData {
+  final String childName;
+  final List<IncidentModel> incidents;
+  final List<PositiveMomentModel> positiveMoments;
+
+  const PatientReportData({
+    required this.childName,
+    required this.incidents,
+    required this.positiveMoments,
+  });
+}
+
 class PdfReportService {
   static final _dateFmt = DateFormat('d MMM yyyy');
 
@@ -75,6 +87,241 @@ class PdfReportService {
     await Printing.layoutPdf(
       onLayout: (_) async => pdf.save(),
       name: 'AutiLog_${childName.replaceAll(' ', '_')}_${_dateFmt.format(from)}_to_${_dateFmt.format(to)}.pdf',
+    );
+  }
+
+  // ── Practice report (all patients combined) ──────────────────────────────────
+
+  static Future<void> exportPracticeReport({
+    required DateTime from,
+    required DateTime to,
+    required String aiSummary,
+    required String aiFocus,
+    required int totalIncidents,
+    required double avgSleep,
+    required String topTrigger,
+    required Map<String, int> triggerCounts,
+    required List<PatientReportData> patients,
+  }) async {
+    final pdf = pw.Document();
+    final totalMoments = patients.fold<int>(0, (s, p) => s + p.positiveMoments.length);
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: pw.EdgeInsets.zero,
+        header: (ctx) => _practiceHeader(ctx, from, to),
+        footer: (ctx) => _footer(ctx),
+        build: (ctx) => [
+          pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 32),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.SizedBox(height: 20),
+                // Practice summary stats
+                _summaryBar2(totalIncidents, totalMoments, avgSleep, topTrigger),
+                pw.SizedBox(height: 20),
+                // AI summary
+                if (aiSummary.isNotEmpty) ...[
+                  _practiceAISection(aiSummary, aiFocus),
+                  pw.SizedBox(height: 20),
+                ],
+                // Trigger breakdown
+                if (triggerCounts.isNotEmpty) ...[
+                  _sectionHeading('Top Triggers', _orange, triggerCounts.length),
+                  pw.SizedBox(height: 10),
+                  _triggerTable(triggerCounts),
+                  pw.SizedBox(height: 24),
+                ],
+                // Per-patient breakdowns
+                ...patients.where((p) => p.incidents.isNotEmpty || p.positiveMoments.isNotEmpty).map((p) => pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    _patientDivider(p.childName, p.incidents.length, p.positiveMoments.length),
+                    pw.SizedBox(height: 10),
+                    if (p.incidents.isNotEmpty) ...[
+                      _sectionHeading('Behavioral Incidents', _red, p.incidents.length),
+                      pw.SizedBox(height: 8),
+                      ...p.incidents.map(_incidentCard),
+                      pw.SizedBox(height: 16),
+                    ],
+                    if (p.positiveMoments.isNotEmpty) ...[
+                      _sectionHeading('Positive Moments', _teal, p.positiveMoments.length),
+                      pw.SizedBox(height: 8),
+                      ...p.positiveMoments.map(_positiveMomentCard),
+                      pw.SizedBox(height: 24),
+                    ],
+                  ],
+                )),
+                pw.SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (_) async => pdf.save(),
+      name: 'AutiLog_Practice_Report_${_dateFmt.format(from)}_to_${_dateFmt.format(to)}.pdf',
+    );
+  }
+
+  static pw.Widget _practiceHeader(pw.Context ctx, DateTime from, DateTime to) {
+    final isFirstPage = ctx.pageNumber == 1;
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Container(
+          width: double.infinity,
+          color: _orange,
+          padding: const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+          child: pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('AutiLog', style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+              pw.Text('Practice Progress Report', style: pw.TextStyle(fontSize: 11, color: PdfColors.white)),
+            ],
+          ),
+        ),
+        if (isFirstPage)
+          pw.Container(
+            width: double.infinity,
+            color: const PdfColor(0.996, 0.937, 0.914),
+            padding: const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 10),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'Period: ${_dateFmt.format(from)} to ${_dateFmt.format(to)}',
+                  style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+                ),
+                pw.Text('Generated: ${_dateFmt.format(DateTime.now())}', style: pw.TextStyle(fontSize: 10, color: _grey2)),
+              ],
+            ),
+          )
+        else
+          pw.Container(
+            width: double.infinity,
+            color: const PdfColor(0.996, 0.937, 0.914),
+            padding: const pw.EdgeInsets.symmetric(horizontal: 32, vertical: 6),
+            child: pw.Text(
+              '${_dateFmt.format(from)} to ${_dateFmt.format(to)}',
+              style: pw.TextStyle(fontSize: 9, color: _grey2),
+            ),
+          ),
+        pw.SizedBox(height: 2),
+      ],
+    );
+  }
+
+  static pw.Widget _summaryBar2(int incidents, int moments, double avgSleep, String topTrigger) {
+    return pw.Container(
+      decoration: pw.BoxDecoration(
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+        border: pw.Border.all(color: _grey3, width: 0.5),
+      ),
+      child: pw.Row(
+        children: [
+          _statCell('$incidents', 'Total Incidents', _red, leftRounded: true),
+          _divider(),
+          _statCell('$moments', 'Positive Moments', _teal),
+          _divider(),
+          _statCell(avgSleep > 0 ? avgSleep.toStringAsFixed(1) : '--', 'Avg Sleep', _blue),
+          _divider(),
+          _statCell(topTrigger, 'Top Trigger', _orange, rightRounded: true),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _practiceAISection(String summary, String focus) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(12),
+      decoration: pw.BoxDecoration(
+        color: const PdfColor(0.90, 0.96, 0.96),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+        border: pw.Border.all(color: _teal, width: 0.5),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text('AI Practice Summary', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: _teal)),
+          pw.SizedBox(height: 6),
+          pw.Text(summary, style: pw.TextStyle(fontSize: 10, color: PdfColors.black, lineSpacing: 3)),
+          if (focus.isNotEmpty) ...[
+            pw.SizedBox(height: 8),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(8),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.white,
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+              ),
+              child: pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('Focus Area:  ', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _orange)),
+                  pw.Expanded(child: pw.Text(focus, style: pw.TextStyle(fontSize: 9, color: _grey2))),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _triggerTable(Map<String, int> triggerCounts) {
+    final sorted = triggerCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final top = sorted.take(6).toList();
+    final maxVal = top.isEmpty ? 1 : top.first.value;
+    return pw.Column(
+      children: top.map((e) {
+        final fraction = maxVal == 0 ? 0.0 : e.value / maxVal;
+        return pw.Padding(
+          padding: const pw.EdgeInsets.only(bottom: 6),
+          child: pw.Row(
+            children: [
+              pw.SizedBox(width: 110, child: pw.Text(e.key, style: pw.TextStyle(fontSize: 9))),
+              pw.SizedBox(width: 8),
+              pw.Expanded(
+                child: pw.LayoutBuilder(
+                  builder: (ctx, constraints) => pw.Stack(
+                    children: [
+                      pw.Container(height: 14, decoration: pw.BoxDecoration(color: _grey1, borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)))),
+                      pw.Container(
+                        width: (constraints?.maxWidth ?? 200) * fraction,
+                        height: 14,
+                        decoration: pw.BoxDecoration(color: _orange, borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4))),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              pw.SizedBox(width: 8),
+              pw.Text('${e.value}', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  static pw.Widget _patientDivider(String name, int incidents, int moments) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: pw.BoxDecoration(
+        color: const PdfColor(0.95, 0.95, 0.95),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+      ),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(name, style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+          pw.Text('$incidents incidents  |  $moments positive moments', style: pw.TextStyle(fontSize: 9, color: _grey2)),
+        ],
+      ),
     );
   }
 
