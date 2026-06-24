@@ -30,7 +30,6 @@ class ParentProfileScreen extends StatelessWidget {
 
           final name = data['name'] as String? ?? 'Parent';
           final gender = data['gender'] as String? ?? '';
-          final phone = data['phone'] as String? ?? '';
           final email = FirebaseAuth.instance.currentUser?.email ?? '';
 
           return CustomScrollView(
@@ -41,7 +40,6 @@ class ParentProfileScreen extends StatelessWidget {
                   name: name,
                   email: email,
                   gender: gender,
-                  phone: phone,
                 ),
               ),
 
@@ -286,14 +284,12 @@ class _ProfileHeader extends StatelessWidget {
     required this.name,
     required this.email,
     required this.gender,
-    required this.phone,
   });
 
   final String uid;
   final String name;
   final String email;
   final String gender;
-  final String phone;
 
   @override
   Widget build(BuildContext context) {
@@ -359,7 +355,6 @@ class _ProfileHeader extends StatelessWidget {
                           Routes.parentProfileEdit,
                           extra: {
                             'name': name,
-                            'phone': phone,
                             'gender': gender,
                             'email': email,
                           },
@@ -410,29 +405,7 @@ class _ProfileHeader extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.85))),
           const SizedBox(height: 16),
 
-          // ── Phone ─────────────────────────────────────────────────
-          if (phone.isNotEmpty) ...[
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.phone_outlined,
-                      color: Colors.white, size: 14),
-                  const SizedBox(width: 6),
-                  Text(phone,
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.textWhite)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
+  
 
           // ── Gender badge ──────────────────────────────────────────
           if (gender.isNotEmpty)

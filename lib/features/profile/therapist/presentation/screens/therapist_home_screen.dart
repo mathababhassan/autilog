@@ -36,8 +36,11 @@ class _TherapistHomeScreenState extends State<TherapistHomeScreen> {
     _homeCubit = TherapistHomeCubit(sessionRepository: SessionRepository());
     context.read<TherapistProfileBloc>().add(const TherapistProfileStarted());
     context.read<PatientListBloc>().add(const PatientListStarted());
+    context.read<TherapistProfileBloc>().stream.listen((state) {
+      print('TherapistProfileBloc state: $state');
+    });
   }
-
+  
   @override
   void dispose() {
     _homeCubit.close();
@@ -124,8 +127,7 @@ class _HomeHeader extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(children: [
-                        const Icon(Icons.stars_rounded,
-                            color: AppColors.textWhite, size: 22),
+                        Image.asset('assets/images/autilog_logo.png', width: 22, height: 22),
                         const SizedBox(width: 8),
                         Text('AutiLog',
                             style: AppTextStyles.subtitle.copyWith(
@@ -162,13 +164,12 @@ class _HomeHeader extends StatelessWidget {
                       style: AppTextStyles.caption.copyWith(
                           color: AppColors.textWhite.withValues(alpha: 0.92))),
                   const SizedBox(height: 2),
-                  Text(
-                    firstName.isEmpty
-                        ? 'Hello!'
-                        : 'Good ${_greeting()}, Dr. $firstName',
-                    style: AppTextStyles.heading1
-                        .copyWith(color: AppColors.textWhite),
-                  ),
+                  if (firstName.isNotEmpty)
+                    Text(
+                      'Good ${_greeting()}, Dr. $firstName',
+                      style: AppTextStyles.heading1
+                          .copyWith(color: AppColors.textWhite),
+                    ),
                   // Stats row — only when data loaded
                   BlocBuilder<TherapistHomeCubit, TherapistHomeState>(
                     builder: (context, homeState) {
@@ -198,6 +199,8 @@ class _HomeHeader extends StatelessWidget {
     if (state is TherapistProfileLoaded) {
       fullName = state.therapist.name;
     } else if (state is TherapistProfileUpdateSuccess) {
+      fullName = state.therapist.name;
+    } else if (state is TherapistProfileUpdating) {
       fullName = state.therapist.name;
     } else {
       return '';

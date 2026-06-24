@@ -8,8 +8,8 @@ import '../../bloc/therapist_profile_bloc.dart';
 import '../../bloc/therapist_profile_event.dart';
 import '../../bloc/therapist_profile_state.dart';
 
-Future<void> showTherapistProfileSheet(BuildContext context) {
-  return showModalBottomSheet(
+Future<void> showTherapistProfileSheet(BuildContext context, {String? preloadedName, String? preloadedClinic}) {
+    return showModalBottomSheet(
     context: context,
     backgroundColor: AppColors.surfaceModal,
     shape: const RoundedRectangleBorder(
@@ -47,10 +47,18 @@ class _TherapistProfileSheet extends StatelessWidget {
           name = state.therapist.name;
           subtitle = 'ABA Therapist · ${state.therapist.clinicName}';
           initials = _initials(name);
+        } else if (state is TherapistProfileUpdating) {
+          name = state.therapist.name;
+          subtitle = 'ABA Therapist · ${state.therapist.clinicName}';
+          initials = _initials(name);
         } else {
-          name = '';
-          subtitle = '';
-          initials = '';
+          return const SafeArea(
+            top: false,
+            child: SizedBox(
+              height: 200,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          );
         }
 
         return SafeArea(
@@ -200,7 +208,7 @@ class _TherapistProfileSheet extends StatelessWidget {
                 onTap: () => _confirmSignOut(context),
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 36),
             ],
           ),
         );

@@ -9,6 +9,8 @@ import '../../../../../core/theme/theme.dart';
 import '../widgets/add_tracking_question_sheet.dart';
 import '../widgets/delete_tracking_question_dialog.dart';
 import '../widgets/edit_tracking_question_sheet.dart';
+import '../../../../../core/constants/routes.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 // ─── Args ─────────────────────────────────────────────────────
 
@@ -1775,14 +1777,35 @@ class _BottomNav extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 50,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _NavItem(icon: Icons.home_outlined, label: 'Home', onTap: () => context.go('/therapist/home')),
-              _NavItem(icon: Icons.people_outline, label: 'Patients', active: true, onTap: () => context.go('/therapist/patients')),
-              const _NavItem(icon: Icons.calendar_month_outlined, label: 'Sessions'),
-              const _NavItem(icon: Icons.bar_chart_outlined, label: 'Reports'),
+              _NavItem(
+                iconOutline: 'assets/icons/home_outline.svg',
+                iconFilled: 'assets/icons/home_filled.svg',
+                label: 'Home',
+                onTap: () => context.go(Routes.therapistHome),
+              ),
+              _NavItem(
+                iconOutline: 'assets/icons/patient_outline.svg',
+                iconFilled: 'assets/icons/patient_filled.svg',
+                label: 'Patients',
+                active: true,
+              ),
+              _NavItem(
+                iconOutline: 'assets/icons/session_outline.svg',
+                iconFilled: 'assets/icons/session_filled.svg',
+                label: 'Sessions',
+                onTap: () => context.go(Routes.therapistSessions),
+              ),
+              _NavItem(
+                iconOutline: 'assets/icons/report_outline.svg',
+                iconFilled: 'assets/icons/report_filled.svg',
+                label: 'Reports',
+                onTap: () => context.go(Routes.therapistReports),
+              ),
             ],
           ),
         ),
@@ -1792,28 +1815,39 @@ class _BottomNav extends StatelessWidget {
 }
 
 class _NavItem extends StatelessWidget {
-  final IconData icon;
+  const _NavItem({
+    required this.iconOutline,
+    this.iconFilled,
+    required this.label,
+    this.active = false,
+    this.onTap,
+  });
+
+  final String iconOutline;
+  final String? iconFilled;
   final String label;
   final bool active;
   final VoidCallback? onTap;
 
-  const _NavItem({required this.icon, required this.label, this.active = false, this.onTap});
-
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.primary : AppColors.textSubtle;
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(height: 2),
-            Text(label, style: AppTextStyles.tag.copyWith(color: color, fontWeight: active ? FontWeight.w700 : FontWeight.w400)),
-          ],
-        ),
+    final color = active ? AppColors.primary : AppColors.textMain;
+    final asset = active ? (iconFilled ?? iconOutline) : iconOutline;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SvgPicture.asset(asset, width: 22, height: 22,
+              colorFilter: ColorFilter.mode(color, BlendMode.srcIn)),
+          const SizedBox(height: 4),
+          Text(label,
+              style: AppTextStyles.tag.copyWith(
+                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                color: color,
+              )),
+        ],
       ),
     );
   }

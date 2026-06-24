@@ -1,3 +1,7 @@
+import 'dart:io';
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -32,12 +36,16 @@ class _TherapistEditProfileScreenState
   late UserModel _originalUser;
   bool _initialised = false;
 
+  String? _profilePhotoBase64;
+  bool _loadingPhoto = false;
+
   bool get _isDirty {
     if (!_initialised) return false;
     return _phoneCtrl.text != (_original.phone ?? '') ||
         _clinicCtrl.text != _original.clinicName ||
         _specialisationCtrl.text != _original.specialisation ||
-        _experienceCtrl.text != (_original.experience ?? '');
+        _experienceCtrl.text != (_original.experience ?? '') ||
+        _profilePhotoBase64 != null;
   }
 
   @override
@@ -63,6 +71,20 @@ class _TherapistEditProfileScreenState
     _specialisationCtrl.text = therapist.specialisation;
     _experienceCtrl.text = therapist.experience ?? '';
     _initialised = true;
+  }
+
+  Future<void> _pickPhoto() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+    if (picked == null) return;
+    setState(() => _loadingPhoto = true);
+    final bytes = await File(picked.path).readAsBytes();
+    setState(() {
+      _profilePhotoBase64 = base64Encode(bytes);
+      _loadingPhoto = false;
+    });
   }
 
   @override
@@ -98,6 +120,7 @@ class _TherapistEditProfileScreenState
     if (phone.isNotEmpty) fields['phone'] = phone;
     final experience = _experienceCtrl.text.trim();
     if (experience.isNotEmpty) fields['experience'] = experience;
+    if (_profilePhotoBase64 != null) fields['profilePhotoBase64'] = _profilePhotoBase64;
 
     context
         .read<TherapistProfileBloc>()
@@ -185,7 +208,12 @@ class _TherapistEditProfileScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _AvatarBlock(name: _original.name),
+                      _AvatarBlock(
+                        name: _original.name,
+                        profilePhotoBase64: _profilePhotoBase64,
+                        loadingPhoto: _loadingPhoto,
+                        onPickPhoto: _pickPhoto,
+                      ),
                       _EditSection(
                         label: 'Personal Info',
                         children: [
@@ -376,9 +404,17 @@ class _NavBar extends StatelessWidget {
 // ─── Avatar block ─────────────────────────────────────────────
 
 class _AvatarBlock extends StatelessWidget {
-  const _AvatarBlock({required this.name});
+  const _AvatarBlock({
+    required this.name,
+    required this.profilePhotoBase64,
+    required this.loadingPhoto,
+    required this.onPickPhoto,
+  });
 
   final String name;
+  final String? profilePhotoBase64;
+  final bool loadingPhoto;
+  final VoidCallback onPickPhoto;
 
   @override
   Widget build(BuildContext context) {
@@ -397,26 +433,56 @@ class _AvatarBlock extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Container(
-            width: 82,
-            height: 82,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.primary,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              initials,
-              style: const TextStyle(
-                color: AppColors.textWhite,
-                fontWeight: FontWeight.w700,
-                fontSize: 26,
-              ),
+          GestureDetector(
+            onTap: onPickPhoto,
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 41,
+                  backgroundColor: AppColors.primary,
+                  backgroundImage: profilePhotoBase64 != null
+                      ? MemoryImage(base64Decode(profilePhotoBase64!))
+                      : null,
+                  child: profilePhotoBase64 == null
+                      ? Text(
+                          initials,
+                          style: const TextStyle(
+                            color: AppColors.textWhite,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 26,
+                          ),
+                        )
+                      : null,
+                ),
+                if (loadingPhoto)
+                  const Positioned.fill(
+                    child: CircleAvatar(
+                      radius: 41,
+                      backgroundColor: Colors.black26,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    ),
+                  ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: const BoxDecoration(
+                      color: AppColors.secondary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.camera_alt,
+                        size: 13, color: Colors.white),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 10),
           TextButton(
-            onPressed: () {},
+            onPressed: onPickPhoto,
             child: Text(
               'Change Photo',
               style: AppTextStyles.body.copyWith(

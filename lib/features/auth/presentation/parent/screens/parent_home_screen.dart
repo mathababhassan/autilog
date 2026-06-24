@@ -252,13 +252,19 @@ class _DashboardTabState extends State<_DashboardTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'AutiLog',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                children: [
+                  Image.asset('assets/images/autilog_logo.png', width: 22, height: 22),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'AutiLog',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -283,19 +289,19 @@ class _DashboardTabState extends State<_DashboardTab> {
           ),
           const SizedBox(height: 16),
           Text(
-            '$greeting, $parentName 👋',
+            dateStr,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.92),
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '$greeting, $parentName',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            dateStr,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.85),
-              fontSize: 13,
             ),
           ),
         ],

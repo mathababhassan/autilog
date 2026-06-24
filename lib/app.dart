@@ -350,7 +350,6 @@ class _AppViewState extends State<_AppView> {
             final args = state.extra as Map<String, dynamic>? ?? {};
             return ParentEditProfileScreen(
               name: args['name'] as String? ?? '',
-              phone: args['phone'] as String? ?? '',
               gender: args['gender'] as String? ?? '',
               email: args['email'] as String? ?? '',
             );
