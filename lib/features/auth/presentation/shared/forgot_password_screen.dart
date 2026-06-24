@@ -84,7 +84,7 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   GestureDetector(
-                    onTap: () => context.pop(),
+                    onTap: () => context.canPop() ? context.pop() : context.go(Routes.login),
                     child: const Icon(
                       Icons.arrow_back_ios,
                       color: Colors.white,

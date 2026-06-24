@@ -174,7 +174,14 @@ service cloud.firestore {
         allow delete: if isAuth() && isOwner(uid);
         allow create: if false;
       }
+
+       // ── Settings ─────────────────────────────────────────────────────────────
+      match /settings/{doc} {
+        allow read, write: if isAuth() && isOwner(uid);
+      }
     }
+
+   
 
     // ── Therapists ────────────────────────────────────────────────────────────
     match /therapists/{therapistId} {

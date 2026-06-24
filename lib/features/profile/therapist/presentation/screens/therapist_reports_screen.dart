@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../../core/constants/routes.dart';
@@ -631,17 +632,79 @@ class _BottomNav extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 50,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _NavItem(icon: Icons.home_outlined, label: 'Home', onTap: () => context.go(Routes.therapistHome)),
-              _NavItem(icon: Icons.people_outline, label: 'Patients', onTap: () => context.go(Routes.therapistPatients)),
-              const _NavItem(icon: Icons.calendar_month_outlined, label: 'Sessions'),
-              _NavItem(icon: Icons.bar_chart, label: 'Reports', active: true),
+              _SvgNavItem(
+                iconOutline: 'assets/icons/home_outline.svg',
+                iconFilled: 'assets/icons/home_filled.svg',
+                label: 'Home',
+                onTap: () => context.go(Routes.therapistHome),
+              ),
+              _SvgNavItem(
+                iconOutline: 'assets/icons/patient_outline.svg',
+                iconFilled: 'assets/icons/patient_filled.svg',
+                label: 'Patients',
+                onTap: () => context.go(Routes.therapistPatients),
+              ),
+              _SvgNavItem(
+                iconOutline: 'assets/icons/session_outline.svg',
+                iconFilled: 'assets/icons/session_filled.svg',
+                label: 'Sessions',
+                onTap: () => context.go(Routes.therapistSessions),
+              ),
+              _SvgNavItem(
+                iconOutline: 'assets/icons/report_outline.svg',
+                iconFilled: 'assets/icons/report_filled.svg',
+                label: 'Reports',
+                active: true,
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SvgNavItem extends StatelessWidget {
+  const _SvgNavItem({
+    required this.iconOutline,
+    this.iconFilled,
+    required this.label,
+    this.active = false,
+    this.onTap,
+  });
+
+  final String iconOutline;
+  final String? iconFilled;
+  final String label;
+  final bool active;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? AppColors.primary : AppColors.textMain;
+    final asset = active ? (iconFilled ?? iconOutline) : iconOutline;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SvgPicture.asset(asset,
+              width: 22,
+              height: 22,
+              colorFilter: ColorFilter.mode(color, BlendMode.srcIn)),
+          const SizedBox(height: 4),
+          Text(label,
+              style: AppTextStyles.tag.copyWith(
+                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                color: color,
+              )),
+        ],
       ),
     );
   }

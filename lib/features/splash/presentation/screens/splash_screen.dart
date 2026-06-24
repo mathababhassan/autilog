@@ -43,7 +43,7 @@ class _SplashScreenState extends State<SplashScreen> {
       if (lastActiveMillis == null) {
         // No activity record — fresh install or cleared data, sign out safely
         await FirebaseAuth.instance.signOut();
-        if (mounted) context.go(Routes.roleSelection);
+        if (mounted) context.go(Routes.login);
         return;
       }
 
@@ -54,7 +54,7 @@ class _SplashScreenState extends State<SplashScreen> {
       if (elapsed.inMinutes >= 15) {
         // Session expired — sign out and require re-login
         await FirebaseAuth.instance.signOut();
-        if (mounted) context.go(Routes.roleSelection);
+        if (mounted) context.go(Routes.login);
         return;
       }
 
@@ -63,11 +63,11 @@ class _SplashScreenState extends State<SplashScreen> {
         context.go(
           authState.user.role == 'therapist'
               ? Routes.therapistHome
-              : Routes.childOnboarding,
+              : Routes.parentHome,
         );
       }
     } else {
-      if (mounted) context.go(Routes.roleSelection);
+      if (mounted) context.go(Routes.login);
     }
   }
 
@@ -116,8 +116,8 @@ class _SplashScreenState extends State<SplashScreen> {
               children: [
                 Image.asset(
                   'assets/images/autilog_logo.png',
-                  width: 96,
-                  height: 96,
+                  width: 173,
+                  height: 173,
                 ),
                 const SizedBox(height: 14),
                 Text(

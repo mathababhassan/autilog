@@ -54,6 +54,8 @@ import 'features/auth/presentation/parent/screens/parent_edit_profile_screen.dar
 import 'features/auth/presentation/parent/screens/child_edit_screen.dart';
 import 'features/patients/presentation/therapist/screens/log_review_screen.dart';
 import 'features/profile/therapist/presentation/screens/therapist_reports_screen.dart';
+import 'features/notifications/presentation/screens/notifications_screen.dart';
+import 'features/auth/presentation/parent/screens/parent_settings_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class App extends StatelessWidget {
@@ -416,15 +418,15 @@ class _AppViewState extends State<_AppView> {
         // land later; entry points already navigate to these routes.
         GoRoute(
           path: Routes.parentNotifications,
-          builder: (_, __) => _comingSoon('Notifications'),
+          builder: (_, __) => const ParentNotificationsScreen(),
         ),
         GoRoute(
           path: Routes.therapistNotifications,
-          builder: (_, __) => _comingSoon('Notifications'),
+          builder: (_, __) => const TherapistNotificationsScreen(),
         ),
         GoRoute(
           path: Routes.parentSettings,
-          builder: (_, __) => _comingSoon('Settings'),
+          builder: (_, __) => const ParentSettingsScreen(),
         ),
         GoRoute(
           path: Routes.therapistSettings,

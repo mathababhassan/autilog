@@ -8,8 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/constants/routes.dart';
 import '../../../../../core/theme/theme.dart';
 import '../../../../../shared/widgets/delete_account_dialog.dart';
-import 'parent_settings_model.dart';
-
+import '../data/parent_settings_model.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // Screen
 // ─────────────────────────────────────────────────────────────────────────────
@@ -56,18 +55,46 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
       });
       return;
     }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
     try {
       final snap = await _docRef.get();
+
+      // Doc may not exist yet for a first-time user — that's fine; use defaults.
       final model = snap.exists && snap.data() != null
           ? ParentSettingsModel.fromMap(snap.data()!)
           : const ParentSettingsModel();
+
       if (mounted) {
         setState(() {
           _settings = model;
           _loading = false;
         });
       }
-    } catch (e) {
+    } on FirebaseException catch (e) {
+      // permission-denied → Firestore rules not yet deployed.
+      // Silently fall back to defaults so the UI is still usable.
+      if (e.code == 'permission-denied') {
+        if (mounted) {
+          setState(() {
+            _settings = const ParentSettingsModel();
+            _loading = false;
+            // Don't show an error — just use defaults.
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _error = 'Failed to load settings. (${e.code})';
+          });
+        }
+      }
+    } catch (_) {
       if (mounted) {
         setState(() {
           _loading = false;
@@ -77,6 +104,7 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
     }
   }
 
+
   Future<void> _save() async {
     if (_uid.isEmpty || _saving) return;
     setState(() => _saving = true);
@@ -85,8 +113,8 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
       if (mounted) {
         _showSnack('Settings saved', success: true);
       }
-    } catch (_) {
-      if (mounted) _showSnack('Failed to save settings', success: false);
+    } catch (e) {
+      if (mounted) _showSnack('Failed to save settings: $e', success: false);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -112,31 +140,6 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
 
   void _update(ParentSettingsModel next) {
     setState(() => _settings = next);
-  }
-
-  Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(
-        hour: _settings.reminderTimeHour,
-        minute: _settings.reminderTimeMinute,
-      ),
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: AppColors.primary,
-            onPrimary: AppColors.textWhite,
-            onSurface: AppColors.textMain,
-          ),
-        ),
-        child: child!,
-      ),
-    );
-    if (picked == null) return;
-    _update(_settings.copyWith(
-      reminderTimeHour: picked.hour,
-      reminderTimeMinute: picked.minute,
-    ));
   }
 
   // ─── Build ─────────────────────────────────────────────────────────────────
@@ -188,7 +191,6 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
           label: 'Session updates',
           subtitle: 'Scheduling changes, reminders, and notes.',
           value: _settings.sessionReminders,
-          enabled: _settings.enableNotifications,
           onChanged: (v) => _update(_settings.copyWith(sessionReminders: v)),
         ),
         _SettingsTile(
@@ -197,7 +199,6 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
           label: 'Therapist comments',
           subtitle: 'When your therapist comments on a log.',
           value: _settings.appointmentReminders,
-          enabled: _settings.enableNotifications,
           onChanged: (v) =>
               _update(_settings.copyWith(appointmentReminders: v)),
         ),
@@ -207,7 +208,6 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
           label: 'Daily log reminders',
           subtitle: 'A nudge if you haven\'t logged by evening.',
           value: _settings.dailyLogReminders,
-          enabled: _settings.enableNotifications,
           onChanged: (v) =>
               _update(_settings.copyWith(dailyLogReminders: v)),
         ),
@@ -217,30 +217,9 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
           label: 'Weekly AI Insights',
           subtitle: 'When a new weekly summary is ready.',
           value: _settings.weeklyAiInsights,
-          enabled: _settings.enableNotifications,
           onChanged: (v) =>
               _update(_settings.copyWith(weeklyAiInsights: v)),
         ),
-
-        const SizedBox(height: AppSpacing.xl),
-
-        // ── Reminder time ──────────────────────────────────────────
-        if (_settings.enableNotifications &&
-            (_settings.sessionReminders ||
-                _settings.appointmentReminders ||
-                _settings.dailyLogReminders)) ...[
-          _SectionLabel(
-            label: 'Reminder Time',
-            subtitle: 'Default time for daily reminders.',
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _ReminderTimeTile(
-            hour: _settings.reminderTimeHour,
-            minute: _settings.reminderTimeMinute,
-            onTap: _pickTime,
-          ),
-          const SizedBox(height: AppSpacing.xl),
-        ],
 
         // ── Account section ────────────────────────────────────────
         _SectionLabel(label: 'Account'),
@@ -310,57 +289,84 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
   }
 
   // ─── Dialogs ───────────────────────────────────────────────────────────────
-
   void _showChangePasswordDialog(BuildContext context) {
-    final controller = TextEditingController();
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Change Password',
-            style:
-                AppTextStyles.subtitle.copyWith(fontWeight: FontWeight.w700)),
-        content: TextField(
-          controller: controller,
-          obscureText: true,
-          decoration: InputDecoration(
-            labelText: 'New Password (min 8 chars)',
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12)),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  const BorderSide(color: AppColors.primary, width: 2),
+            style: AppTextStyles.subtitle.copyWith(fontWeight: FontWeight.w700)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: currentPasswordController,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: 'Current Password',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: newPasswordController,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: 'New Password (min 8 chars)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text('Cancel',
-                style: AppTextStyles.body
-                    .copyWith(color: AppColors.textSubtle)),
+                style: AppTextStyles.body.copyWith(color: AppColors.textSubtle)),
           ),
           ElevatedButton(
             onPressed: () async {
-              if (controller.text.length >= 8) {
-                await FirebaseAuth.instance.currentUser
-                    ?.updatePassword(controller.text);
+              final currentPassword = currentPasswordController.text;
+              final newPassword = newPasswordController.text;
+              if (currentPassword.isEmpty || newPassword.length < 8) return;
+              try {
+                final user = FirebaseAuth.instance.currentUser!;
+                final credential = EmailAuthProvider.credential(
+                  email: user.email!,
+                  password: currentPassword,
+                );
+                await user.reauthenticateWithCredential(credential);
+                await user.updatePassword(newPassword);
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) _showSnack('Password updated', success: true);
+              } on FirebaseAuthException catch (e) {
                 if (ctx.mounted) Navigator.pop(ctx);
                 if (context.mounted) {
-                  _showSnack('Password updated', success: true);
+                  _showSnack(
+                    e.code == 'wrong-password'
+                        ? 'Current password is incorrect.'
+                        : 'Failed to update password.',
+                    success: false,
+                  );
                 }
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             child: Text('Update',
-                style: AppTextStyles.body
-                    .copyWith(color: AppColors.textWhite)),
+                style: AppTextStyles.body.copyWith(color: AppColors.textWhite)),
           ),
         ],
       ),
@@ -588,103 +594,6 @@ class _SettingsTile extends StatelessWidget {
             activeTrackColor: AppColors.primary,
             inactiveThumbColor: AppColors.labelInactive,
             inactiveTrackColor: AppColors.borderInactive,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Reminder time row
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ReminderTimeTile extends StatelessWidget {
-  const _ReminderTimeTile({
-    required this.hour,
-    required this.minute,
-    required this.onTap,
-  });
-
-  final int hour;
-  final int minute;
-  final VoidCallback onTap;
-
-  String _format() {
-    final h = hour % 12 == 0 ? 12 : hour % 12;
-    final m = minute.toString().padLeft(2, '0');
-    final period = hour < 12 ? 'AM' : 'PM';
-    return '$h:$m $period';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          AppSpacing.xl, 0, AppSpacing.xl, 0),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceDefault,
-            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: const Icon(Icons.access_time_rounded,
-                    color: AppColors.primary, size: 20),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Text(
-                  'Reminder Time',
-                  style: AppTextStyles.body.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textMain,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _format(),
-                      style: AppTextStyles.body.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.edit_outlined,
-                        color: AppColors.primary, size: 14),
-                  ],
-                ),
-              ),
-            ],
           ),
         ),
       ),

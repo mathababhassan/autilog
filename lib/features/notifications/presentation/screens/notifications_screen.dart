@@ -10,6 +10,11 @@ import '../../data/notification_model.dart';
 import '../../data/notification_repository.dart';
 import '../widgets/notification_tile.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../../shared/models/child_model.dart';
+import '../../../incident_log/presentation/screens/incident_detail_screen.dart';
+import '../../../positive_moment/presentation/screens/positive_moment_detail_screen.dart';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry points — one for each role, both delegate to _NotificationsView
 // ─────────────────────────────────────────────────────────────────────────────
@@ -78,23 +83,67 @@ class _NotificationsViewState extends State<_NotificationsView> {
 
   // ─── Navigation ───────────────────────────────────────────────────────────
 
-  void _navigate(NotificationModel n) {
-    if (n.targetId == null || n.targetId!.isEmpty) return;
+  void _navigate(NotificationModel n) async {
+    final childId = n.targetChildId ?? '';
+    final parentId = n.targetParentId ?? '';
+    final logId = n.targetId ?? '';
 
     switch (n.targetType) {
       case NotificationTargetType.session:
-        context.push(Routes.sessionDetail, extra: n.targetId);
-      case NotificationTargetType.log:
-        // Navigates to log history; passing targetId as the childId is best-
-        // effort — the parent's log_history screen already accepts a childId.
-        if (widget.isTherapist) {
-          // Therapist: go to patient log review if we have a targetId.
-          context.push(Routes.logHistory, extra: n.targetId);
-        } else {
-          context.push(Routes.logHistory, extra: n.targetId);
-        }
       case NotificationTargetType.appointment:
-        context.push(Routes.sessionDetail, extra: n.targetId);
+        if (n.targetId?.isNotEmpty == true) {
+          context.push(Routes.sessionDetail, extra: n.targetId);
+        }
+
+      case NotificationTargetType.log:
+        if (childId.isEmpty || logId.isEmpty) return;
+
+        String childName = '';
+        if (parentId.isNotEmpty) {
+          try {
+            final childDoc = await FirebaseFirestore.instance
+                .collection('parents')
+                .doc(parentId)
+                .collection('children')
+                .doc(childId)
+                .get();
+            childName = childDoc.data()?['name'] as String? ?? '';
+          } catch (_) {}
+        }
+
+        if (!mounted) return;
+
+        final kind = n.rawTargetKind ?? '';
+        if (kind == 'incident') {
+          final child = ChildModel(
+            childId: childId,
+            parentId: parentId,
+            name: childName,
+            dateOfBirth: DateTime(2000),
+            diagnosisType: '',
+            severityLevel: 1,
+          );
+          context.push(Routes.incidentDetail,
+              extra: IncidentDetailArgs(incidentId: logId, child: child));
+        } else if (kind == 'dailySummary') {
+          context.push(Routes.dailySummaryDetail, extra: {
+            'summaryId': logId,
+            'parentId': parentId,
+            'childId': childId,
+            'childName': childName,
+          });
+        } else if (kind == 'positiveMoment') {
+          context.push(Routes.positiveMomentDetail,
+              extra: PositiveMomentDetailArgs(
+                momentId: logId,
+                childId: childId,
+                childName: childName,
+                parentId: parentId,
+              ));
+        } else {
+          context.push(Routes.logHistory, extra: childId);
+        }
+
       case NotificationTargetType.unknown:
         break;
     }

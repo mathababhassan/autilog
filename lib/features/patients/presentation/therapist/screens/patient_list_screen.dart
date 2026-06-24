@@ -664,7 +664,7 @@ class _PatientCard extends StatelessWidget {
                           if (_isAlert) ...[
                             const SizedBox(height: 2),
                             Text(
-                              '4 High severity incidents this week',
+                              'High severity incidents logged',
                               style: AppTextStyles.caption.copyWith(
                                 color: AppColors.textMain,
                               ),
@@ -738,18 +738,11 @@ class _PatientCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (_isAlert) ...[
-                        _InfoRow(
-                          icon: Icons.calendar_today_outlined,
-                          iconSize: 14,
-                          text: 'Friday · 2:00 PM',
-                          color: infoTextColor,
-                        ),
-                        const SizedBox(height: 6),
                       ],
                       _InfoRow(
                         icon: Icons.access_time_outlined,
                         iconSize: 14,
-                        text: 'Last log 2 days ago',
+                        text: 'View details for activity',
                         color: infoTextColor,
                       ),
                     ],

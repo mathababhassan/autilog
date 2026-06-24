@@ -1068,44 +1068,6 @@ class _RescheduleSheetState extends State<_RescheduleSheet> {
   }
 }
 
-void _showCancelDialog(BuildContext context, SessionModel session) {
-  showDialog(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Cancel Session'),
-      content: Text(
-        'Are you sure you want to cancel the session with ${session.childName}?\n\nThe parent will be notified.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('Keep Session'),
-        ),
-        TextButton(
-          onPressed: () async {
-            Navigator.of(ctx).pop();
-            try {
-              await SessionRepository().cancelSession(session.id);
-              if (context.mounted) {
-                context.read<SessionDetailBloc>()
-                    .add(SessionDetailStarted(sessionId: session.id));
-                AppSnackbar.showSuccess(context, 'Session cancelled.');
-              }
-            } catch (_) {
-              if (context.mounted) {
-                AppSnackbar.showError(
-                    context, 'Could not cancel. Please try again.');
-              }
-            }
-          },
-          style: TextButton.styleFrom(foregroundColor: AppColors.error),
-          child: const Text('Cancel Session'),
-        ),
-      ],
-    ),
-  );
-}
 
 // ─── Side effects ──────────────────────────────────────────────────────────────
 
@@ -1121,7 +1083,7 @@ Future<void> _launchCall(BuildContext context, Uri url) async {
 // ─── Formatting helpers ────────────────────────────────────────────────────────
 
 String _patientSummary(ChildModel child) {
-  return 'ASD L${child.severityLevel} · ${_ageInYears(child.dateOfBirth)} yrs';
+  return 'ASD L${child.severityLevel} · ${child.age} yrs';
 }
 
 int _ageInYears(DateTime dob) {

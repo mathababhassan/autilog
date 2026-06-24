@@ -1252,43 +1252,6 @@ Future<void> _showRescheduleSheet(
   }
 }
 
-Future<void> _showCancelDialog(
-    BuildContext context, SessionModel session, SessionListBloc bloc) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text('Cancel Session'),
-      content: Text(
-          'Are you sure you want to cancel the session with ${session.childName}?\n\nThe parent will be notified.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text('Keep Session'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(true),
-          style: TextButton.styleFrom(foregroundColor: AppColors.error),
-          child: const Text('Cancel Session'),
-        ),
-      ],
-    ),
-  );
-  if (confirmed == true && context.mounted) {
-    try {
-      await SessionRepository().cancelSession(session.id);
-      if (context.mounted) {
-        bloc.add(const SessionListRefreshRequested());
-        AppSnackbar.showSuccess(context, 'Session cancelled.');
-      }
-    } catch (_) {
-      if (context.mounted) {
-        AppSnackbar.showError(context, 'Could not cancel. Please try again.');
-      }
-    }
-  }
-}
-
 class _RescheduleListSheet extends StatefulWidget {
   const _RescheduleListSheet(
       {required this.session, required this.onConfirm});

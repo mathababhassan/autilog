@@ -38,6 +38,9 @@ class NotificationModel {
     required this.createdAt,
     this.targetType = NotificationTargetType.unknown,
     this.targetId,
+    this.targetChildId,
+    this.targetParentId,
+    this.rawTargetKind,
   });
 
   final String id;
@@ -51,22 +54,26 @@ class NotificationModel {
   final DateTime createdAt;
 
   final NotificationTargetType targetType;
-
-  /// ID of the related document (session, log, etc.), if any.
   final String? targetId;
+  final String? targetChildId;
+  final String? targetParentId;
+  final String? rawTargetKind;
 
   factory NotificationModel.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
+    final target = data['target'] as Map<String, dynamic>?;
     return NotificationModel(
       id: doc.id,
       title: data['title'] as String? ?? '',
       body: data['body'] as String? ?? '',
       type: data['type'] as String? ?? '',
-      // Firestore field is `read`, not `isRead`.
       isRead: data['read'] as bool? ?? false,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      targetType: _parseTargetType(data['targetType'] as String?),
-      targetId: data['targetId'] as String?,
+      targetType: _parseTargetType(target?['kind'] as String? ?? data['targetType'] as String?),
+      targetId: target?['id'] as String? ?? data['targetId'] as String?,
+      targetChildId: target?['childId'] as String?,
+      targetParentId: target?['parentId'] as String?,
+      rawTargetKind: target?['kind'] as String?,
     );
   }
 
@@ -79,5 +86,8 @@ class NotificationModel {
         createdAt: createdAt,
         targetType: targetType,
         targetId: targetId,
+        targetChildId: targetChildId,
+        targetParentId: targetParentId,
+        rawTargetKind: rawTargetKind ?? this.rawTargetKind,
       );
 }

@@ -40,6 +40,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         currentIndex: _currentIndex,
         onTap: (i) {
           if (i == 2) {
+            setState(() => _currentIndex = 0);
             context.push(Routes.parentSessions, extra: {
               'childId': _selectedChildId ?? '',
               'childName': _selectedChildName,
@@ -546,172 +547,149 @@ class _DashboardTabState extends State<_DashboardTab> {
   }
 
   Widget _buildRecentActivity(String uid, String childId) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _fetchRecentActivity(uid, childId),
-      builder: (context, snap) {
-        final items = snap.data ?? [];
+    final db = FirebaseFirestore.instance;
+    final base = db.collection('parents').doc(uid).collection('children').doc(childId);
+    final dateFormat = DateFormat('EEE d MMM');
 
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Recent Activity',
-                  style: TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              if (!snap.hasData)
-                const Center(child: CircularProgressIndicator())
-              else if (items.isEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.black12)),
-                  child: const Text(
-                      'No activity yet. Start logging to see your activity here.',
-                      style: TextStyle(
-                          color: Colors.black45, fontSize: 14),
-                      textAlign: TextAlign.center),
-                )
-              else
-                ...items.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final item = entry.value;
-                  return Padding(
-                    padding: EdgeInsets.only(
-                        bottom: i < items.length - 1 ? 10 : 0),
-                    child: _ActivityCard(
-                      date: item['date'] as String,
-                      type: item['type'] as String,
-                      detail: item['detail'] as String,
-                      isIncident: item['isIncident'] as bool,
-                    ),
-                  );
-                }),
-            ],
-          ),
+    Stream<List<Map<String, dynamic>>> activityStream() async* {
+      await for (final _ in Stream.periodic(const Duration(seconds: 0), (i) => i).take(1)
+          .asyncExpand((_) => base.collection('dailySummaries')
+              .orderBy('createdAt', descending: true)
+              .limit(3)
+              .snapshots())) {
+        yield [];
+      }
+    }
+
+    // Stream that merges the 3 subcollections and re-emits on any change
+    final summariesStream = base.collection('dailySummaries')
+        .orderBy('createdAt', descending: true).limit(3).snapshots();
+    final incidentsStream = base.collection('incidents')
+        .orderBy('createdAt', descending: true).limit(3).snapshots();
+    final momentsStream = base.collection('positiveMoments')
+        .orderBy('createdAt', descending: true).limit(3).snapshots();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: summariesStream,
+      builder: (context, summarySnap) {
+        return StreamBuilder<QuerySnapshot>(
+          stream: incidentsStream,
+          builder: (context, incidentSnap) {
+            return StreamBuilder<QuerySnapshot>(
+              stream: momentsStream,
+              builder: (context, momentSnap) {
+                final loading = !summarySnap.hasData &&
+                    !incidentSnap.hasData && !momentSnap.hasData;
+                final results = <Map<String, dynamic>>[];
+
+                for (final doc in summarySnap.data?.docs ?? []) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+                  final mood = data['moodRating'] as int?;
+                  final sleep = data['sleepRating'] as int?;
+                  final breakfast = data['breakfastEaten'] as bool? ?? false;
+                  final lunch = data['lunchEaten'] as bool? ?? false;
+                  final dinner = data['dinnerEaten'] as bool? ?? false;
+                  final mealsText = [if (breakfast) 'B', if (lunch) 'L', if (dinner) 'D'].join('+');
+                  final detail = [
+                    if (sleep != null) 'Sleep $sleep/5',
+                    if (mood != null) 'Mood $mood/5',
+                    mealsText.isNotEmpty ? 'Meals: $mealsText' : 'Meals skipped',
+                  ].join(' · ');
+                  results.add({
+                    'date': dateFormat.format(createdAt),
+                    'type': 'Daily Summary',
+                    'detail': detail,
+                    'isIncident': false,
+                    'sortDate': createdAt,
+                  });
+                }
+
+                for (final doc in incidentSnap.data?.docs ?? []) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+                  final severity = data['behaviorSeverity'] as int?;
+                  final triggers = (data['antecedentTriggers'] as List<dynamic>?)?.cast<String>() ?? [];
+                  final detail = [
+                    if (triggers.isNotEmpty) 'Trigger: ${triggers.first}',
+                    if (severity != null) 'Severity $severity/5',
+                  ].join(' · ');
+                  results.add({
+                    'date': dateFormat.format(createdAt),
+                    'type': 'Behavioral Incident',
+                    'detail': detail.isNotEmpty ? detail : 'Incident logged',
+                    'isIncident': true,
+                    'sortDate': createdAt,
+                  });
+                }
+
+                for (final doc in momentSnap.data?.docs ?? []) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+                  final rating = data['positiveBehaviorRating'] as int?;
+                  final types = (data['behaviorTypes'] as List<dynamic>?)?.cast<String>() ?? [];
+                  final detail = [
+                    if (types.isNotEmpty) types.first,
+                    if (rating != null) 'Rating $rating/5',
+                  ].join(' · ');
+                  results.add({
+                    'date': dateFormat.format(createdAt),
+                    'type': 'Positive Moment',
+                    'detail': detail.isNotEmpty ? detail : 'Positive moment logged',
+                    'isIncident': false,
+                    'sortDate': createdAt,
+                  });
+                }
+
+                results.sort((a, b) => (b['sortDate'] as DateTime).compareTo(a['sortDate'] as DateTime));
+                final items = results.take(3).toList();
+
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Recent Activity',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      if (loading)
+                        const Center(child: CircularProgressIndicator())
+                      else if (items.isEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.black12)),
+                          child: const Text(
+                              'No activity yet. Start logging to see your activity here.',
+                              style: TextStyle(color: Colors.black45, fontSize: 14),
+                              textAlign: TextAlign.center),
+                        )
+                      else
+                        ...items.asMap().entries.map((entry) {
+                          final i = entry.key;
+                          final item = entry.value;
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: i < items.length - 1 ? 10 : 0),
+                            child: _ActivityCard(
+                              date: item['date'] as String,
+                              type: item['type'] as String,
+                              detail: item['detail'] as String,
+                              isIncident: item['isIncident'] as bool,
+                            ),
+                          );
+                        }),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchRecentActivity(
-      String uid, String childId) async {
-    final db = FirebaseFirestore.instance;
-    final base = db
-        .collection('parents')
-        .doc(uid)
-        .collection('children')
-        .doc(childId);
-    final dateFormat = DateFormat('EEE d MMM');
-    final results = <Map<String, dynamic>>[];
-
-    try {
-      final summaries = await base
-          .collection('dailySummaries')
-          .orderBy('createdAt', descending: true)
-          .limit(3)
-          .get();
-      for (final doc in summaries.docs) {
-        final data = doc.data();
-        final createdAt =
-            (data['createdAt'] as Timestamp?)?.toDate() ??
-                DateTime.now();
-        final mood = data['moodRating'] as int?;
-        final sleep = data['sleepRating'] as int?;
-        final breakfast = data['breakfastEaten'] as bool? ?? false;
-        final lunch = data['lunchEaten'] as bool? ?? false;
-        final dinner = data['dinnerEaten'] as bool? ?? false;
-        final mealsText = [
-          if (breakfast) 'B',
-          if (lunch) 'L',
-          if (dinner) 'D'
-        ].join('+');
-        final detail = [
-          if (sleep != null) 'Sleep $sleep/5',
-          if (mood != null) 'Mood $mood/5',
-          mealsText.isNotEmpty ? 'Meals: $mealsText' : 'Meals skipped',
-        ].join(' · ');
-        results.add({
-          'date': dateFormat.format(createdAt),
-          'type': 'Daily Summary',
-          'detail': detail,
-          'isIncident': false,
-          'sortDate': createdAt,
-        });
-      }
-    } catch (_) {}
-
-    try {
-      final incidents = await base
-          .collection('incidents')
-          .orderBy('createdAt', descending: true)
-          .limit(3)
-          .get();
-      for (final doc in incidents.docs) {
-        final data = doc.data();
-        final createdAt =
-            (data['createdAt'] as Timestamp?)?.toDate() ??
-                DateTime.now();
-        final severity = data['behaviorSeverity'] as int?;
-        final triggers =
-            (data['antecedentTriggers'] as List<dynamic>?)
-                    ?.cast<String>() ??
-                [];
-        final detail = [
-          if (triggers.isNotEmpty) 'Trigger: ${triggers.first}',
-          if (severity != null) 'Severity $severity/5',
-        ].join(' · ');
-        results.add({
-          'date': dateFormat.format(createdAt),
-          'type': 'Behavioral Incident',
-          'detail':
-              detail.isNotEmpty ? detail : 'Incident logged',
-          'isIncident': true,
-          'sortDate': createdAt,
-        });
-      }
-    } catch (_) {}
-
-    try {
-      final moments = await base
-          .collection('positiveMoments')
-          .orderBy('createdAt', descending: true)
-          .limit(3)
-          .get();
-      for (final doc in moments.docs) {
-        final data = doc.data();
-        final createdAt =
-            (data['createdAt'] as Timestamp?)?.toDate() ??
-                DateTime.now();
-        final rating =
-            data['positiveBehaviorRating'] as int?;
-        final types =
-            (data['behaviorTypes'] as List<dynamic>?)
-                    ?.cast<String>() ??
-                [];
-        final detail = [
-          if (types.isNotEmpty) types.first,
-          if (rating != null) 'Rating $rating/5',
-        ].join(' · ');
-        results.add({
-          'date': dateFormat.format(createdAt),
-          'type': 'Positive Moment',
-          'detail': detail.isNotEmpty
-              ? detail
-              : 'Positive moment logged',
-          'isIncident': false,
-          'sortDate': createdAt,
-        });
-      }
-    } catch (_) {}
-
-    results.sort((a, b) => (b['sortDate'] as DateTime)
-        .compareTo(a['sortDate'] as DateTime));
-    return results.take(3).toList();
   }
 
   Widget _buildActions(BuildContext context, String childName) {

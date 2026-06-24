@@ -112,7 +112,7 @@ class ChildProfileScreen extends StatelessWidget {
       'name': child.name,
       'gender': '',           // ChildModel doesn't store gender; EditScreen handles gracefully
       'asdSeverity': 'Level ${child.severityLevel}',
-      'dob': Timestamp.fromDate(child.dateOfBirth),
+      'dob': child.dateOfBirth != null ? Timestamp.fromDate(child.dateOfBirth!) : null,
     };
   }
 
@@ -168,12 +168,14 @@ class ChildProfileScreen extends StatelessWidget {
             children: [
               _InfoRow(
                 label: 'Date of Birth',
-                value: _formatDate(loaded.child.dateOfBirth),
+                value: loaded.child.dateOfBirth != null
+                    ? _formatDate(loaded.child.dateOfBirth!)
+                    : '—',
               ),
               const _InfoDivider(),
               _InfoRow(
                 label: 'Age',
-                value: '${_age(loaded.child.dateOfBirth)} years old',
+                value: '${loaded.child.age} years old',
               ),
               const _InfoDivider(),
               _InfoRow(
@@ -416,7 +418,7 @@ class _HeroBlock extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'ASD Level ${child.severityLevel} · ${_age(child.dateOfBirth)} yrs old',
+            'ASD Level ${child.severityLevel} · ${child.age} yrs old',
             style: AppTextStyles.caption
                 .copyWith(color: AppColors.textPlaceholder),
           ),

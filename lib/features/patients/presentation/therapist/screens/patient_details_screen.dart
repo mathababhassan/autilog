@@ -12,6 +12,7 @@ import '../../../../../shared/widgets/app_snackbar.dart';
 import '../../../data/patient_repository.dart';
 import '../../../../sessions/data/session_repository.dart';
 import 'patient_details_screen.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'log_review_screen.dart';
 
 // ─── Args ─────────────────────────────────────────────────────
@@ -54,8 +55,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   void initState() {
     super.initState();
     _parentName = widget.args.parentName;
-    debugPrint('patient.parentId: ${widget.args.patient.parentId}');
-    debugPrint('patient.childId: ${widget.args.patient.childId}');
     _fetchData();
   }
 
@@ -376,7 +375,7 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                           children: [
                             Text(patient.name, style: AppTextStyles.subtitle.copyWith(fontWeight: FontWeight.w700)),
                             const SizedBox(height: 2),
-                            Text('DOB: ${DateFormat('d MMM yyyy').format(patient.dateOfBirth)}', style: AppTextStyles.caption.copyWith(color: AppColors.textSubtle)),
+                            Text('Age: ${patient.age} yrs', style: AppTextStyles.caption.copyWith(color: AppColors.textSubtle)),
                           ],
                         ),
                       ),
@@ -426,7 +425,6 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
                       style: AppTextStyles.caption.copyWith(color: AppColors.textSubtle),
                     );
                   }
-                  debugPrint('aiInsights data: ${snapshot.data!.data()}');
                   final data = snapshot.data!.data() as Map<String, dynamic>;
                   final isUnlocked = data['isUnlocked'] ?? false;
                   if (!isUnlocked) {
@@ -556,14 +554,36 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 50,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _TabItem(icon: Icons.home_outlined, label: 'Home', onTap: () => context.go(Routes.therapistHome)),
-              _TabItem(icon: Icons.people_outline, label: 'Patients', active: true, onTap: () => context.go(Routes.therapistPatients)),
-              _TabItem(icon: Icons.calendar_month_outlined, label: 'Sessions', onTap: () => context.go(Routes.therapistSessions),),
-              _TabItem(icon: Icons.bar_chart_outlined, label: 'Reports', onTap: () => context.go(Routes.therapistReports),),
+              _SvgTabItem(
+                iconOutline: 'assets/icons/home_outline.svg',
+                iconFilled: 'assets/icons/home_filled.svg',
+                label: 'Home',
+                onTap: () => context.go(Routes.therapistHome),
+              ),
+              _SvgTabItem(
+                iconOutline: 'assets/icons/patient_outline.svg',
+                iconFilled: 'assets/icons/patient_filled.svg',
+                label: 'Patients',
+                active: true,
+                onTap: () => context.go(Routes.therapistPatients),
+              ),
+              _SvgTabItem(
+                iconOutline: 'assets/icons/session_outline.svg',
+                iconFilled: 'assets/icons/session_filled.svg',
+                label: 'Sessions',
+                onTap: () => context.go(Routes.therapistSessions),
+              ),
+              _SvgTabItem(
+                iconOutline: 'assets/icons/report_outline.svg',
+                iconFilled: 'assets/icons/report_filled.svg',
+                label: 'Reports',
+                onTap: () => context.go(Routes.therapistReports),
+              ),
             ],
           ),
         ),
@@ -766,29 +786,42 @@ class _UpcomingSessionRow extends StatelessWidget {
   }
 }
 
-class _TabItem extends StatelessWidget {
-  final IconData icon;
+class _SvgTabItem extends StatelessWidget {
+  const _SvgTabItem({
+    required this.iconOutline,
+    this.iconFilled,
+    required this.label,
+    this.active = false,
+    this.onTap,
+  });
+
+  final String iconOutline;
+  final String? iconFilled;
   final String label;
   final bool active;
   final VoidCallback? onTap;
 
-  const _TabItem({required this.icon, required this.label, this.active = false, this.onTap});
-
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.primary : AppColors.textSubtle;
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(height: 2),
-            Text(label, style: AppTextStyles.tag.copyWith(color: color, fontWeight: active ? FontWeight.w700 : FontWeight.w400)),
-          ],
-        ),
+    final color = active ? AppColors.primary : AppColors.textMain;
+    final asset = active ? (iconFilled ?? iconOutline) : iconOutline;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SvgPicture.asset(asset,
+              width: 22,
+              height: 22,
+              colorFilter: ColorFilter.mode(color, BlendMode.srcIn)),
+          const SizedBox(height: 4),
+          Text(label,
+              style: AppTextStyles.tag.copyWith(
+                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                color: color,
+              )),
+        ],
       ),
     );
   }
