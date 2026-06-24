@@ -43,6 +43,7 @@ class PdfReportService {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
+        maxPages: 200,
         margin: pw.EdgeInsets.zero,
         header: (ctx) => _header(ctx, childName, from, to),
         footer: (ctx) => _footer(ctx),
@@ -109,6 +110,7 @@ class PdfReportService {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
+        maxPages: 200,
         margin: pw.EdgeInsets.zero,
         header: (ctx) => _practiceHeader(ctx, from, to),
         footer: (ctx) => _footer(ctx),
