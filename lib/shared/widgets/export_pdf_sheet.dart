@@ -114,7 +114,6 @@ class _ExportPdfSheetState extends State<ExportPdfSheet> {
           .collection('incidents')
           .where('date', isGreaterThanOrEqualTo: fromTs)
           .where('date', isLessThan: toTs)
-          .orderBy('date', descending: false)
           .get();
 
       final momentsSnap = await fs
@@ -125,15 +124,16 @@ class _ExportPdfSheetState extends State<ExportPdfSheet> {
           .collection('positiveMoments')
           .where('date', isGreaterThanOrEqualTo: fromTs)
           .where('date', isLessThan: toTs)
-          .orderBy('date', descending: false)
           .get();
 
       final incidents = incidentsSnap.docs
           .map((d) => IncidentModel.fromMap(d.data(), d.id))
-          .toList();
+          .toList()
+        ..sort((a, b) => a.date.compareTo(b.date));
       final moments = momentsSnap.docs
           .map((d) => PositiveMomentModel.fromMap(d.data(), d.id))
-          .toList();
+          .toList()
+        ..sort((a, b) => a.date.compareTo(b.date));
 
       if (!mounted) return;
       Navigator.pop(context);
