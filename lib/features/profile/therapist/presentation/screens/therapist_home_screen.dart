@@ -302,6 +302,14 @@ class _HomeBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<PatientListBloc, PatientListState>(
       builder: (context, patientState) {
+        if (patientState is PatientListInitial ||
+            patientState is PatientListLoading) {
+          return const Padding(
+            padding: EdgeInsets.only(top: 60),
+            child: Center(
+                child: CircularProgressIndicator(color: AppColors.primary)),
+          );
+        }
         final hasPatients = patientState is PatientListLoaded &&
             patientState.activePatients.isNotEmpty;
         if (!hasPatients) return _EmptyBody();
