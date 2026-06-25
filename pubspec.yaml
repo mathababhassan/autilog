@@ -52,6 +52,6 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/autilog_icon.png"
+  image_path: "assets/images/autilog_logo.png"
   adaptive_icon_background: "#FA8601"
-  adaptive_icon_foreground: "assets/images/autilog_icon.png"
+  adaptive_icon_foreground: "assets/images/autilog_logo.png"
