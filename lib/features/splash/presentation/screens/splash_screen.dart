@@ -116,7 +116,7 @@ class _SplashScreenState extends State<SplashScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Image.asset(
-                  'assets/images/autilog_logo.svg',
+                  'assets/images/autilog_logo_splash.png',
                   width: 173,
                   height: 173,
                 ),
