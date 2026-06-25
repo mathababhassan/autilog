@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -145,14 +146,18 @@ class _HomeHeader extends StatelessWidget {
                           const SizedBox(width: 12),
                           GestureDetector(
                             onTap: onAvatarTap,
-                            child: Container(
-                              width: 36, height: 36,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withValues(alpha: 0.22),
-                              ),
-                              child: const Icon(Icons.person_outline,
-                                  color: AppColors.textWhite, size: 20),
+                            child: CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Colors.white.withValues(alpha: 0.22),
+                              backgroundImage: state is TherapistProfileLoaded && state.therapist.profilePhotoBase64 != null
+                                  ? MemoryImage(base64Decode(state.therapist.profilePhotoBase64!))
+                                  : state is TherapistProfileUpdateSuccess && state.therapist.profilePhotoBase64 != null
+                                      ? MemoryImage(base64Decode(state.therapist.profilePhotoBase64!))
+                                      : null,
+                              child: (state is TherapistProfileLoaded && state.therapist.profilePhotoBase64 != null) ||
+                                      (state is TherapistProfileUpdateSuccess && state.therapist.profilePhotoBase64 != null)
+                                  ? null
+                                  : const Icon(Icons.person_outline, color: AppColors.textWhite, size: 20),
                             ),
                           ),
                         ],
