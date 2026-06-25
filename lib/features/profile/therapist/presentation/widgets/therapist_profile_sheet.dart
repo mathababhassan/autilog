@@ -179,21 +179,6 @@ class _TherapistProfileSheet extends StatelessWidget {
               ),
               _SheetRow(
                 icon: SvgPicture.asset(
-                  'assets/icons/shield_outline.svg',
-                  width: 20,
-                  height: 20,
-                  colorFilter: const ColorFilter.mode(
-                    AppColors.textMain,
-                    BlendMode.srcIn,
-                  ),
-                ),
-                label: 'Change Password',
-                iconBoxColor: AppColors.inputFill,
-                onTap: () {},
-              ),
-              const Divider(height: 1, color: AppColors.dividerLight),
-              _SheetRow(
-                icon: SvgPicture.asset(
                   'assets/icons/signout_outline.svg',
                   width: 20,
                   height: 20,
