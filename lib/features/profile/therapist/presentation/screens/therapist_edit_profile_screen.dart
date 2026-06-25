@@ -12,7 +12,6 @@ import '../../../../../shared/models/therapist_model.dart';
 import '../../../../../shared/models/user_model.dart';
 import '../../../../../shared/widgets/app_text_field.dart';
 import '../../../../../shared/widgets/app_snackbar.dart';
-import '../../../../../shared/widgets/app_confirmation_dialog.dart';
 import '../../bloc/therapist_profile_bloc.dart';
 import '../../bloc/therapist_profile_event.dart';
 import '../../bloc/therapist_profile_state.dart';
@@ -121,43 +120,6 @@ class _TherapistEditProfileScreenState
         .add(TherapistProfileUpdateRequested(fields: fields));
   }
 
-  Future<void> _confirmSignOut() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.surfaceModal,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetCtx) => _SignOutSheet(
-        onConfirm: () {
-          Navigator.of(sheetCtx).pop();
-          context
-              .read<TherapistProfileBloc>()
-              .add(const TherapistProfileSignOutRequested());
-        },
-        onCancel: () => Navigator.of(sheetCtx).pop(),
-      ),
-    );
-  }
-
-  Future<void> _confirmDelete() async {
-    const consentText =
-        'I consent to deleting my therapist profile with all its data';
-    final confirmed = await showAppConfirmationDialog(
-      context: context,
-      title: 'Delete account?',
-      description:
-          'This will permanently delete your profile, all linked patient data, and your login. This cannot be undone.',
-      confirmText: consentText,
-      confirmButtonLabel: 'Delete Account',
-    );
-    if (confirmed == true && mounted) {
-      context
-          .read<TherapistProfileBloc>()
-          .add(const TherapistProfileDeleteRequested());
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<TherapistProfileBloc, TherapistProfileState>(
@@ -260,37 +222,6 @@ class _TherapistEditProfileScreenState
                             label: 'Licence Number',
                             value: _original.licenceNumber,
                             note: 'Legal record — cannot be changed',
-                          ),
-                        ],
-                      ),
-                      _EditSection(
-                        label: 'Account',
-                        children: [
-                          _ActionRow(
-                            label: 'Change Password',
-                            color: AppColors.secondary,
-                            showChevron: true,
-                            onTap: () {},
-                          ),
-                          const Divider(
-                              height: 1,
-                              indent: AppSpacing.screenMargin,
-                              endIndent: AppSpacing.screenMargin,
-                              color: AppColors.dividerLight),
-                          _ActionRow(
-                            label: 'Sign Out',
-                            color: AppColors.error,
-                            onTap: isSaving ? null : _confirmSignOut,
-                          ),
-                          const Divider(
-                              height: 1,
-                              indent: AppSpacing.screenMargin,
-                              endIndent: AppSpacing.screenMargin,
-                              color: AppColors.dividerLight),
-                          _ActionRow(
-                            label: 'Delete Account',
-                            color: AppColors.error,
-                            onTap: isSaving ? null : _confirmDelete,
                           ),
                         ],
                       ),
@@ -565,120 +496,3 @@ class _ReadOnlyRow extends StatelessWidget {
   }
 }
 
-// ─── Action row ───────────────────────────────────────────────
-
-class _ActionRow extends StatelessWidget {
-  const _ActionRow({
-    required this.label,
-    required this.color,
-    required this.onTap,
-    this.showChevron = false,
-  });
-
-  final String label;
-  final Color color;
-  final VoidCallback? onTap;
-  final bool showChevron;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.screenMargin, vertical: 14),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label,
-                style: AppTextStyles.body.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                )),
-            if (showChevron)
-              Icon(Icons.chevron_right, size: 18, color: AppColors.textDisabled),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Sign Out bottom sheet ────────────────────────────────────
-
-class _SignOutSheet extends StatelessWidget {
-  const _SignOutSheet({required this.onConfirm, required this.onCancel});
-
-  final VoidCallback onConfirm;
-  final VoidCallback onCancel;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                width: 38,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.dividerLight,
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text('Sign out?',
-                style: AppTextStyles.heading2
-                    .copyWith(color: AppColors.textMain)),
-            const SizedBox(height: 8),
-            Text(
-              "You'll need to sign back in to access your patients and sessions.",
-              style: AppTextStyles.body.copyWith(color: AppColors.textPlaceholder),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: onConfirm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.error,
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppSpacing.pillRadius),
-                  ),
-                ),
-                child: Text('Sign Out',
-                    style: AppTextStyles.body.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textWhite,
-                    )),
-              ),
-            ),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: onCancel,
-              child: SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: Center(
-                  child: Text('Cancel',
-                      style: AppTextStyles.body.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.secondary,
-                      )),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-}
