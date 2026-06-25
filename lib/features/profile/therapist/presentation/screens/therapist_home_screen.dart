@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -36,8 +37,11 @@ class _TherapistHomeScreenState extends State<TherapistHomeScreen> {
     _homeCubit = TherapistHomeCubit(sessionRepository: SessionRepository());
     context.read<TherapistProfileBloc>().add(const TherapistProfileStarted());
     context.read<PatientListBloc>().add(const PatientListStarted());
+    context.read<TherapistProfileBloc>().stream.listen((state) {
+      print('TherapistProfileBloc state: $state');
+    });
   }
-
+  
   @override
   void dispose() {
     _homeCubit.close();
@@ -124,8 +128,7 @@ class _HomeHeader extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(children: [
-                        const Icon(Icons.stars_rounded,
-                            color: AppColors.textWhite, size: 22),
+                        Image.asset('assets/images/autilog_logo.png', width: 22, height: 22),
                         const SizedBox(width: 8),
                         Text('AutiLog',
                             style: AppTextStyles.subtitle.copyWith(
@@ -143,14 +146,18 @@ class _HomeHeader extends StatelessWidget {
                           const SizedBox(width: 12),
                           GestureDetector(
                             onTap: onAvatarTap,
-                            child: Container(
-                              width: 36, height: 36,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withValues(alpha: 0.22),
-                              ),
-                              child: const Icon(Icons.person_outline,
-                                  color: AppColors.textWhite, size: 20),
+                            child: CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Colors.white.withValues(alpha: 0.22),
+                              backgroundImage: state is TherapistProfileLoaded && state.therapist.profilePhotoBase64 != null
+                                  ? MemoryImage(base64Decode(state.therapist.profilePhotoBase64!))
+                                  : state is TherapistProfileUpdateSuccess && state.therapist.profilePhotoBase64 != null
+                                      ? MemoryImage(base64Decode(state.therapist.profilePhotoBase64!))
+                                      : null,
+                              child: (state is TherapistProfileLoaded && state.therapist.profilePhotoBase64 != null) ||
+                                      (state is TherapistProfileUpdateSuccess && state.therapist.profilePhotoBase64 != null)
+                                  ? null
+                                  : const Icon(Icons.person_outline, color: AppColors.textWhite, size: 20),
                             ),
                           ),
                         ],
@@ -162,13 +169,12 @@ class _HomeHeader extends StatelessWidget {
                       style: AppTextStyles.caption.copyWith(
                           color: AppColors.textWhite.withValues(alpha: 0.92))),
                   const SizedBox(height: 2),
-                  Text(
-                    firstName.isEmpty
-                        ? 'Hello!'
-                        : 'Good ${_greeting()}, Dr. $firstName',
-                    style: AppTextStyles.heading1
-                        .copyWith(color: AppColors.textWhite),
-                  ),
+                  if (firstName.isNotEmpty)
+                    Text(
+                      'Good ${_greeting()}, Dr. $firstName',
+                      style: AppTextStyles.heading1
+                          .copyWith(color: AppColors.textWhite),
+                    ),
                   // Stats row — only when data loaded
                   BlocBuilder<TherapistHomeCubit, TherapistHomeState>(
                     builder: (context, homeState) {
@@ -198,6 +204,8 @@ class _HomeHeader extends StatelessWidget {
     if (state is TherapistProfileLoaded) {
       fullName = state.therapist.name;
     } else if (state is TherapistProfileUpdateSuccess) {
+      fullName = state.therapist.name;
+    } else if (state is TherapistProfileUpdating) {
       fullName = state.therapist.name;
     } else {
       return '';
@@ -299,6 +307,14 @@ class _HomeBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<PatientListBloc, PatientListState>(
       builder: (context, patientState) {
+        if (patientState is PatientListInitial ||
+            patientState is PatientListLoading) {
+          return const Padding(
+            padding: EdgeInsets.only(top: 60),
+            child: Center(
+                child: CircularProgressIndicator(color: AppColors.primary)),
+          );
+        }
         final hasPatients = patientState is PatientListLoaded &&
             patientState.activePatients.isNotEmpty;
         if (!hasPatients) return _EmptyBody();

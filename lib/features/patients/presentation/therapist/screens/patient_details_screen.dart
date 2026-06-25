@@ -566,49 +566,49 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
   }
 
   Widget _buildTabBar(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceDefault,
-        border: Border(top: BorderSide(color: AppColors.dividerLight)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _SvgTabItem(
-                iconOutline: 'assets/icons/home_outline.svg',
-                iconFilled: 'assets/icons/home_filled.svg',
-                label: 'Home',
-                onTap: () => context.go(Routes.therapistHome),
-              ),
-              _SvgTabItem(
-                iconOutline: 'assets/icons/patient_outline.svg',
-                iconFilled: 'assets/icons/patient_filled.svg',
-                label: 'Patients',
-                active: true,
-                onTap: () => context.go(Routes.therapistPatients),
-              ),
-              _SvgTabItem(
-                iconOutline: 'assets/icons/session_outline.svg',
-                iconFilled: 'assets/icons/session_filled.svg',
-                label: 'Sessions',
-                onTap: () => context.go(Routes.therapistSessions),
-              ),
-              _SvgTabItem(
-                iconOutline: 'assets/icons/report_outline.svg',
-                iconFilled: 'assets/icons/report_filled.svg',
-                label: 'Reports',
-                onTap: () => context.go(Routes.therapistReports),
-              ),
-            ],
-          ),
+  return Container(
+    decoration: const BoxDecoration(
+      color: AppColors.surfaceDefault,
+      border: Border(top: BorderSide(color: AppColors.dividerLight)),
+    ),
+    child: SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _SvgTabItem(
+              iconOutline: 'assets/icons/home_outline.svg',
+              iconFilled: 'assets/icons/home_filled.svg',
+              label: 'Home',
+              onTap: () => context.go(Routes.therapistHome),
+            ),
+            _SvgTabItem(
+              iconOutline: 'assets/icons/patient_outline.svg',
+              iconFilled: 'assets/icons/patient_filled.svg',
+              label: 'Patients',
+              active: true,
+              onTap: () => context.go(Routes.therapistPatients),
+            ),
+            _SvgTabItem(
+              iconOutline: 'assets/icons/session_outline.svg',
+              iconFilled: 'assets/icons/session_filled.svg',
+              label: 'Sessions',
+              onTap: () => context.go(Routes.therapistSessions),
+            ),
+            _SvgTabItem(
+              iconOutline: 'assets/icons/report_outline.svg',
+              iconFilled: 'assets/icons/report_filled.svg',
+              label: 'Reports',
+              onTap: () => context.go(Routes.therapistReports),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 // ─── Reusable widgets ──────────────────────────────────────────

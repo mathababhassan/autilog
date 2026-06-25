@@ -56,6 +56,7 @@ import 'features/patients/presentation/therapist/screens/log_review_screen.dart'
 import 'features/profile/therapist/presentation/screens/therapist_reports_screen.dart';
 import 'features/notifications/presentation/screens/notifications_screen.dart';
 import 'features/auth/presentation/parent/screens/parent_settings_screen.dart';
+import 'features/auth/presentation/therapist/screens/therapist_settings_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class App extends StatelessWidget {
@@ -102,14 +103,6 @@ class _AppView extends StatefulWidget {
   @override
   State<_AppView> createState() => _AppViewState();
 }
-
-/// Temporary placeholder for routes whose real screen isn't built yet
-/// (Notifications, Settings). Swap the route's builder for the real screen
-/// when it lands — entry points already point at the route.
-Widget _comingSoon(String title) => Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: const Center(child: Text('Coming soon')),
-    );
 
 Future<bool> _checkIfParentHasChildren(String parentId) async {
   try {
@@ -350,7 +343,6 @@ class _AppViewState extends State<_AppView> {
             final args = state.extra as Map<String, dynamic>? ?? {};
             return ParentEditProfileScreen(
               name: args['name'] as String? ?? '',
-              phone: args['phone'] as String? ?? '',
               gender: args['gender'] as String? ?? '',
               email: args['email'] as String? ?? '',
             );
@@ -430,7 +422,7 @@ class _AppViewState extends State<_AppView> {
         ),
         GoRoute(
           path: Routes.therapistSettings,
-          builder: (_, __) => _comingSoon('Settings'),
+          builder: (_, __) => const TherapistSettingsScreen(),
         ),
       ],
     );

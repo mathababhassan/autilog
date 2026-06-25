@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:convert';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:formz/formz.dart';
@@ -6,6 +9,7 @@ import '../../../features/auth/data/auth_repository.dart';
 
 part 'parent_registration_event.dart';
 part 'parent_registration_state.dart';
+
 
 class ParentRegistrationBloc
     extends Bloc<ParentRegistrationEvent, ParentRegistrationState> {
@@ -104,12 +108,18 @@ class ParentRegistrationBloc
     emit(state.copyWith(status: FormzSubmissionStatus.inProgress));
 
     try {
+      String? base64Photo;
+      if (state.profilePhotoPath != null) {
+        final bytes = await File(state.profilePhotoPath!).readAsBytes();
+        base64Photo = base64Encode(bytes);
+      }
+
       await _authRepository.registerParent(
         email: state.email.trim(),
         password: state.password,
         name: state.name.trim(),
         gender: state.gender,
-        profilePhotoBase64: state.profilePhotoPath,
+        profilePhotoBase64: base64Photo,
       );
       emit(state.copyWith(status: FormzSubmissionStatus.success));
     } catch (e) {

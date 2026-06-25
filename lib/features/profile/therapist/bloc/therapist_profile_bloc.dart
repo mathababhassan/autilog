@@ -68,8 +68,8 @@ class TherapistProfileBloc
         name: event.fields['name'] as String?,
         clinicName: event.fields['clinicName'] as String?,
         specialisation: event.fields['specialisation'] as String?,
-        phone: event.fields['phone'] as String?,
         experience: event.fields['experience'] as String?,
+        profilePhotoBase64: event.fields['profilePhotoBase64'] as String?,
       );
       emit(TherapistProfileUpdateSuccess(therapist: updated, user: user));
     } catch (e) {

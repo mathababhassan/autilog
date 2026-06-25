@@ -1,3 +1,7 @@
+import 'dart:io';
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -8,7 +12,6 @@ import '../../../../../shared/models/therapist_model.dart';
 import '../../../../../shared/models/user_model.dart';
 import '../../../../../shared/widgets/app_text_field.dart';
 import '../../../../../shared/widgets/app_snackbar.dart';
-import '../../../../../shared/widgets/app_confirmation_dialog.dart';
 import '../../bloc/therapist_profile_bloc.dart';
 import '../../bloc/therapist_profile_event.dart';
 import '../../bloc/therapist_profile_state.dart';
@@ -23,7 +26,6 @@ class TherapistEditProfileScreen extends StatefulWidget {
 
 class _TherapistEditProfileScreenState
     extends State<TherapistEditProfileScreen> {
-  late TextEditingController _phoneCtrl;
   late TextEditingController _clinicCtrl;
   late TextEditingController _specialisationCtrl;
   late TextEditingController _experienceCtrl;
@@ -32,23 +34,24 @@ class _TherapistEditProfileScreenState
   late UserModel _originalUser;
   bool _initialised = false;
 
+  String? _profilePhotoBase64;
+  bool _loadingPhoto = false;
+
   bool get _isDirty {
     if (!_initialised) return false;
-    return _phoneCtrl.text != (_original.phone ?? '') ||
-        _clinicCtrl.text != _original.clinicName ||
+    return _clinicCtrl.text != _original.clinicName ||
         _specialisationCtrl.text != _original.specialisation ||
-        _experienceCtrl.text != (_original.experience ?? '');
+        _experienceCtrl.text != (_original.experience ?? '') ||
+        _profilePhotoBase64 != null;
   }
 
   @override
   void initState() {
     super.initState();
-    _phoneCtrl = TextEditingController();
     _clinicCtrl = TextEditingController();
     _specialisationCtrl = TextEditingController();
     _experienceCtrl = TextEditingController();
 
-    _phoneCtrl.addListener(() => setState(() {}));
     _clinicCtrl.addListener(() => setState(() {}));
     _specialisationCtrl.addListener(() => setState(() {}));
     _experienceCtrl.addListener(() => setState(() {}));
@@ -58,16 +61,29 @@ class _TherapistEditProfileScreenState
     if (_initialised) return;
     _original = therapist;
     _originalUser = user;
-    _phoneCtrl.text = therapist.phone ?? '';
     _clinicCtrl.text = therapist.clinicName;
     _specialisationCtrl.text = therapist.specialisation;
     _experienceCtrl.text = therapist.experience ?? '';
+    _profilePhotoBase64 = therapist.profilePhotoBase64;
     _initialised = true;
+  }
+
+  Future<void> _pickPhoto() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+    if (picked == null) return;
+    setState(() => _loadingPhoto = true);
+    final bytes = await File(picked.path).readAsBytes();
+    setState(() {
+      _profilePhotoBase64 = base64Encode(bytes);
+      _loadingPhoto = false;
+    });
   }
 
   @override
   void dispose() {
-    _phoneCtrl.dispose();
     _clinicCtrl.dispose();
     _specialisationCtrl.dispose();
     _experienceCtrl.dispose();
@@ -94,51 +110,14 @@ class _TherapistEditProfileScreenState
       'clinicName': clinicName,
       'specialisation': specialisation,
     };
-    final phone = _phoneCtrl.text.trim();
-    if (phone.isNotEmpty) fields['phone'] = phone;
+
     final experience = _experienceCtrl.text.trim();
     if (experience.isNotEmpty) fields['experience'] = experience;
+    if (_profilePhotoBase64 != null) fields['profilePhotoBase64'] = _profilePhotoBase64;
 
     context
         .read<TherapistProfileBloc>()
         .add(TherapistProfileUpdateRequested(fields: fields));
-  }
-
-  Future<void> _confirmSignOut() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.surfaceModal,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetCtx) => _SignOutSheet(
-        onConfirm: () {
-          Navigator.of(sheetCtx).pop();
-          context
-              .read<TherapistProfileBloc>()
-              .add(const TherapistProfileSignOutRequested());
-        },
-        onCancel: () => Navigator.of(sheetCtx).pop(),
-      ),
-    );
-  }
-
-  Future<void> _confirmDelete() async {
-    const consentText =
-        'I consent to deleting my therapist profile with all its data';
-    final confirmed = await showAppConfirmationDialog(
-      context: context,
-      title: 'Delete account?',
-      description:
-          'This will permanently delete your profile, all linked patient data, and your login. This cannot be undone.',
-      confirmText: consentText,
-      confirmButtonLabel: 'Delete Account',
-    );
-    if (confirmed == true && mounted) {
-      context
-          .read<TherapistProfileBloc>()
-          .add(const TherapistProfileDeleteRequested());
-    }
   }
 
   @override
@@ -185,27 +164,15 @@ class _TherapistEditProfileScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _AvatarBlock(name: _original.name),
+                      _AvatarBlock(
+                        name: _original.name,
+                        profilePhotoBase64: _profilePhotoBase64,
+                        loadingPhoto: _loadingPhoto,
+                        onPickPhoto: _pickPhoto,
+                      ),
                       _EditSection(
                         label: 'Personal Info',
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(
-                                AppSpacing.screenMargin,
-                                10,
-                                AppSpacing.screenMargin,
-                                10),
-                            child: AppTextField(
-                              label: 'Phone Number',
-                              controller: _phoneCtrl,
-                              keyboardType: TextInputType.phone,
-                            ),
-                          ),
-                          const Divider(
-                              height: 1,
-                              indent: AppSpacing.screenMargin,
-                              endIndent: AppSpacing.screenMargin,
-                              color: AppColors.dividerLight),
                           _ReadOnlyRow(
                             label: 'Email Address',
                             value: _originalUser.email,
@@ -255,37 +222,6 @@ class _TherapistEditProfileScreenState
                             label: 'Licence Number',
                             value: _original.licenceNumber,
                             note: 'Legal record — cannot be changed',
-                          ),
-                        ],
-                      ),
-                      _EditSection(
-                        label: 'Account',
-                        children: [
-                          _ActionRow(
-                            label: 'Change Password',
-                            color: AppColors.secondary,
-                            showChevron: true,
-                            onTap: () {},
-                          ),
-                          const Divider(
-                              height: 1,
-                              indent: AppSpacing.screenMargin,
-                              endIndent: AppSpacing.screenMargin,
-                              color: AppColors.dividerLight),
-                          _ActionRow(
-                            label: 'Sign Out',
-                            color: AppColors.error,
-                            onTap: isSaving ? null : _confirmSignOut,
-                          ),
-                          const Divider(
-                              height: 1,
-                              indent: AppSpacing.screenMargin,
-                              endIndent: AppSpacing.screenMargin,
-                              color: AppColors.dividerLight),
-                          _ActionRow(
-                            label: 'Delete Account',
-                            color: AppColors.error,
-                            onTap: isSaving ? null : _confirmDelete,
                           ),
                         ],
                       ),
@@ -376,9 +312,17 @@ class _NavBar extends StatelessWidget {
 // ─── Avatar block ─────────────────────────────────────────────
 
 class _AvatarBlock extends StatelessWidget {
-  const _AvatarBlock({required this.name});
+  const _AvatarBlock({
+    required this.name,
+    required this.profilePhotoBase64,
+    required this.loadingPhoto,
+    required this.onPickPhoto,
+  });
 
   final String name;
+  final String? profilePhotoBase64;
+  final bool loadingPhoto;
+  final VoidCallback onPickPhoto;
 
   @override
   Widget build(BuildContext context) {
@@ -397,26 +341,56 @@ class _AvatarBlock extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Container(
-            width: 82,
-            height: 82,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.primary,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              initials,
-              style: const TextStyle(
-                color: AppColors.textWhite,
-                fontWeight: FontWeight.w700,
-                fontSize: 26,
-              ),
+          GestureDetector(
+            onTap: onPickPhoto,
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 41,
+                  backgroundColor: AppColors.primary,
+                  backgroundImage: profilePhotoBase64 != null
+                      ? MemoryImage(base64Decode(profilePhotoBase64!))
+                      : null,
+                  child: profilePhotoBase64 == null
+                      ? Text(
+                          initials,
+                          style: const TextStyle(
+                            color: AppColors.textWhite,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 26,
+                          ),
+                        )
+                      : null,
+                ),
+                if (loadingPhoto)
+                  const Positioned.fill(
+                    child: CircleAvatar(
+                      radius: 41,
+                      backgroundColor: Colors.black26,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    ),
+                  ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: const BoxDecoration(
+                      color: AppColors.secondary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.camera_alt,
+                        size: 13, color: Colors.white),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 10),
           TextButton(
-            onPressed: () {},
+            onPressed: onPickPhoto,
             child: Text(
               'Change Photo',
               style: AppTextStyles.body.copyWith(
@@ -522,120 +496,3 @@ class _ReadOnlyRow extends StatelessWidget {
   }
 }
 
-// ─── Action row ───────────────────────────────────────────────
-
-class _ActionRow extends StatelessWidget {
-  const _ActionRow({
-    required this.label,
-    required this.color,
-    required this.onTap,
-    this.showChevron = false,
-  });
-
-  final String label;
-  final Color color;
-  final VoidCallback? onTap;
-  final bool showChevron;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.screenMargin, vertical: 14),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label,
-                style: AppTextStyles.body.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                )),
-            if (showChevron)
-              Icon(Icons.chevron_right, size: 18, color: AppColors.textDisabled),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Sign Out bottom sheet ────────────────────────────────────
-
-class _SignOutSheet extends StatelessWidget {
-  const _SignOutSheet({required this.onConfirm, required this.onCancel});
-
-  final VoidCallback onConfirm;
-  final VoidCallback onCancel;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                width: 38,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.dividerLight,
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text('Sign out?',
-                style: AppTextStyles.heading2
-                    .copyWith(color: AppColors.textMain)),
-            const SizedBox(height: 8),
-            Text(
-              "You'll need to sign back in to access your patients and sessions.",
-              style: AppTextStyles.body.copyWith(color: AppColors.textPlaceholder),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: onConfirm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.error,
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppSpacing.pillRadius),
-                  ),
-                ),
-                child: Text('Sign Out',
-                    style: AppTextStyles.body.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textWhite,
-                    )),
-              ),
-            ),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: onCancel,
-              child: SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: Center(
-                  child: Text('Cancel',
-                      style: AppTextStyles.body.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.secondary,
-                      )),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-}

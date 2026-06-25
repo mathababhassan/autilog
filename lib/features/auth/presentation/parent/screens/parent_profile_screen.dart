@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -30,8 +31,8 @@ class ParentProfileScreen extends StatelessWidget {
 
           final name = data['name'] as String? ?? 'Parent';
           final gender = data['gender'] as String? ?? '';
-          final phone = data['phone'] as String? ?? '';
           final email = FirebaseAuth.instance.currentUser?.email ?? '';
+          final profilePhotoBase64 = data['profilePhotoBase64'] as String?;
 
           return CustomScrollView(
             slivers: [
@@ -41,7 +42,7 @@ class ParentProfileScreen extends StatelessWidget {
                   name: name,
                   email: email,
                   gender: gender,
-                  phone: phone,
+                  profilePhotoBase64: profilePhotoBase64,
                 ),
               ),
 
@@ -286,14 +287,14 @@ class _ProfileHeader extends StatelessWidget {
     required this.name,
     required this.email,
     required this.gender,
-    required this.phone,
+    this.profilePhotoBase64,
   });
 
   final String uid;
   final String name;
   final String email;
   final String gender;
-  final String phone;
+  final String? profilePhotoBase64;
 
   @override
   Widget build(BuildContext context) {
@@ -359,7 +360,6 @@ class _ProfileHeader extends StatelessWidget {
                           Routes.parentProfileEdit,
                           extra: {
                             'name': name,
-                            'phone': phone,
                             'gender': gender,
                             'email': email,
                           },
@@ -391,11 +391,16 @@ class _ProfileHeader extends StatelessWidget {
           CircleAvatar(
             radius: 40,
             backgroundColor: Colors.white.withValues(alpha: 0.3),
-            child: initials.isNotEmpty
-                ? Text(initials,
-                    style: AppTextStyles.heading1
-                        .copyWith(color: AppColors.textWhite))
-                : const Icon(Icons.person, size: 40, color: Colors.white),
+            backgroundImage: profilePhotoBase64 != null
+                ? MemoryImage(base64Decode(profilePhotoBase64!))
+                : null,
+            child: profilePhotoBase64 == null
+                ? (initials.isNotEmpty
+                    ? Text(initials,
+                        style: AppTextStyles.heading1
+                            .copyWith(color: AppColors.textWhite))
+                    : const Icon(Icons.person, size: 40, color: Colors.white))
+                : null,
           ),
           const SizedBox(height: 16),
 
@@ -410,29 +415,7 @@ class _ProfileHeader extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.85))),
           const SizedBox(height: 16),
 
-          // ── Phone ─────────────────────────────────────────────────
-          if (phone.isNotEmpty) ...[
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.phone_outlined,
-                      color: Colors.white, size: 14),
-                  const SizedBox(width: 6),
-                  Text(phone,
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.textWhite)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
+  
 
           // ── Gender badge ──────────────────────────────────────────
           if (gender.isNotEmpty)

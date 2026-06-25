@@ -1,3 +1,7 @@
+import 'dart:io';
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -5,17 +9,16 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/theme.dart';
 import '../../../../../shared/widgets/app_text_field.dart';
 
+
 class ParentEditProfileScreen extends StatefulWidget {
   const ParentEditProfileScreen({
     super.key,
     required this.name,
-    required this.phone,
     required this.gender,
     required this.email,
   });
 
   final String name;
-  final String phone;
   final String gender;
   final String email;
 
@@ -26,29 +29,42 @@ class ParentEditProfileScreen extends StatefulWidget {
 
 class _ParentEditProfileScreenState extends State<ParentEditProfileScreen> {
   late final TextEditingController _nameCtrl;
-  late final TextEditingController _phoneCtrl;
   String? _selectedGender;
+  
   bool _saving = false;
+  String? _profilePhotoBase64;
+  bool _loadingPhoto = false;
 
   bool get _isDirty =>
       _nameCtrl.text.trim() != widget.name ||
-      _phoneCtrl.text.trim() != widget.phone ||
-      (_selectedGender ?? '') != widget.gender;
+      (_selectedGender ?? '') != widget.gender ||
+      _profilePhotoBase64 != null;
+
+  Future<void> _pickPhoto() async {
+  final picked = await ImagePicker().pickImage(
+    source: ImageSource.gallery,
+    imageQuality: 80,
+  );
+  if (picked == null) return;
+  setState(() => _loadingPhoto = true);
+  final bytes = await File(picked.path).readAsBytes();
+  setState(() {
+    _profilePhotoBase64 = base64Encode(bytes);
+    _loadingPhoto = false;
+  });
+}
 
   @override
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.name);
-    _phoneCtrl = TextEditingController(text: widget.phone);
     _selectedGender = widget.gender;
     _nameCtrl.addListener(() => setState(() {}));
-    _phoneCtrl.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _phoneCtrl.dispose();
     super.dispose();
   }
 
@@ -57,14 +73,18 @@ class _ParentEditProfileScreenState extends State<ParentEditProfileScreen> {
     setState(() => _saving = true);
     try {
       final uid = FirebaseAuth.instance.currentUser!.uid;
+      final Map<String, dynamic> updates = {
+        'name': _nameCtrl.text.trim(),
+        'gender': _selectedGender ?? '',
+      };
+      if (_profilePhotoBase64 != null) {
+        updates['profilePhotoBase64'] = _profilePhotoBase64;
+      }
       await FirebaseFirestore.instance
           .collection('parents')
           .doc(uid)
-          .update({
-        'name': _nameCtrl.text.trim(),
-        'phone': _phoneCtrl.text.trim(),
-        'gender': _selectedGender ?? '',
-      });
+          .update(updates);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -120,26 +140,7 @@ class _ParentEditProfileScreenState extends State<ParentEditProfileScreen> {
                             .copyWith(color: AppColors.textMain)),
                   ),
                 ),
-                GestureDetector(
-                  onTap: _isDirty && !_saving ? _save : null,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.primary),
-                        )
-                      : Text(
-                          'Save',
-                          style: AppTextStyles.body.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: _isDirty
-                                ? AppColors.primary
-                                : AppColors.textDisabled,
-                          ),
-                        ),
-                ),
+                const SizedBox(width: 40),
               ],
             ),
           ),
@@ -161,16 +162,51 @@ class _ParentEditProfileScreenState extends State<ParentEditProfileScreen> {
                     ),
                     child: Column(
                       children: [
-                        CircleAvatar(
-                          radius: 41,
-                          backgroundColor: AppColors.primary,
-                          child: Text(
-                            _initials(widget.name),
-                            style: const TextStyle(
-                              color: AppColors.textWhite,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 26,
-                            ),
+                        GestureDetector(
+                          onTap: _pickPhoto,
+                          child: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 41,
+                                backgroundColor: AppColors.primary,
+                                backgroundImage: _profilePhotoBase64 != null
+                                    ? MemoryImage(base64Decode(_profilePhotoBase64!))
+                                    : null,
+                                child: _profilePhotoBase64 == null
+                                    ? Text(
+                                        _initials(widget.name),
+                                        style: const TextStyle(
+                                          color: AppColors.textWhite,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 26,
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                              if (_loadingPhoto)
+                                const Positioned.fill(
+                                  child: CircleAvatar(
+                                    radius: 41,
+                                    backgroundColor: Colors.black26,
+                                    child: CircularProgressIndicator(
+                                        color: Colors.white, strokeWidth: 2),
+                                  ),
+                                ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.camera_alt,
+                                      size: 13, color: Colors.white),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -196,12 +232,6 @@ class _ParentEditProfileScreenState extends State<ParentEditProfileScreen> {
                             AppTextField(
                               label: 'Full Name',
                               controller: _nameCtrl,
-                            ),
-                            const SizedBox(height: 12),
-                            AppTextField(
-                              label: 'Phone Number',
-                              controller: _phoneCtrl,
-                              keyboardType: TextInputType.phone,
                             ),
                           ],
                         ),

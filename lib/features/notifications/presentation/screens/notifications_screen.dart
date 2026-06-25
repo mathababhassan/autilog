@@ -15,6 +15,8 @@ import '../../../../shared/models/child_model.dart';
 import '../../../incident_log/presentation/screens/incident_detail_screen.dart';
 import '../../../positive_moment/presentation/screens/positive_moment_detail_screen.dart';
 import '../../../patients/presentation/therapist/screens/log_review_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../../patients/presentation/therapist/screens/patient_details_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry points — one for each role, both delegate to _NotificationsView
@@ -83,11 +85,66 @@ class _NotificationsViewState extends State<_NotificationsView> {
   }
 
   // ─── Navigation ───────────────────────────────────────────────────────────
-
   void _navigate(NotificationModel n) async {
     final childId = n.targetChildId ?? '';
     final parentId = n.targetParentId ?? '';
-    final logId = n.targetId ?? '';
+    final kind = n.rawTargetKind ?? '';
+
+    // Handle kinds that don't map to targetType cleanly
+    if (kind == 'aiInsights') {
+      if (widget.isTherapist) {
+        // Navigate to patient details
+        if (childId.isNotEmpty && parentId.isNotEmpty) {
+          String childName = '';
+          try {
+            final childDoc = await FirebaseFirestore.instance
+                .collection('parents').doc(parentId)
+                .collection('children').doc(childId).get();
+            childName = childDoc.data()?['name'] as String? ?? '';
+          } catch (_) {}
+          if (!mounted) return;
+          final child = ChildModel(
+            childId: childId,
+            parentId: parentId,
+            name: childName,
+            diagnosisType: '',
+            severityLevel: 1,
+          );
+          context.push(Routes.patientDetails, extra: PatientDetailArgs(
+            patient: child,
+            therapistId: FirebaseAuth.instance.currentUser?.uid ?? '',
+          ));
+        }
+      } else {
+        // Navigate to AI Insights screen
+        if (childId.isNotEmpty) {
+          String childName = '';
+          try {
+            final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+            final childDoc = await FirebaseFirestore.instance
+                .collection('parents').doc(uid)
+                .collection('children').doc(childId).get();
+            childName = childDoc.data()?['name'] as String? ?? '';
+          } catch (_) {}
+          if (!mounted) return;
+          context.push(Routes.aiInsights, extra: {
+            'childId': childId,
+            'childName': childName,
+          });
+        }
+      }
+      return;
+    }
+
+    if (kind == 'linkRequest' || kind == 'patient') {
+      context.push(Routes.therapistPatients);
+      return;
+    }
+
+    if (kind == 'dailyLogReminder' || n.type == 'dailyLogReminder') {
+      context.go(Routes.parentHome);
+      return;
+    }
 
     switch (n.targetType) {
       case NotificationTargetType.session:
@@ -99,24 +156,20 @@ class _NotificationsViewState extends State<_NotificationsView> {
           context.push(Routes.sessionDetail, extra: n.targetId);
         }
       case NotificationTargetType.log:
+        final logId = n.targetId ?? '';
         if (childId.isEmpty || logId.isEmpty) return;
 
         String childName = '';
         if (parentId.isNotEmpty) {
           try {
             final childDoc = await FirebaseFirestore.instance
-                .collection('parents')
-                .doc(parentId)
-                .collection('children')
-                .doc(childId)
-                .get();
+                .collection('parents').doc(parentId)
+                .collection('children').doc(childId).get();
             childName = childDoc.data()?['name'] as String? ?? '';
           } catch (_) {}
         }
 
         if (!mounted) return;
-
-        final kind = n.rawTargetKind ?? '';
 
         if (widget.isTherapist) {
           context.push(Routes.logReview, extra: LogReviewArgs(

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -135,11 +136,11 @@ class _DashboardTabState extends State<_DashboardTab> {
           .doc(uid)
           .snapshots(),
       builder: (context, parentSnap) {
-        final parentName = parentSnap.hasData && parentSnap.data!.exists
-            ? (parentSnap.data!.data() as Map<String, dynamic>)['name']
-                      as String? ??
-                  'Parent'
-            : 'Parent';
+        final parentData = parentSnap.hasData && parentSnap.data!.exists
+            ? parentSnap.data!.data() as Map<String, dynamic>
+            : <String, dynamic>{};
+        final parentName = parentData['name'] as String? ?? 'Parent';
+        final profilePhotoBase64 = parentData['profilePhotoBase64'] as String?;
 
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
@@ -177,7 +178,7 @@ class _DashboardTabState extends State<_DashboardTab> {
 
             return CustomScrollView(
               slivers: [
-                SliverToBoxAdapter(child: _buildAppBar(context, parentName)),
+                SliverToBoxAdapter(child: _buildAppBar(context, parentName, profilePhotoBase64)),
 
                 if (children.length > 1)
                   SliverToBoxAdapter(child: _buildChildSwitcher(children)),
@@ -222,7 +223,7 @@ class _DashboardTabState extends State<_DashboardTab> {
     );
   }
 
-  Widget _buildAppBar(BuildContext context, String parentName) {
+  Widget _buildAppBar(BuildContext context, String parentName, String? profilePhotoBase64) {
     final now = DateTime.now();
     final greeting = now.hour < 12
         ? 'Good morning'
@@ -252,13 +253,19 @@ class _DashboardTabState extends State<_DashboardTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'AutiLog',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                children: [
+                  Image.asset('assets/images/autilog_logo.png', width: 22, height: 22),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'AutiLog',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -273,8 +280,12 @@ class _DashboardTabState extends State<_DashboardTab> {
                     child: CircleAvatar(
                       radius: 18,
                       backgroundColor: Colors.white.withOpacity(0.3),
-                      child: const Icon(Icons.person,
-                          color: Colors.white, size: 20),
+                      backgroundImage: profilePhotoBase64 != null
+                          ? MemoryImage(base64Decode(profilePhotoBase64))
+                          : null,
+                      child: profilePhotoBase64 == null
+                          ? const Icon(Icons.person, color: Colors.white, size: 20)
+                          : null,
                     ),
                   ),
                 ],
@@ -283,19 +294,19 @@ class _DashboardTabState extends State<_DashboardTab> {
           ),
           const SizedBox(height: 16),
           Text(
-            '$greeting, $parentName 👋',
+            dateStr,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.92),
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '$greeting, $parentName',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            dateStr,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.85),
-              fontSize: 13,
             ),
           ),
         ],

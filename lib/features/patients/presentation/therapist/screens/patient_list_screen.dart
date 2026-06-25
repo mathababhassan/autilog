@@ -990,7 +990,7 @@ class _TabItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = active ? AppColors.primary : Colors.black;
+    final iconColor = active ? AppColors.primary : AppColors.textMain;
     final asset = active ? (iconFilled ?? iconOutline) : iconOutline;
 
     return Expanded(
@@ -1013,7 +1013,7 @@ class _TabItem extends StatelessWidget {
                 fontFamily: 'PlusJakartaSans',
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
-                color: active ? AppColors.primary : Colors.black,
+                color: active ? AppColors.primary : AppColors.textMain,
               ),
             ),
           ],

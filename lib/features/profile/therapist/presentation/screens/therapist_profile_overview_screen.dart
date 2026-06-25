@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -53,10 +54,6 @@ class TherapistProfileOverviewScreen extends StatelessWidget {
                             trailing: _VerifiedBadge(),
                           ),
                           const _InfoDivider(),
-                          _InfoRow(
-                            label: 'Phone',
-                            value: therapist.phone ?? '—',
-                          ),
                         ],
                       ),
                       _InfoSection(
@@ -222,7 +219,11 @@ class _HeroBlock extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _AvatarCircle(initials: initials, size: 82),
+          _AvatarCircle(
+            initials: initials,
+            size: 82,
+            profilePhotoBase64: therapist.profilePhotoBase64,
+          ),
           const SizedBox(height: 10),
           Text(therapist.name,
               style: AppTextStyles.heading1.copyWith(color: AppColors.textMain)),
@@ -261,29 +262,34 @@ class _HeroBlock extends StatelessWidget {
 }
 
 class _AvatarCircle extends StatelessWidget {
-  const _AvatarCircle({required this.initials, required this.size});
+  const _AvatarCircle({
+    required this.initials,
+    required this.size,
+    this.profilePhotoBase64,
+  });
 
   final String initials;
   final double size;
+  final String? profilePhotoBase64;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.primary,
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        initials,
-        style: TextStyle(
-          color: AppColors.textWhite,
-          fontWeight: FontWeight.w700,
-          fontSize: size * 0.32,
-        ),
-      ),
+    return CircleAvatar(
+      radius: size / 2,
+      backgroundColor: AppColors.primary,
+      backgroundImage: profilePhotoBase64 != null
+          ? MemoryImage(base64Decode(profilePhotoBase64!))
+          : null,
+      child: profilePhotoBase64 == null
+          ? Text(
+              initials,
+              style: TextStyle(
+                color: AppColors.textWhite,
+                fontWeight: FontWeight.w700,
+                fontSize: size * 0.32,
+              ),
+            )
+          : null,
     );
   }
 }

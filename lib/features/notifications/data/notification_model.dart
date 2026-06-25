@@ -8,6 +8,9 @@ NotificationTargetType _parseTargetType(String? raw) {
     case 'session':
       return NotificationTargetType.session;
     case 'log':
+    case 'incident':
+    case 'dailySummary':
+    case 'positiveMoment':
       return NotificationTargetType.log;
     case 'appointment':
       return NotificationTargetType.appointment;

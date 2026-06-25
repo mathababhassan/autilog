@@ -57,7 +57,8 @@ async function handleCommentCreated(logCollection, event) {
     const childSnap = await db.doc(`parents/${parentId}/children/${childId}`).get();
     const childName = childSnap.data()?.name || "your child";
 
-    const authorName = comment.therapistName || "Your therapist";
+    const rawName = comment.therapistName || "Your therapist";
+    const authorName = rawName.startsWith("Dr.") ? rawName : `Dr. ${rawName}`;
     const logLabel = LOG_LABELS[logCollection] || "log";
 
     const { created } = await createNotification(db, {

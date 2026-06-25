@@ -127,8 +127,9 @@ class _CommentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final therapistName = data['therapistName'] as String? ?? 'Therapist';
-    final comment = data['comment'] as String? ?? '';
+    final rawName = data['therapistName'] as String? ?? 'Therapist';
+    final therapistName = rawName.startsWith('Dr.') ? rawName : 'Dr. $rawName';
+    final comment = data['text'] as String? ?? '';
     final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
 
     return Container(
