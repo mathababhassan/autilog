@@ -117,8 +117,8 @@ class _SplashScreenState extends State<SplashScreen> {
               children: [
                 Image.asset(
                   'assets/images/autilog_logo_splash.png',
-                  width: 173,
-                  height: 173,
+                  width: 100,
+                  height: 100,
                 ),
                 const SizedBox(height: 14),
                 Text(
