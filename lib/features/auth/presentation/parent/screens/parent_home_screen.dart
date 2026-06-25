@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -135,11 +136,11 @@ class _DashboardTabState extends State<_DashboardTab> {
           .doc(uid)
           .snapshots(),
       builder: (context, parentSnap) {
-        final parentName = parentSnap.hasData && parentSnap.data!.exists
-            ? (parentSnap.data!.data() as Map<String, dynamic>)['name']
-                      as String? ??
-                  'Parent'
-            : 'Parent';
+        final parentData = parentSnap.hasData && parentSnap.data!.exists
+            ? parentSnap.data!.data() as Map<String, dynamic>
+            : <String, dynamic>{};
+        final parentName = parentData['name'] as String? ?? 'Parent';
+        final profilePhotoBase64 = parentData['profilePhotoBase64'] as String?;
 
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
@@ -177,7 +178,7 @@ class _DashboardTabState extends State<_DashboardTab> {
 
             return CustomScrollView(
               slivers: [
-                SliverToBoxAdapter(child: _buildAppBar(context, parentName)),
+                SliverToBoxAdapter(child: _buildAppBar(context, parentName, profilePhotoBase64)),
 
                 if (children.length > 1)
                   SliverToBoxAdapter(child: _buildChildSwitcher(children)),
@@ -222,7 +223,7 @@ class _DashboardTabState extends State<_DashboardTab> {
     );
   }
 
-  Widget _buildAppBar(BuildContext context, String parentName) {
+  Widget _buildAppBar(BuildContext context, String parentName, String? profilePhotoBase64) {
     final now = DateTime.now();
     final greeting = now.hour < 12
         ? 'Good morning'
@@ -279,8 +280,12 @@ class _DashboardTabState extends State<_DashboardTab> {
                     child: CircleAvatar(
                       radius: 18,
                       backgroundColor: Colors.white.withOpacity(0.3),
-                      child: const Icon(Icons.person,
-                          color: Colors.white, size: 20),
+                      backgroundImage: profilePhotoBase64 != null
+                          ? MemoryImage(base64Decode(profilePhotoBase64))
+                          : null,
+                      child: profilePhotoBase64 == null
+                          ? const Icon(Icons.person, color: Colors.white, size: 20)
+                          : null,
                     ),
                   ),
                 ],
