@@ -27,7 +27,6 @@ class TherapistEditProfileScreen extends StatefulWidget {
 
 class _TherapistEditProfileScreenState
     extends State<TherapistEditProfileScreen> {
-  late TextEditingController _phoneCtrl;
   late TextEditingController _clinicCtrl;
   late TextEditingController _specialisationCtrl;
   late TextEditingController _experienceCtrl;
@@ -41,8 +40,7 @@ class _TherapistEditProfileScreenState
 
   bool get _isDirty {
     if (!_initialised) return false;
-    return _phoneCtrl.text != (_original.phone ?? '') ||
-        _clinicCtrl.text != _original.clinicName ||
+    return _clinicCtrl.text != _original.clinicName ||
         _specialisationCtrl.text != _original.specialisation ||
         _experienceCtrl.text != (_original.experience ?? '') ||
         _profilePhotoBase64 != null;
@@ -51,12 +49,10 @@ class _TherapistEditProfileScreenState
   @override
   void initState() {
     super.initState();
-    _phoneCtrl = TextEditingController();
     _clinicCtrl = TextEditingController();
     _specialisationCtrl = TextEditingController();
     _experienceCtrl = TextEditingController();
 
-    _phoneCtrl.addListener(() => setState(() {}));
     _clinicCtrl.addListener(() => setState(() {}));
     _specialisationCtrl.addListener(() => setState(() {}));
     _experienceCtrl.addListener(() => setState(() {}));
@@ -66,10 +62,10 @@ class _TherapistEditProfileScreenState
     if (_initialised) return;
     _original = therapist;
     _originalUser = user;
-    _phoneCtrl.text = therapist.phone ?? '';
     _clinicCtrl.text = therapist.clinicName;
     _specialisationCtrl.text = therapist.specialisation;
     _experienceCtrl.text = therapist.experience ?? '';
+    _profilePhotoBase64 = therapist.profilePhotoBase64;
     _initialised = true;
   }
 
@@ -89,7 +85,6 @@ class _TherapistEditProfileScreenState
 
   @override
   void dispose() {
-    _phoneCtrl.dispose();
     _clinicCtrl.dispose();
     _specialisationCtrl.dispose();
     _experienceCtrl.dispose();
@@ -116,8 +111,7 @@ class _TherapistEditProfileScreenState
       'clinicName': clinicName,
       'specialisation': specialisation,
     };
-    final phone = _phoneCtrl.text.trim();
-    if (phone.isNotEmpty) fields['phone'] = phone;
+
     final experience = _experienceCtrl.text.trim();
     if (experience.isNotEmpty) fields['experience'] = experience;
     if (_profilePhotoBase64 != null) fields['profilePhotoBase64'] = _profilePhotoBase64;
@@ -217,23 +211,6 @@ class _TherapistEditProfileScreenState
                       _EditSection(
                         label: 'Personal Info',
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(
-                                AppSpacing.screenMargin,
-                                10,
-                                AppSpacing.screenMargin,
-                                10),
-                            child: AppTextField(
-                              label: 'Phone Number',
-                              controller: _phoneCtrl,
-                              keyboardType: TextInputType.phone,
-                            ),
-                          ),
-                          const Divider(
-                              height: 1,
-                              indent: AppSpacing.screenMargin,
-                              endIndent: AppSpacing.screenMargin,
-                              color: AppColors.dividerLight),
                           _ReadOnlyRow(
                             label: 'Email Address',
                             value: _originalUser.email,
