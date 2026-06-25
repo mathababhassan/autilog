@@ -14,6 +14,7 @@ import '../../data/positive_moment_repository.dart';
 import '../../positive_moment_route_args.dart';
 import '../../../../core/constants/routes.dart';
 import '../../../../shared/widgets/therapist_comments_section.dart';
+import '../../../../shared/widgets/video_card.dart';
 
 // ─── Args ─────────────────────────────────────────────────────
 
@@ -401,7 +402,7 @@ class _LoadedBody extends StatelessWidget {
 
           if (moment.videoUrl != null) ...[
             const SizedBox(height: AppSpacing.lg),
-            _VideoCard(videoUrl: moment.videoUrl!),
+            VideoCard(videoUrl: moment.videoUrl!),
           ],
 
           const SizedBox(height: AppSpacing.lg),
