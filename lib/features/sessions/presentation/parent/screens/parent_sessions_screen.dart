@@ -182,19 +182,7 @@ class _ParentSessionsScreenState extends State<ParentSessionsScreen> {
               ],
             ),
           ),
-          GestureDetector(
-            onTap: () => context.push(Routes.parentProfile),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.22),
-              ),
-              child: const Icon(Icons.person_outline,
-                  color: AppColors.textWhite, size: 20),
-            ),
-          ),
+          const SizedBox(width: 36),
         ],
       ),
     );
