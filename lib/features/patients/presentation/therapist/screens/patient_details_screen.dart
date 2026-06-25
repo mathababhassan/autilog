@@ -9,6 +9,7 @@ import '../../../../../core/theme/theme.dart';
 import '../../../../../shared/models/child_model.dart';
 import '../../../../../shared/models/session_model.dart';
 import '../../../../../shared/widgets/app_snackbar.dart';
+import '../../../../../shared/widgets/export_pdf_sheet.dart';
 import '../../../data/patient_repository.dart';
 import '../../../../sessions/data/session_repository.dart';
 import 'patient_details_screen.dart';
@@ -280,8 +281,26 @@ class _PatientDetailsScreenState extends State<PatientDetailsScreen> {
             icon: const Icon(Icons.more_horiz, color: AppColors.textMain),
             onSelected: (value) {
               if (value == 'remove') _removePatient();
+              if (value == 'export') {
+                showExportPdfSheet(
+                  context,
+                  childId: patient.childId,
+                  childName: patient.name,
+                  parentId: patient.parentId,
+                );
+              }
             },
             itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'export',
+                child: Row(
+                  children: [
+                    const Icon(Icons.picture_as_pdf_outlined, color: AppColors.primary, size: 18),
+                    const SizedBox(width: 8),
+                    Text('Export PDF', style: AppTextStyles.body.copyWith(color: AppColors.primary)),
+                  ],
+                ),
+              ),
               PopupMenuItem(
                 value: 'remove',
                 child: Row(

@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../../core/constants/routes.dart';
 import '../../../../../core/theme/theme.dart';
+import '../../../../../shared/widgets/export_practice_pdf_sheet.dart';
 
 class TherapistReportsScreen extends StatefulWidget {
   const TherapistReportsScreen({super.key});
@@ -212,6 +213,22 @@ class _TherapistReportsScreenState extends State<TherapistReportsScreen> {
         elevation: 0,
         title: Text('Reports', style: AppTextStyles.heading2.copyWith(fontWeight: FontWeight.w700)),
         automaticallyImplyLeading: false,
+        actions: [
+          if (!_loading)
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.primary),
+              tooltip: 'Export PDF',
+              onPressed: () => showExportPracticePdfSheet(
+                context,
+                aiSummary: _aiSummary,
+                aiFocus: _aiFocus,
+                totalIncidents: _totalIncidents,
+                avgSleep: _avgSleep,
+                topTrigger: _topTrigger,
+                triggerCounts: _triggerCounts,
+              ),
+            ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
