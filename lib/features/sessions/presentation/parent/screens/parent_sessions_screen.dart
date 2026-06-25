@@ -49,7 +49,7 @@ class _ParentSessionsScreenState extends State<ParentSessionsScreen> {
       final now = DateTime.now();
 
       final upcoming = all
-          .where((s) => s.status == 'upcoming' && s.scheduledAt.isAfter(now))
+          .where((s) => s.status == 'upcoming' && s.endTime.isAfter(now))
           .toList()
         ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
 
