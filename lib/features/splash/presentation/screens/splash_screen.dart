@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:autilog/core/constants/routes.dart';
 import 'package:autilog/features/auth/bloc/auth_bloc.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -115,7 +116,7 @@ class _SplashScreenState extends State<SplashScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Image.asset(
-                  'assets/images/autilog_logo.png',
+                  'assets/images/autilog_logo.svg',
                   width: 173,
                   height: 173,
                 ),
